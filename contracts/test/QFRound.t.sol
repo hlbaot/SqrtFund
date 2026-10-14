@@ -429,6 +429,39 @@ contract QFRoundTest is Test {
         round.setWhitelist(rejectedStudent, false);
         assertFalse(round.isWhitelisted(rejectedStudent));
         assertFalse(round.requested(rejectedStudent));
+
+        // Rejected student can request verification again
+        vm.prank(rejectedStudent);
+        round.requestVerification();
+        assertTrue(round.requested(rejectedStudent));
+    }
+
+    function test_NonAdmin_CannotSetWhitelist() public {
+        address nonAdmin = address(0x999);
+        address student = address(0x777);
+
+        vm.prank(student);
+        round.requestVerification();
+
+        // Non-admin cannot approve
+        vm.prank(nonAdmin);
+        vm.expectRevert();
+        round.setWhitelist(student, true);
+
+        // Non-admin cannot reject
+        vm.prank(nonAdmin);
+        vm.expectRevert();
+        round.setWhitelist(student, false);
+
+        // Non-admin cannot batch approve
+        address[] memory users = new address[](1);
+        users[0] = student;
+        bool[] memory statuses = new bool[](1);
+        statuses[0] = true;
+
+        vm.prank(nonAdmin);
+        vm.expectRevert();
+        round.setWhitelistBatch(users, statuses);
     }
 
     // --- Batch Whitelist ---
