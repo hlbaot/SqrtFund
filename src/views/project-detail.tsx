@@ -78,7 +78,11 @@ export function ProjectDetailView() {
         {/* Left column: Project Details */}
         <div className="lg:col-span-7 space-y-6">
           {/* Header Card */}
-          <div className="border border-line bg-surface p-6 space-y-4">
+          <div
+            className="border border-line bg-surface p-6 space-y-4"
+            data-aos="fade-right"
+            data-aos-duration="600"
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 {project.rank && (
@@ -137,7 +141,12 @@ export function ProjectDetailView() {
           </div>
 
           {/* Supporter Marks Breakdown */}
-          <div className="border border-line bg-surface p-6 space-y-3">
+          <div
+            className="border border-line bg-surface p-6 space-y-3"
+            data-aos="fade-right"
+            data-aos-delay="100"
+            data-aos-duration="600"
+          >
             <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
               {t.projectDetail.qfLessonTitle}
             </h2>
@@ -148,7 +157,12 @@ export function ProjectDetailView() {
           </div>
 
           {/* Project proposal info & Contact link */}
-          <div className="border border-line bg-surface p-6 space-y-4">
+          <div
+            className="border border-line bg-surface p-6 space-y-4"
+            data-aos="fade-right"
+            data-aos-delay="200"
+            data-aos-duration="600"
+          >
             <h2 className="text-base font-bold text-foreground">
               About the Initiative
             </h2>
@@ -173,7 +187,11 @@ export function ProjectDetailView() {
         </div>
 
         {/* Right column: Sticky Donate Box for Desktop */}
-        <div className="hidden lg:block lg:col-span-5 sticky top-24">
+        <div
+          className="hidden lg:block lg:col-span-5 sticky top-24"
+          data-aos="fade-left"
+          data-aos-duration="700"
+        >
           <DonateBox project={project} />
         </div>
       </div>

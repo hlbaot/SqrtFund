@@ -34,28 +34,28 @@ export function Navbar() {
               <ArrowRight className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
               <span className="truncate">
                 {status === "finalized"
-                  ? "Round finalized — Results and claims are open"
+                  ? t.nav.announcementFinalized
                   : status === "closed"
-                  ? "Round closed — Finalization pending"
-                  : "Active Round live on Avalanche Fuji"}
+                  ? t.nav.announcementClosed
+                  : t.nav.announcementOpen}
               </span>
             </div>
             <button
               type="button"
               onClick={() => setShowAnnouncement(false)}
               className="mono-label px-2 py-1 text-muted hover:text-foreground text-xs"
-              aria-label="Dismiss round status announcement"
+              aria-label={t.nav.dismissAnnouncement}
             >
               x
             </button>
           </div>
         </div>
       )}
-      <div className="mx-auto flex min-h-16 w-full max-w-6xl items-stretch justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex min-h-16 w-full max-w-6xl items-stretch justify-between pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 lg:px-8">
         <Link
           href="/"
           className="flex items-center border-x border-line px-3 focus:outline-none"
-          aria-label="SqrtFund Home"
+          aria-label={t.nav.homeAria}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -67,7 +67,7 @@ export function Navbar() {
 
         <nav
           className="hidden items-stretch text-sm font-medium md:flex"
-          aria-label="Primary Navigation"
+          aria-label={t.nav.primaryNavigation}
         >
           {navLinks.map((link) => {
             const isActive =
@@ -97,12 +97,11 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-2 sm:hidden">
-          <LanguageToggle />
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="border border-line p-2 text-muted hover:bg-surface-2 hover:text-foreground focus:outline-none"
-            aria-label="Toggle mobile menu"
+            className="min-h-11 min-w-11 border border-line p-2 text-muted hover:bg-surface-2 hover:text-foreground focus:outline-none"
+            aria-label={mobileMenuOpen ? t.nav.closeMenu : t.nav.openMenu}
             aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -111,8 +110,8 @@ export function Navbar() {
       </div>
 
       {mobileMenuOpen && (
-        <div className="space-y-3 border-b border-line bg-bg px-4 py-4 sm:hidden">
-          <nav className="flex flex-col space-y-2" aria-label="Mobile Navigation">
+        <div className="space-y-4 border-b border-line bg-bg pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:hidden">
+          <nav className="flex flex-col space-y-2" aria-label={t.nav.mobileNavigation}>
             {navLinks.map((link) => {
               const isActive =
                 link.href === "/"
@@ -124,7 +123,7 @@ export function Navbar() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`mono-label border px-3 py-2 ${
+                  className={`mono-label min-h-11 border px-3 py-3 ${
                     isActive
                       ? "gradient-border text-foreground font-bold"
                       : "border-line bg-surface text-muted hover:bg-surface-2 hover:text-foreground"
@@ -135,7 +134,10 @@ export function Navbar() {
               );
             })}
           </nav>
-          <div className="border-t border-line pt-2">
+          <div className="flex items-center justify-between border-t border-line pt-3">
+            <LanguageToggle />
+          </div>
+          <div className="border-t border-line pt-3">
             <ConnectWalletButton />
           </div>
         </div>

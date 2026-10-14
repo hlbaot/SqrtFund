@@ -124,7 +124,11 @@ export function RoundDetailView() {
       </div>
 
       {/* Round Header Card */}
-      <div className="border border-line bg-surface p-6 lg:p-8 space-y-6">
+      <div
+        className="border border-line bg-surface p-6 lg:p-8 space-y-6"
+        data-aos="fade-down"
+        data-aos-duration="600"
+      >
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-line pb-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -166,7 +170,11 @@ export function RoundDetailView() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-line pb-4">
+      <div
+        className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-line pb-4"
+        data-aos="fade-up"
+        data-aos-duration="500"
+      >
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted pointer-events-none" />
           <input
@@ -219,14 +227,20 @@ export function RoundDetailView() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedProjects.map((project, index) => (
-            <ProjectCard
+            <div
               key={project.id}
-              project={{
-                ...project,
-                rank: index + 1,
-              }}
-              roundId={roundAddress}
-            />
+              data-aos="fade-up"
+              data-aos-delay={(index % 6) * 80}
+              data-aos-duration="600"
+            >
+              <ProjectCard
+                project={{
+                  ...project,
+                  rank: index + 1,
+                }}
+                roundId={roundAddress}
+              />
+            </div>
           ))}
         </div>
       )}

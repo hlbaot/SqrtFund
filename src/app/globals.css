@@ -59,6 +59,8 @@
 
 html {
   color-scheme: dark;
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
 }
 
 body {
@@ -200,6 +202,127 @@ button:not(:disabled):hover,
   }
 }
 
+@keyframes splash-overlay {
+  0% {
+    opacity: 1;
+  }
+  20%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes splash-grid-fade {
+  0% {
+    opacity: 0;
+  }
+  20%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes splash-logo-in {
+  0%,
+  13% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  53%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes splash-progress-fill {
+  0%,
+  13% {
+    transform: scaleX(0);
+  }
+  53%,
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes splash-tagline-in {
+  0%,
+  40% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  73%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes qf-bar-pulse {
+  0%,
+  100% {
+    transform: scaleY(0.86);
+    opacity: 0.78;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes qf-curve-draw {
+  from {
+    stroke-dashoffset: 360;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.splash-intro {
+  opacity: 1;
+  animation: splash-overlay 3s ease forwards;
+}
+
+.splash-grid {
+  background:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 42px 42px;
+  animation: splash-grid-fade 3s ease both;
+}
+
+.splash-glow {
+  background: radial-gradient(circle at 50% 42%, rgba(232, 65, 66, 0.22), transparent 24rem);
+}
+
+.splash-logo-wrap {
+  animation: splash-logo-in 3s ease both;
+}
+
+.splash-progress {
+  transform-origin: left;
+  animation: splash-progress-fill 3s ease both;
+}
+
+.splash-tagline {
+  animation: splash-tagline-in 3s ease both;
+}
+
+.qf-bar {
+  transform-origin: bottom;
+  animation: qf-bar-pulse 1.4s ease-in-out infinite;
+}
+
+.qf-curve {
+  stroke-dasharray: 360;
+  animation: qf-curve-draw 1.35s ease-out both;
+}
+
 .hud-frame {
   position: relative;
   border: 1px solid var(--line);
@@ -253,6 +376,24 @@ button:not(:disabled):hover,
 
 /* Accessibility: respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
+  .splash-intro {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .splash-grid,
+  .splash-logo-wrap,
+  .splash-progress,
+  .splash-tagline {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+
+  .splash-progress {
+    transform: scaleX(1);
+  }
+
   *,
   ::before,
   ::after {

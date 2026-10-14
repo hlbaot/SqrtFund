@@ -165,7 +165,11 @@ export function AdminView() {
   return (
     <div className="space-y-8">
       {/* Admin Header with FinalizeButton */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-6">
+      <div
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-6"
+        data-aos="fade-down"
+        data-aos-duration="600"
+      >
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
@@ -185,7 +189,11 @@ export function AdminView() {
 
       {/* Finalized Round Distribution Results Table */}
       {finalized && (
-        <section className="border border-money/40 bg-money/10 p-6 space-y-4">
+        <section
+          className="border border-money/40 bg-money/10 p-6 space-y-4"
+          data-aos="fade-up"
+          data-aos-duration="600"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Award className="h-5 w-5 text-money" />
@@ -253,7 +261,11 @@ export function AdminView() {
       )}
 
       {/* Project Proposals Approval Queue */}
-      <section className="border border-line bg-surface p-6 space-y-4">
+      <section
+        className="border border-line bg-surface p-6 space-y-4"
+        data-aos="fade-up"
+        data-aos-duration="600"
+      >
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-foreground">
             {t.admin.projectsQueueTitle}
@@ -312,10 +324,12 @@ export function AdminView() {
       </section>
 
       {/* Whitelist Student Approvals */}
-      <WhitelistTable />
+      <div data-aos="fade-up" data-aos-duration="600">
+        <WhitelistTable />
+      </div>
 
       {/* Forms Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-aos="fade-up" data-aos-duration="600">
         <CreateRoundForm />
         <DepositPoolForm />
       </div>

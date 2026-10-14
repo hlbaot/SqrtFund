@@ -9,7 +9,7 @@ export function RegisterView() {
 
   return (
     <div className="space-y-8">
-      <div>
+      <div data-aos="fade-down" data-aos-duration="600">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
           {t.register.title}
         </h1>

@@ -148,7 +148,11 @@ export function ProjectForm() {
 
   if (isSubmitted) {
     return (
-      <div className="mx-auto max-w-xl border border-money/30 bg-money/10 p-8 text-center space-y-4">
+      <div
+        className="mx-auto max-w-xl border border-money/30 bg-money/10 p-8 text-center space-y-4"
+        data-aos="zoom-in"
+        data-aos-duration="500"
+      >
         <div className="mx-auto flex h-14 w-14 items-center justify-center border border-money/40 bg-money/10 text-money">
           <CheckCircle2 className="h-8 w-8 stroke-[2.5]" />
         </div>
@@ -183,7 +187,11 @@ export function ProjectForm() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       {/* Form area */}
-      <div className="lg:col-span-7 border border-line bg-surface p-6">
+      <div
+        className="lg:col-span-7 border border-line bg-surface p-6"
+        data-aos="fade-right"
+        data-aos-duration="600"
+      >
         <h2 className="text-lg font-bold text-foreground mb-4">
           {t.register.formTitle}
         </h2>
@@ -300,7 +308,11 @@ export function ProjectForm() {
       </div>
 
       {/* Live Voter Card Preview */}
-      <div className="lg:col-span-5 space-y-3">
+      <div
+        className="lg:col-span-5 space-y-3"
+        data-aos="fade-left"
+        data-aos-duration="600"
+      >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">
             {t.register.previewTitle}

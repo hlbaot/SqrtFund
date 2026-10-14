@@ -204,7 +204,11 @@ export function MyView() {
   return (
     <div className="space-y-8">
       {/* User Profile Header with Change Avatar Feature */}
-      <div className="border border-line bg-surface p-6">
+      <div
+        className="border border-line bg-surface p-6"
+        data-aos="fade-down"
+        data-aos-duration="600"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             {/* Avatar with edit button */}
@@ -299,11 +303,12 @@ export function MyView() {
       </div>
 
       {/* Tabs: My Donations & My Projects */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="donations">{t.myActivity.tabDonations}</TabsTrigger>
-          <TabsTrigger value="projects">{t.myActivity.tabProjects}</TabsTrigger>
-        </TabsList>
+      <div data-aos="fade-up" data-aos-duration="600">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="donations">{t.myActivity.tabDonations}</TabsTrigger>
+            <TabsTrigger value="projects">{t.myActivity.tabProjects}</TabsTrigger>
+          </TabsList>
 
         {/* Tab 1: My Donations */}
         <TabsContent value="donations">
@@ -468,6 +473,7 @@ export function MyView() {
           )}
         </TabsContent>
       </Tabs>
+      </div>
 
       {/* Change Avatar Dialog */}
       <Dialog
