@@ -11,6 +11,17 @@ import { getContractErrorMessage } from "@/lib/errors";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
+/** Format Date object to YYYY-MM-DDTHH:mm string in local timezone */
+function toLocalDatetimeString(date: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  return `${y}-${m}-${d}T${hh}:${mm}`;
+}
+
 export function CreateRoundForm() {
   const { t } = useLocale();
   const { isConnected } = useAccount();
@@ -19,12 +30,22 @@ export function CreateRoundForm() {
   const { writeContractAsync } = useWriteContract();
   const { refetch } = useRound();
 
-  const now = new Date();
-  const defaultStart = new Date(now.getTime() + 60 * 1000).toISOString().slice(0, 16);
-  const defaultEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
-
-  const [startDateTime, setStartDateTime] = useState(defaultStart);
-  const [endDateTime, setEndDateTime] = useState(defaultEnd);
+  const [startDateTime, setStartDateTime] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return toLocalDatetimeString(new Date(Date.now() + 2 * 60 * 1000));
+  });
+  const [endDateTime, setEndDateTime] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return toLocalDatetimeString(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  });
+  const [tzLabel] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const offsetMinutes = -new Date().getTimezoneOffset();
+    const sign = offsetMinutes >= 0 ? "+" : "-";
+    const hours = Math.floor(Math.abs(offsetMinutes) / 60);
+    const mins = Math.abs(offsetMinutes) % 60;
+    return `GMT${sign}${hours}${mins > 0 ? `:${mins.toString().padStart(2, "0")}` : ""}`;
+  });
   const [minDonationUsdc, setMinDonationUsdc] = useState("1");
   const [maxDonationUsdc, setMaxDonationUsdc] = useState("5");
   const [maxMatchPercent, setMaxMatchPercent] = useState("30");
@@ -37,6 +58,15 @@ export function CreateRoundForm() {
         type: "error",
         title: "Factory not ready",
         description: "Please connect the factory owner wallet.",
+      });
+      return;
+    }
+
+    if (!startDateTime || !endDateTime) {
+      addToast({
+        type: "error",
+        title: "Invalid schedule",
+        description: "Please enter start and end dates.",
       });
       return;
     }
@@ -125,17 +155,19 @@ export function CreateRoundForm() {
       <form onSubmit={handleSubmit} className="space-y-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
-            label="Start Date & Time"
+            label={`Start Date & Time${tzLabel ? ` (${tzLabel})` : ""}`}
             type="datetime-local"
             value={startDateTime}
             onChange={(e) => setStartDateTime(e.target.value)}
+            helperText="Local time (auto-converted to on-chain Unix timestamp)"
             required
           />
           <Input
-            label="End Date & Time"
+            label={`End Date & Time${tzLabel ? ` (${tzLabel})` : ""}`}
             type="datetime-local"
             value={endDateTime}
             onChange={(e) => setEndDateTime(e.target.value)}
+            helperText="Local time (round closing time)"
             required
           />
         </div>

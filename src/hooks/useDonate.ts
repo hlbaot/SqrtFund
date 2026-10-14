@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { mockUsdcAbi, qfRoundAbi } from "@/lib/contracts/abis";
 import { useToast } from "@/lib/context/toast";
+import { useLocale } from "@/lib/context/locale";
 import { getContractErrorMessage } from "@/lib/errors";
 import { useRound } from "@/hooks/useRound";
 
@@ -14,6 +15,7 @@ export function useDonate() {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { addToast } = useToast();
+  const { locale } = useLocale();
   const { roundAddress, token } = useRound();
 
   const [step, setStep] = useState<DonationStep>("idle");
@@ -24,8 +26,11 @@ export function useDonate() {
     if (!address || !roundAddress || !token || !publicClient) {
       addToast({
         type: "error",
-        title: "Wallet not connected",
-        description: "Please connect your wallet first.",
+        title: locale === "vi" ? "Chưa kết nối ví" : "Wallet not connected",
+        description:
+          locale === "vi"
+            ? "Vui lòng kết nối ví trước khi thực hiện quyên góp."
+            : "Please connect your wallet first.",
       });
       return false;
     }
@@ -33,7 +38,25 @@ export function useDonate() {
     setErrorMessage(null);
 
     try {
-      // 1. Check existing allowance
+      // 1. Check user's USDC balance first to prevent gas estimation reverts
+      const userBalance = await publicClient.readContract({
+        address: token,
+        abi: mockUsdcAbi,
+        functionName: "balanceOf",
+        args: [address],
+      });
+
+      if (userBalance < amount) {
+        const balFormatted = (Number(userBalance) / 1_000_000).toFixed(0);
+        const reqFormatted = (Number(amount) / 1_000_000).toFixed(0);
+        const errorMsg =
+          locale === "vi"
+            ? `Số dư USDC không đủ. Ví của bạn hiện có ${balFormatted} USDC nhưng cần ${reqFormatted} USDC để quyên góp. Vui lòng nhận 100 USDC từ Faucet tại trang 'My Dashboard'.`
+            : `Insufficient USDC balance. Your wallet has ${balFormatted} USDC but ${reqFormatted} USDC is required. Please claim 100 USDC from the Faucet in 'My Dashboard'.`;
+        throw new Error(errorMsg);
+      }
+
+      // 2. Check existing allowance
       const currentAllowance = await publicClient.readContract({
         address: token,
         abi: mockUsdcAbi,
@@ -116,11 +139,11 @@ export function useDonate() {
       return true;
     } catch (err: unknown) {
       setStep("error");
-      const message = getContractErrorMessage(err);
+      const message = getContractErrorMessage(err, locale);
       setErrorMessage(message);
       addToast({
         type: "error",
-        title: "Donation failed",
+        title: locale === "vi" ? "Quyên góp thất bại" : "Donation failed",
         description: message,
       });
       return false;

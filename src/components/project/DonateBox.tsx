@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import type { Project } from "@/types";
 import { useAccount, useReadContract, useWriteContract, usePublicClient } from "wagmi";
-import { qfRoundAbi } from "@/lib/contracts/abis";
+import { qfRoundAbi, mockUsdcAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
 import { useToast } from "@/lib/context/toast";
 import { useRound } from "@/hooks/useRound";
@@ -30,14 +31,14 @@ export interface DonateBoxProps {
 }
 
 export function DonateBox({ project, className = "" }: DonateBoxProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { address, isConnected } = useAccount();
   const { addToast } = useToast();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
   const queryClient = useQueryClient();
-  const { roundAddress, status: roundStatus, pool, maxDonation = 5_000_000n, maxMatchBps = 3000n, refetch: refetchRound } = useRound();
+  const { roundAddress, token, status: roundStatus, pool, maxDonation = 5_000_000n, maxMatchBps = 3000n, refetch: refetchRound } = useRound();
   const { projects, refetch: refetchProjects } = useProjects(roundAddress);
   const { isStudent, hasRequested } = useRole();
   const { donate, step: donationStep, isPending: isDonatePending, activeTxHash, reset: resetDonate } = useDonate();
@@ -64,6 +65,22 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
   const userDonatedUsdc = Number(userDonatedBigInt) / 1_000_000;
   const maxDonationUsdc = Number(maxDonation) / 1_000_000;
   const remainingAllowanceUsdc = Math.max(0, maxDonationUsdc - userDonatedUsdc);
+
+  // Read current user's USDC balance
+  const { data: usdcBalanceData } = useReadContract({
+    address: token,
+    abi: mockUsdcAbi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: Boolean(token && address),
+      refetchInterval: 5000,
+    },
+  });
+
+  const usdcBalanceBigInt = (usdcBalanceData as bigint | undefined) ?? 0n;
+  const usdcBalanceUsdc = Number(usdcBalanceBigInt) / 1_000_000;
+  const hasInsufficientBalance = isConnected && isStudent && usdcBalanceUsdc < amount;
 
   // Validation
   const handleAmountChange = (valStr: string) => {
@@ -295,9 +312,17 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-semibold text-foreground">
               <label htmlFor="donation-amount">{t.donateBox.amountLabel}</label>
-              <span className="font-mono text-muted">
-                Remaining: {remainingAllowanceUsdc} USDC
-              </span>
+              <div className="flex items-center gap-3 font-mono text-[11px] text-muted">
+                {isConnected && (
+                  <span>
+                    Balance:{" "}
+                    <strong className={usdcBalanceUsdc < 1 ? "text-primary" : "text-money"}>
+                      {usdcBalanceUsdc.toFixed(0)} USDC
+                    </strong>
+                  </span>
+                )}
+                <span>Remaining: {remainingAllowanceUsdc} USDC</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -381,6 +406,29 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
             />
           )}
 
+          {/* Insufficient balance alert */}
+          {isConnected && isStudent && hasInsufficientBalance && (
+            <div className="flex items-start gap-2.5 border border-primary/40 bg-primary/10 p-3 text-xs text-foreground">
+              <AlertCircle className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+              <div className="leading-snug space-y-1">
+                <p className="font-semibold text-primary">
+                  {locale === "vi" ? "Số dư USDC không đủ" : "Insufficient USDC Balance"}
+                </p>
+                <p className="text-muted">
+                  {locale === "vi"
+                    ? `Ví của bạn hiện có ${usdcBalanceUsdc.toFixed(0)} USDC, không đủ để quyên góp ${amount} USDC.`
+                    : `Your wallet currently has ${usdcBalanceUsdc.toFixed(0)} USDC, but ${amount} USDC is required.`}
+                </p>
+                <Link
+                  href="/my"
+                  className="inline-flex items-center gap-1 font-bold text-primary underline hover:opacity-80 pt-0.5"
+                >
+                  {locale === "vi" ? "Nhận 100 USDC từ Faucet tại My Dashboard" : "Claim 100 USDC from Faucet in My Dashboard"} &rarr;
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Primary Action Button */}
           <div>
             {!isConnected ? (
@@ -403,6 +451,12 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
             ) : isMaxAllowanceReached ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
                 Max 5 USDC limit reached
+              </Button>
+            ) : hasInsufficientBalance ? (
+              <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-60">
+                {locale === "vi"
+                  ? `Số dư USDC không đủ (${usdcBalanceUsdc.toFixed(0)} USDC)`
+                  : `Insufficient USDC Balance (${usdcBalanceUsdc.toFixed(0)} USDC)`}
               </Button>
             ) : (
               <Button

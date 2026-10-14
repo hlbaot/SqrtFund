@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAccount, useChainId, useReadContracts } from "wagmi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { TARGET_CHAIN_ID, ZERO_ADDRESS } from "@/lib/contracts/addresses";
@@ -50,10 +50,12 @@ export function useRole() {
 
   // Remember the last valid factory owner so one failed RPC read
   // does not flip the role from Admin to Visitor.
-  const [ownerCache, setOwnerCache] = useState<string | undefined>();
-  useEffect(() => {
-    if (isNonZero(factoryOwner)) setOwnerCache(factoryOwner);
-  }, [factoryOwner]);
+  const [ownerCache, setOwnerCache] = useState<string | undefined>(
+    isNonZero(factoryOwner) ? factoryOwner : undefined
+  );
+  if (isNonZero(factoryOwner) && factoryOwner !== ownerCache) {
+    setOwnerCache(factoryOwner);
+  }
   const ownerForCheck = isNonZero(factoryOwner) ? factoryOwner : ownerCache;
 
   const isAdmin = useMemo(() => {
