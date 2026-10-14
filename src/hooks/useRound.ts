@@ -1,15 +1,14 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo } from "react";
 import type { Address } from "viem";
-import { useReadContracts, useBlockNumber } from "wagmi";
+import { useReadContracts } from "wagmi";
 import { factoryAddress } from "@/lib/contracts/addresses";
 import { roundFactoryAbi, qfRoundAbi } from "@/lib/contracts/abis";
 import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
 import type { RoundStatus } from "@/types";
 
 export function useRound(customRoundAddress?: Address) {
-  const { data: blockNumber } = useBlockNumber({ watch: true });
   const nowSec = useCurrentTimestamp();
 
   // 1. Read all rounds and factory owner from RoundFactory
@@ -81,14 +80,6 @@ export function useRound(customRoundAddress?: Address) {
       refetchInterval: 5000,
     },
   });
-
-  // Watch block numbers and refetch
-  useEffect(() => {
-    if (blockNumber) {
-      refetchRound();
-      refetchFactory();
-    }
-  }, [blockNumber, refetchRound, refetchFactory]);
 
   const admin = roundData?.[0]?.result as Address | undefined;
   const token = roundData?.[1]?.result as Address | undefined;

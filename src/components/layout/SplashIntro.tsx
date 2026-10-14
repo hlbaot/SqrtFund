@@ -2,12 +2,15 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { copy } from "@/lib/copy";
 
 const splashCopy = copy.en.splashIntro;
 
 export function SplashIntro() {
-  const [visible, setVisible] = useState(true);
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+  const [dismissed, setDismissed] = useState(false);
   const previousOverflowRef = useRef<string | null>(null);
 
   const finishSplash = () => {
@@ -15,44 +18,40 @@ export function SplashIntro() {
       document.body.style.overflow = previousOverflowRef.current;
       previousOverflowRef.current = null;
     }
-    setVisible(false);
+    setDismissed(true);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("splash-intro-finished"));
+    }
   };
 
   useEffect(() => {
+    if (!isHome || dismissed) return;
+
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion) {
-      const previousOverflow = document.body.style.overflow;
-      previousOverflowRef.current = previousOverflow;
-      document.body.style.overflow = "hidden";
-
-      const reducedMotionTimer = window.setTimeout(finishSplash, 3000);
-      return () => {
-        window.clearTimeout(reducedMotionTimer);
-        document.body.style.overflow = previousOverflow;
-        previousOverflowRef.current = null;
-      };
-    }
-
     const previousOverflow = document.body.style.overflow;
     previousOverflowRef.current = previousOverflow;
     document.body.style.overflow = "hidden";
 
-    const finishTimer = window.setTimeout(finishSplash, 3000);
+    const duration = prefersReducedMotion ? 800 : 3000;
+    const finishTimer = window.setTimeout(finishSplash, duration);
 
     return () => {
       window.clearTimeout(finishTimer);
-      document.body.style.overflow = previousOverflow;
-      previousOverflowRef.current = null;
+      if (previousOverflowRef.current !== null) {
+        document.body.style.overflow = previousOverflowRef.current;
+        previousOverflowRef.current = null;
+      }
     };
-  }, []);
+  }, [isHome, dismissed]);
 
-  if (!visible) return null;
+  if (!isHome || dismissed) return null;
 
   return (
     <div
       role="status"
       aria-label={splashCopy.ariaLabel}
-      className="splash-intro fixed inset-0 z-[2147483647] flex items-center justify-center overflow-hidden bg-bg px-[max(1.25rem,env(safe-area-inset-left))] py-[max(1.25rem,env(safe-area-inset-top))]"
+      onClick={finishSplash}
+      className="splash-intro fixed inset-0 z-[2147483647] flex cursor-pointer items-center justify-center overflow-hidden bg-bg px-[max(1.25rem,env(safe-area-inset-left))] py-[max(1.25rem,env(safe-area-inset-top))]"
     >
       <div className="splash-grid absolute inset-0" aria-hidden="true" />
       <div className="splash-glow absolute inset-0" aria-hidden="true" />

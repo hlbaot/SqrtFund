@@ -35,7 +35,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${beVietnamPro.variable} ${jetBrainsMono.variable}`}>
       <body className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/30 selection:text-foreground">
-        <SplashIntro />
+        <Suspense fallback={null}>
+          <SplashIntro />
+        </Suspense>
         <Providers>
           <Suspense fallback={null}>
             <AOSInit />

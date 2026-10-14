@@ -16,11 +16,22 @@ export function ConnectWalletButton() {
   const { switchChain } = useSwitchChain();
   const chainId = useChainId();
   const { t } = useLocale();
-  const { isAdmin, isStudent, isProjectOwner } = useRole();
+  const { isAdmin, isStudent, isProjectOwner, isLoading: isRoleLoading } = useRole();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const roleLabel =
+    isRoleLoading && !isAdmin && !isStudent && !isProjectOwner
+      ? "..."
+      : isAdmin
+      ? "Admin"
+      : isProjectOwner
+      ? "Project Owner"
+      : isStudent
+      ? "Whitelisted Student"
+      : "Visitor";
 
   const isFuji = chainId === TARGET_CHAIN_ID;
 
@@ -52,13 +63,6 @@ export function ConnectWalletButton() {
     );
   };
 
-  const roleLabel = isAdmin
-    ? "Admin"
-    : isProjectOwner
-    ? "Project Owner"
-    : isStudent
-    ? "Whitelisted Student"
-    : "Visitor";
 
   if (!isConnected || !address) {
     return (
