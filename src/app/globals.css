@@ -84,6 +84,25 @@ textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
+a[href],
+button:not(:disabled),
+[role="button"] {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease,
+    filter 180ms ease,
+    transform 180ms ease;
+}
+
+a[href]:hover,
+button:not(:disabled):hover,
+[role="button"]:hover {
+  cursor: pointer;
+  filter: brightness(1.08);
+}
+
 :focus-visible {
   outline: 1px solid var(--primary);
   outline-offset: 3px;
@@ -124,6 +143,30 @@ textarea {
 .tabular-mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+.ui-button[data-variant="primary"]:not(:disabled):hover {
+  background: var(--surface-2);
+}
+
+.ui-button[data-variant="secondary"]:not(:disabled):hover,
+.ui-button[data-variant="outline"]:not(:disabled):hover {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--primary) 70%, transparent);
+}
+
+.ui-button[data-variant="ghost"]:not(:disabled):hover {
+  color: var(--foreground);
+}
+
+.ui-button[data-variant="destructive"]:not(:disabled):hover {
+  background: var(--primary);
+  color: var(--foreground);
+}
+
+.ui-button[data-variant="accent"]:not(:disabled):hover {
+  background: var(--money);
+  color: var(--bg);
 }
 
 .gradient-border {

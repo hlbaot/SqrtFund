@@ -7,6 +7,6 @@ export const wagmiConfig = createConfig({
   connectors: [injected()],
   ssr: true,
   transports: {
-    [fuji.id]: http(),
+    [fuji.id]: http(process.env.NEXT_PUBLIC_RPC_URL),
   },
 });

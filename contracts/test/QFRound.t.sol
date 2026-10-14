@@ -52,6 +52,7 @@ contract QFRoundTest is Test {
     }
 
     function _registerAndApproveProject(address owner, string memory name) internal returns (uint256 pId) {
+        _whitelistUser(owner);
         vm.prank(owner);
         pId = round.registerProject(name, "Project Description", "https://img.png", "https://project.org");
         vm.prank(admin);
@@ -167,7 +168,7 @@ contract QFRoundTest is Test {
         (, uint256[] memory estimated) = round.previewMatching();
         // Since there is only 1 donor, raw_p = max(0, S_p^2 / SCALE - totalDonated)
         // S = sqrt(3 * 10^6 * 10^12) = sqrt(3 * 10^18) = 1,732,050,807
-        // S^2 / 10^12 = 2,999,999,996 <= totalDonated (3,000,000)
+        // S^2 / 10^12 = 2,999,999 <= totalDonated (3,000,000)
         // Raw matching MUST be 0!
         assertEq(estimated[0], 0);
     }
@@ -215,6 +216,11 @@ contract QFRoundTest is Test {
         );
         QFRound uncapRound = QFRound(rAddr);
 
+        vm.prank(admin);
+        uncapRound.setWhitelist(projectOwner1, true);
+        vm.prank(admin);
+        uncapRound.setWhitelist(projectOwner2, true);
+
         vm.prank(projectOwner1);
         uint256 p1 = uncapRound.registerProject("P1", "Desc", "url", "url");
         vm.prank(projectOwner2);
@@ -259,6 +265,7 @@ contract QFRoundTest is Test {
         uncapRound.depositPool(smallPool);
 
         vm.warp(endTime + 1);
+        vm.prank(admin);
         uncapRound.finalize();
 
         uint256 payout1 = uncapRound.payoutOf(p1);
@@ -294,6 +301,7 @@ contract QFRoundTest is Test {
         round.depositPool(testPool);
 
         vm.warp(endTime + 1);
+        vm.prank(admin);
         round.finalize();
 
         uint256 payout1 = round.payoutOf(p1);
@@ -322,6 +330,7 @@ contract QFRoundTest is Test {
         round.depositPool(largePool);
 
         vm.warp(endTime + 1);
+        vm.prank(admin);
         round.finalize();
 
         uint256 payout = round.payoutOf(p1);
@@ -364,6 +373,7 @@ contract QFRoundTest is Test {
         (uint256[] memory ids, uint256[] memory previewPayouts) = round.previewMatching();
 
         vm.warp(endTime + 1);
+        vm.prank(admin);
         round.finalize();
 
         for (uint256 i = 0; i < ids.length; i++) {
@@ -465,6 +475,7 @@ contract QFRoundTest is Test {
         round.claim(p1);
 
         vm.warp(endTime + 1);
+        vm.prank(admin);
         round.finalize();
 
         // Claim by non-owner reverts
@@ -503,6 +514,7 @@ contract QFRoundTest is Test {
         round.donate(p1, 2 * 10 ** 6);
 
         // Donate to unapproved project reverts
+        _whitelistUser(projectOwner2);
         vm.prank(projectOwner2);
         uint256 unapprovedP = round.registerProject("Unapproved", "Desc", "url", "url");
         _whitelistUser(donor1);
@@ -533,7 +545,9 @@ contract QFRoundTest is Test {
 
         // Finalize twice reverts
         vm.warp(endTime + 1);
+        vm.prank(admin);
         round.finalize();
+        vm.prank(admin);
         vm.expectRevert(QFRound.AlreadyFinalized.selector);
         round.finalize();
 
@@ -550,6 +564,7 @@ contract QFRoundTest is Test {
     // --- Boundary Tests (Max Projects & Max Requesters) ---
 
     function test_MaxProjectsBoundary() public {
+        _whitelistUser(address(this));
         for (uint256 i = 0; i < 50; i++) {
             round.registerProject("Project", "Desc", "https://img", "https://site");
         }
@@ -600,6 +615,7 @@ contract QFRoundTest is Test {
         round.depositPool(7 * 10 ** 6);
 
         vm.warp(endTime + 1);
+        vm.prank(admin);
         round.finalize();
 
         vm.prank(projectOwner1);
@@ -640,6 +656,7 @@ contract QFRoundTest is Test {
         round.depositPool(poolDeposit);
 
         vm.warp(endTime + 1);
+        vm.prank(admin);
         round.finalize();
 
         uint256 pay1 = round.payoutOf(p1);
@@ -659,5 +676,290 @@ contract QFRoundTest is Test {
 
         // Balance remains below dust bound
         assertLe(usdc.balanceOf(address(round)), 2);
+    }
+
+    // --- New Tests for Requested Requirements ---
+
+    function test_Finalize_GracePeriod_AdminCanFinalize_NonAdminReverts() public {
+        _registerAndApproveProject(projectOwner1, "P1");
+        vm.warp(endTime + 1 hours);
+
+        // Non-admin trying to finalize during grace period (first 24h) reverts
+        address stranger = address(0x999);
+        vm.prank(stranger);
+        vm.expectRevert(QFRound.FinalizeGracePeriodActive.selector);
+        round.finalize();
+
+        // Admin can finalize during grace period
+        vm.prank(admin);
+        round.finalize();
+        assertTrue(round.finalized());
+    }
+
+    function test_Finalize_AnyoneCanFinalizeAfterGrace() public {
+        _registerAndApproveProject(projectOwner1, "P1");
+        // Warp past grace period (1 days after endTime)
+        vm.warp(endTime + 1 days + 1 seconds);
+
+        address stranger = address(0x999);
+        vm.prank(stranger);
+        round.finalize();
+        assertTrue(round.finalized());
+    }
+
+    function test_Finalize_StrangerCannotLockRoundWithPoolZeroBeforeGrace() public {
+        _registerAndApproveProject(projectOwner1, "P1");
+        vm.warp(endTime + 10 minutes);
+
+        // Pool is currently 0, stranger attempts to lock the round prematurely
+        address stranger = address(0x999);
+        vm.prank(stranger);
+        vm.expectRevert(QFRound.FinalizeGracePeriodActive.selector);
+        round.finalize();
+
+        // Admin can still deposit pool and finalize properly
+        _fundAndApprove(admin, 5_000 * 10 ** 6);
+        vm.prank(admin);
+        round.depositPool(5_000 * 10 ** 6);
+
+        vm.prank(admin);
+        round.finalize();
+        assertTrue(round.finalized());
+        assertEq(round.pool(), 5_000 * 10 ** 6);
+    }
+
+    function test_ApproveProject_RevertsAfterEndTimeOrFinalize() public {
+        _whitelistUser(projectOwner1);
+        vm.prank(projectOwner1);
+        uint256 p1 = round.registerProject("P1", "Desc", "url", "url");
+
+        // Warp past endTime
+        vm.warp(endTime + 1);
+        vm.prank(admin);
+        vm.expectRevert(QFRound.RoundEnded.selector);
+        round.approveProject(p1);
+
+        // Also test after finalize
+        vm.prank(admin);
+        round.finalize();
+
+        vm.prank(admin);
+        vm.expectRevert(QFRound.AlreadyFinalized.selector);
+        round.approveProject(p1);
+    }
+
+    function test_DepositPool_ZeroAmountReverts() public {
+        vm.prank(admin);
+        vm.expectRevert(QFRound.ZeroAmount.selector);
+        round.depositPool(0);
+    }
+
+    function test_RegisterProject_NonWhitelistedReverts() public {
+        address unverified = address(0x789);
+        assertFalse(round.isWhitelisted(unverified));
+
+        vm.prank(unverified);
+        vm.expectRevert(QFRound.NotWhitelisted.selector);
+        round.registerProject("P", "Desc", "https://img", "https://url");
+    }
+
+    function test_RoundFactory_OnlyOwnerAndRoundCountWithSeveralRounds() public {
+        address stranger = address(0x123);
+        vm.prank(stranger);
+        vm.expectRevert();
+        factory.createRound(address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+
+        // Admin creates round 2 and round 3
+        vm.prank(admin);
+        address r2 = factory.createRound(address(usdc), startTime + 10 days, endTime + 10 days, minDonation, maxDonation, maxMatchBps);
+        vm.prank(admin);
+        address r3 = factory.createRound(address(usdc), startTime + 20 days, endTime + 20 days, minDonation, maxDonation, maxMatchBps);
+
+        assertEq(factory.roundCount(), 3);
+        address[] memory all = factory.getRounds();
+        assertEq(all.length, 3);
+        assertEq(all[1], r2);
+        assertEq(all[2], r3);
+    }
+
+    function test_QFRound_ConstructorValidation() public {
+        // endTime <= startTime
+        vm.expectRevert(QFRound.InvalidTimeRange.selector);
+        new QFRound(admin, address(usdc), endTime, startTime, minDonation, maxDonation, maxMatchBps);
+
+        // minDonation == 0
+        vm.expectRevert(QFRound.InvalidDonationBounds.selector);
+        new QFRound(admin, address(usdc), startTime, endTime, 0, maxDonation, maxMatchBps);
+
+        // minDonation > maxDonation
+        vm.expectRevert(QFRound.InvalidDonationBounds.selector);
+        new QFRound(admin, address(usdc), startTime, endTime, 10 * 10 ** 6, 5 * 10 ** 6, maxMatchBps);
+
+        // maxMatchBps > 10000
+        vm.expectRevert(QFRound.InvalidMaxMatchBps.selector);
+        new QFRound(admin, address(usdc), startTime, endTime, minDonation, maxDonation, 10001);
+
+        // zero address admin
+        vm.expectRevert(QFRound.ZeroAddress.selector);
+        new QFRound(address(0), address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+
+        // zero address token
+        vm.expectRevert(QFRound.ZeroAddress.selector);
+        new QFRound(admin, address(0), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+    }
+
+    function test_RegisterProject_LengthLimits() public {
+        _whitelistUser(projectOwner1);
+
+        // Name empty
+        vm.prank(projectOwner1);
+        vm.expectRevert(QFRound.NameLengthInvalid.selector);
+        round.registerProject("", "Valid description", "https://img", "https://url");
+
+        // Name > 60 bytes
+        string memory longName = "1234567890123456789012345678901234567890123456789012345678901"; // 61 chars
+        vm.prank(projectOwner1);
+        vm.expectRevert(QFRound.NameLengthInvalid.selector);
+        round.registerProject(longName, "Valid description", "https://img", "https://url");
+
+        // Description empty
+        vm.prank(projectOwner1);
+        vm.expectRevert(QFRound.DescriptionLengthInvalid.selector);
+        round.registerProject("Valid name", "", "https://img", "https://url");
+
+        // Description > 280 bytes
+        bytes memory longDescBytes = new bytes(281);
+        for (uint256 i = 0; i < 281; i++) longDescBytes[i] = "a";
+        vm.prank(projectOwner1);
+        vm.expectRevert(QFRound.DescriptionLengthInvalid.selector);
+        round.registerProject("Valid name", string(longDescBytes), "https://img", "https://url");
+
+        // ImageUrl > 200 bytes
+        bytes memory longUrlBytes = new bytes(201);
+        for (uint256 i = 0; i < 201; i++) longUrlBytes[i] = "u";
+        vm.prank(projectOwner1);
+        vm.expectRevert(QFRound.UrlTooLong.selector);
+        round.registerProject("Valid name", "Valid description", string(longUrlBytes), "https://url");
+
+        // Link > 200 bytes
+        vm.prank(projectOwner1);
+        vm.expectRevert(QFRound.UrlTooLong.selector);
+        round.registerProject("Valid name", "Valid description", "https://img", string(longUrlBytes));
+    }
+
+    function test_BatchWhitelist_LengthMismatch() public {
+        address[] memory accs = new address[](2);
+        accs[0] = address(0x1);
+        accs[1] = address(0x2);
+
+        bool[] memory statuses = new bool[](3);
+        statuses[0] = true;
+        statuses[1] = true;
+        statuses[2] = true;
+
+        vm.prank(admin);
+        vm.expectRevert(QFRound.BatchLengthMismatch.selector);
+        round.setWhitelistBatch(accs, statuses);
+    }
+
+    function test_Finalize_ZeroApprovedProjectsAndZeroPool() public {
+        // Round with 0 approved projects and 0 pool
+        vm.warp(endTime + 1 days + 1);
+        round.finalize();
+        assertTrue(round.finalized());
+        assertEq(round.pool(), 0);
+        assertEq(round.leftover(), 0);
+
+        // Test with pool > 0 and 0 approved projects
+        vm.prank(admin);
+        address rAddr = factory.createRound(address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+        QFRound r2 = QFRound(rAddr);
+
+        deal(address(usdc), admin, 100 * 10 ** 6);
+        vm.prank(admin);
+        usdc.approve(address(r2), 100 * 10 ** 6);
+        vm.prank(admin);
+        r2.depositPool(100 * 10 ** 6);
+
+        vm.warp(endTime + 1 days + 1);
+        r2.finalize();
+        assertTrue(r2.finalized());
+        assertEq(r2.leftover(), 100 * 10 ** 6);
+
+        // Admin withdraws entire leftover
+        uint256 balBefore = usdc.balanceOf(admin);
+        vm.prank(admin);
+        r2.withdrawLeftover();
+        assertEq(usdc.balanceOf(admin) - balBefore, 100 * 10 ** 6);
+    }
+
+    function test_Math_300x1_beats_60x5_Uncapped() public {
+        // Deploy round with maxMatchBps = 10000 (100% cap)
+        vm.prank(admin);
+        address rAddr = factory.createRound(
+            address(usdc),
+            startTime,
+            endTime,
+            minDonation,
+            maxDonation,
+            10000
+        );
+        QFRound uncapRound = QFRound(rAddr);
+
+        vm.prank(admin);
+        uncapRound.setWhitelist(projectOwner1, true);
+        vm.prank(admin);
+        uncapRound.setWhitelist(projectOwner2, true);
+
+        vm.prank(projectOwner1);
+        uint256 p1 = uncapRound.registerProject("P1 300x1", "Desc", "url", "url");
+        vm.prank(projectOwner2);
+        uint256 p2 = uncapRound.registerProject("P2 60x5", "Desc", "url", "url");
+
+        vm.prank(admin);
+        uncapRound.approveProject(p1);
+        vm.prank(admin);
+        uncapRound.approveProject(p2);
+
+        vm.warp(startTime + 1);
+
+        for (uint160 i = 1; i <= 300; i++) {
+            address d = address(uint160(0x3000 + i));
+            vm.prank(admin);
+            uncapRound.setWhitelist(d, true);
+            deal(address(usdc), d, 1 * 10 ** 6);
+            vm.prank(d);
+            usdc.approve(address(uncapRound), 1 * 10 ** 6);
+            vm.prank(d);
+            uncapRound.donate(p1, 1 * 10 ** 6);
+        }
+
+        for (uint160 i = 1; i <= 60; i++) {
+            address d = address(uint160(0x4000 + i));
+            vm.prank(admin);
+            uncapRound.setWhitelist(d, true);
+            deal(address(usdc), d, 5 * 10 ** 6);
+            vm.prank(d);
+            usdc.approve(address(uncapRound), 5 * 10 ** 6);
+            vm.prank(d);
+            uncapRound.donate(p2, 5 * 10 ** 6);
+        }
+
+        // Sponsor deposits large pool (200,000 USDC) so pool exceeds total raw matching
+        uint256 largePool = 200_000 * 10 ** 6;
+        deal(address(usdc), admin, largePool);
+        vm.prank(admin);
+        usdc.approve(address(uncapRound), largePool);
+        vm.prank(admin);
+        uncapRound.depositPool(largePool);
+
+        (, uint256[] memory estimated) = uncapRound.previewMatching();
+        assertEq(estimated.length, 2);
+
+        // Project 1 raw: ~89,700 USDC (within small tolerance of 50 USDC)
+        assertApproxEqAbs(estimated[0], 89_700 * 10 ** 6, 50 * 10 ** 6);
+        // Project 2 raw: ~17,700 USDC (within small tolerance of 50 USDC)
+        assertApproxEqAbs(estimated[1], 17_700 * 10 ** 6, 50 * 10 ** 6);
+        assertGt(estimated[0], estimated[1]);
     }
 }

@@ -27,15 +27,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "mono-label inline-flex items-center justify-center border transition-colors duration-200 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-line disabled:text-muted disabled:opacity-45 select-none";
+      "ui-button mono-label inline-flex items-center justify-center border transition-colors duration-200 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-line disabled:text-muted disabled:opacity-45 select-none";
 
     const variantStyles: Record<ButtonVariant, string> = {
-      primary: "gradient-border text-foreground hover:bg-surface-2",
-      secondary: "border-line-strong bg-surface text-foreground hover:bg-surface-2 hover:border-primary/70",
-      outline: "border-line-strong bg-transparent text-foreground hover:bg-surface hover:border-primary/70",
-      ghost: "border-transparent bg-transparent text-muted hover:text-foreground",
-      destructive: "border-primary bg-primary/10 text-primary hover:bg-primary hover:text-foreground",
-      accent: "border-money bg-money/10 text-money hover:bg-money hover:text-bg",
+      primary: "gradient-border text-foreground",
+      secondary: "border-line-strong bg-surface text-foreground",
+      outline: "border-line-strong bg-transparent text-foreground",
+      ghost: "border-transparent bg-transparent text-muted",
+      destructive: "border-primary bg-primary/10 text-primary",
+      accent: "border-money bg-money/10 text-money",
     };
 
     const sizeStyles: Record<ButtonSize, string> = {
@@ -48,6 +48,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || isLoading}
+        data-variant={variant}
         className={twMerge(
           clsx(
             baseStyles,

@@ -7,8 +7,10 @@ import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
 import { useToast } from "@/lib/context/toast";
 import { useRound } from "@/hooks/useRound";
+import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
 import { useDonate } from "@/hooks/useDonate";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatUsdc } from "@/lib/format";
 import { simulateDonationImpact } from "@/lib/qf";
 import { Stepper, StepItem } from "@/components/tx/Stepper";
@@ -34,7 +36,9 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
-  const { roundAddress, status: roundStatus, pool, maxDonation = 5_000_000n } = useRound();
+  const queryClient = useQueryClient();
+  const { roundAddress, status: roundStatus, pool, maxDonation = 5_000_000n, maxMatchBps = 3000n, refetch: refetchRound } = useRound();
+  const { projects, refetch: refetchProjects } = useProjects(roundAddress);
   const { isStudent, hasRequested } = useRole();
   const { donate, step: donationStep, isPending: isDonatePending, activeTxHash, reset: resetDonate } = useDonate();
 
@@ -88,6 +92,26 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
     setError("");
   };
 
+  // Convert all approved round projects to ProjectMathInput format
+  const allProjects = useMemo(() => {
+    if (projects.length === 0) {
+      return [
+        {
+          id: project.id,
+          sumSqrt: project.sumSqrtRaw ?? 0n,
+          totalDonated: project.totalDonatedRaw ?? 0n,
+        },
+      ];
+    }
+    return projects
+      .filter((p) => p.approved)
+      .map((p) => ({
+        id: p.id,
+        sumSqrt: p.sumSqrtRaw ?? 0n,
+        totalDonated: p.totalDonatedRaw ?? 0n,
+      }));
+  }, [projects, project]);
+
   // QF Impact preview calculated with BigInt math matching smart contracts
   const impact = useMemo(() => {
     const donationAmountBigInt = BigInt(Math.max(1, Math.round(amount))) * 1_000_000n;
@@ -95,20 +119,21 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
     const currentTotalDonated = project.totalDonatedRaw ?? 0n;
 
     const res = simulateDonationImpact({
+      projectId: project.id,
       currentSumSqrt,
       currentTotalDonated,
       donorCurrentTotal: userDonatedBigInt,
       donationAmount: donationAmountBigInt,
-      allProjects: [{ id: project.id, sumSqrt: currentSumSqrt, totalDonated: currentTotalDonated }],
+      allProjects,
       pool,
-      maxMatchBps: 3000n,
+      maxMatchBps: maxMatchBps ?? 3000n,
     });
 
     const nextMatching = Number(res.newPayout) / 1_000_000;
     const increase = Number(res.deltaPayout) / 1_000_000;
 
     return { nextMatching, increase };
-  }, [project, amount, userDonatedBigInt, pool]);
+  }, [project, amount, userDonatedBigInt, pool, allProjects, maxMatchBps]);
 
   // Request Student Verification
   const handleRequestVerification = async () => {
@@ -180,6 +205,9 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
     const ok = await donate(projectIdBigInt, donationAmountBigInt);
     if (ok) {
       refetchDonation();
+      refetchProjects();
+      refetchRound();
+      queryClient.invalidateQueries();
     }
   };
 

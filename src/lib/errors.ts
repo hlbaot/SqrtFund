@@ -27,6 +27,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   BatchTooLarge: "Batch operation exceeds the maximum allowed size (50).",
   FaucetCooldownActive: "Faucet cooldown is active (1 hour). Please try again later.",
   FaucetCapExceeded: "Lifetime faucet limit of 1,000 USDC reached for this wallet.",
+  FinalizeGracePeriodActive: "Finalization is restricted to the admin during the 24-hour grace period following round end.",
+  ZeroAmount: "Amount must be greater than zero.",
 };
 
 export function getContractErrorMessage(error: unknown): string {

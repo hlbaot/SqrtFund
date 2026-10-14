@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import type { Project, ProjectCategory } from "@/types";
-import { CheckCircle2 } from "lucide-react";
+import { useRole } from "@/hooks/useRole";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 export function ProjectForm() {
@@ -21,6 +22,7 @@ export function ProjectForm() {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { roundAddress, status: roundStatus } = useRound();
+  const { isStudent, hasRequested } = useRole();
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState<ProjectCategory>("technology");
@@ -186,6 +188,22 @@ export function ProjectForm() {
           {t.register.formTitle}
         </h2>
 
+        {!isStudent && (
+          <div className="mb-4 border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200 flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+            <div>
+              <span className="font-bold block text-amber-300 mb-0.5">
+                Verification Required to Register Projects
+              </span>
+              <span>
+                {hasRequested
+                  ? "Your wallet has requested student verification and is currently pending admin approval. Only verified student wallets can register projects."
+                  : "Only admin-verified student wallets can register projects. Please request verification from a project page or contact the round administrator to get whitelisted."}
+              </span>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label={`${t.register.nameLabel} (max 60 bytes)`}
@@ -267,11 +285,15 @@ export function ProjectForm() {
               type="submit"
               variant="primary"
               fullWidth
-              disabled={isSubmitting || roundStatus === "closed" || roundStatus === "finalized"}
+              disabled={isSubmitting || roundStatus === "closed" || roundStatus === "finalized" || !isStudent}
               isLoading={isSubmitting}
               className="py-3 font-bold"
             >
-              {isSubmitting ? "Registering on Fuji..." : t.register.submitButton}
+              {!isStudent
+                ? "Student Verification Required"
+                : isSubmitting
+                ? "Registering on Fuji..."
+                : t.register.submitButton}
             </Button>
           </div>
         </form>

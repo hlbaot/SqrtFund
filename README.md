@@ -151,8 +151,9 @@ Validates the BigInt implementation in `src/lib/qf.ts` against the identical tes
 
 ---
 
-## Known Limits & MVP Tradeoffs
+## Known Limitations
 
-1. **Testnet Environment**: Runs exclusively on Avalanche Fuji Testnet with mock USDC and test AVAX.
-2. **Sybil Resistance Limitations**: In an open testnet, collusion and multi-wallet creation cannot be completely eliminated without biometric or identity credentials.
-3. **Manual Whitelist Approval**: The round administrator verifies university student addresses manually via on-chain approval (`setWhitelist`) as an MVP design choice, avoiding centralized KYC servers or off-chain attestation APIs.
+1. **Admin Trust**: The round administrator possesses unilateral on-chain authority to verify student wallets (`setWhitelist`), approve participating projects (`approveProject`), deposit matching pool funds (`depositPool`), and holds exclusive finalization rights during the 24-hour post-round grace period.
+2. **Unclaimed Funds Stay Locked**: Direct student donations and quadratic matching payouts allocated to an approved project remain locked in the contract until the project owner explicitly invokes `claim(projectId)`. The admin has no backdoor to sweep or seize unclaimed project funds.
+3. **Sybil Resistance & Collusion**: In an open testnet setting without decentralized identity (DID), soulbound tokens, or biometric verification, fake wallets and off-chain collusion cannot be fully prevented. Manual admin whitelisting serves as an MVP gate.
+4. **Testnet Scope**: Built specifically for Avalanche Fuji Testnet (Chain ID 43113) utilizing `MockUSDC` and test AVAX.

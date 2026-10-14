@@ -1,5 +1,5 @@
 {
   "chainId": 43113,
-  "mockUsdc": "TODO",
-  "roundFactory": "TODO"
+  "mockUsdc": "0x38efb1BA71C7CDB8Dd44e860A0A5cADE864d3205",
+  "roundFactory": "0x77015FBa44D3885C25E421f59Ae5C3a5bA87AF4A"
 }

@@ -83,9 +83,9 @@ export function FinalizeButton() {
   }
 
   return (
-    <div className="relative inline-block">
+    <div className="relative inline-flex flex-col items-start gap-1">
       <div
-        onMouseEnter={() => setShowTooltip(!canFinalize)}
+        onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
         <Button
@@ -99,16 +99,22 @@ export function FinalizeButton() {
         </Button>
       </div>
 
-      {showTooltip && (
+      <p className="text-[11px] text-muted max-w-xs leading-tight">
+        Grace period: Only admin can finalize for the first 24h after end time; afterwards anyone can finalize.
+      </p>
+
+      {showTooltip && !canFinalize && (
         <div
           role="tooltip"
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 w-64 border border-line-strong bg-bg p-2.5 text-center text-xs text-muted"
+          className="absolute bottom-full left-0 mb-2 z-20 w-72 border border-line-strong bg-bg p-2.5 text-xs text-muted shadow-lg"
         >
-          <div className="flex items-center gap-1.5 text-amber-300 font-semibold mb-0.5 justify-center">
-            <AlertCircle className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-1.5 text-amber-300 font-semibold mb-1">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span>Action locked</span>
           </div>
-          <span>Finalization is allowed only after the round endTime has passed.</span>
+          <span>
+            Finalization is only allowed after the round end time has passed. During the 24-hour grace period, only the admin can trigger it.
+          </span>
         </div>
       )}
     </div>

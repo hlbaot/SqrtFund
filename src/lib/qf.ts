@@ -76,28 +76,31 @@ export function computeMatchingBigInt(
 
 /// @notice Simulates the change in matching payout when a donor contributes `amount` (in 6-decimal USDC)
 export function simulateDonationImpact({
+  projectId,
   currentSumSqrt,
   currentTotalDonated,
   donorCurrentTotal,
   donationAmount,
   allProjects,
   pool,
-  maxMatchBps = 3000n,
+  maxMatchBps,
 }: {
+  projectId: string | number;
   currentSumSqrt: bigint;
   currentTotalDonated: bigint;
   donorCurrentTotal: bigint;
   donationAmount: bigint;
   allProjects: ProjectMathInput[];
   pool: bigint;
-  maxMatchBps?: bigint;
+  maxMatchBps: bigint;
 }): {
   currentPayout: bigint;
   newPayout: bigint;
   deltaPayout: bigint;
 } {
   const currentResults = computeMatchingBigInt(allProjects, pool, maxMatchBps);
-  const currentPayout = currentResults[0]?.payout ?? 0n;
+  const currentItem = currentResults.find((p) => String(p.id) === String(projectId));
+  const currentPayout = currentItem?.payout ?? 0n;
 
   // Simulate update to project sumSqrt
   const oldDonorSqrt = donorCurrentTotal > 0n ? sqrtBigInt(donorCurrentTotal * SCALE) : 0n;
@@ -107,19 +110,30 @@ export function simulateDonationImpact({
   const updatedSumSqrt = currentSumSqrt + newDonorSqrt - oldDonorSqrt;
   const updatedTotalDonated = currentTotalDonated + donationAmount;
 
-  const simulatedProjects = allProjects.map((p, idx) => {
-    if (idx === 0) {
-      return {
-        ...p,
-        sumSqrt: updatedSumSqrt,
-        totalDonated: updatedTotalDonated,
-      };
-    }
-    return p;
-  });
+  const projectExists = allProjects.some((p) => String(p.id) === String(projectId));
+  const simulatedProjects = projectExists
+    ? allProjects.map((p) => {
+        if (String(p.id) === String(projectId)) {
+          return {
+            ...p,
+            sumSqrt: updatedSumSqrt,
+            totalDonated: updatedTotalDonated,
+          };
+        }
+        return p;
+      })
+    : [
+        ...allProjects,
+        {
+          id: projectId,
+          sumSqrt: updatedSumSqrt,
+          totalDonated: updatedTotalDonated,
+        },
+      ];
 
   const newResults = computeMatchingBigInt(simulatedProjects, pool, maxMatchBps);
-  const newPayout = newResults[0]?.payout ?? 0n;
+  const newItem = newResults.find((p) => String(p.id) === String(projectId));
+  const newPayout = newItem?.payout ?? 0n;
   const deltaPayout = newPayout > currentPayout ? newPayout - currentPayout : 0n;
 
   return {
@@ -127,44 +141,4 @@ export function simulateDonationImpact({
     newPayout,
     deltaPayout,
   };
-}
-
-// Backward-compatible wrapper for number-based views / tests if needed
-export function computeMatching(
-  projects: { id: string; donations: Record<string, number> }[],
-  poolNumber: number,
-): { id: string; raw: number; matching: number; totalDonated: number }[] {
-  const DECIMALS = 1_000_000n; // 10^6
-  const poolBigInt = BigInt(Math.round(poolNumber)) * DECIMALS;
-
-  const projectInputs: ProjectMathInput[] = projects.map((p) => {
-    let sumSqrt = 0n;
-    let totalDonated = 0n;
-
-    for (const d of Object.values(p.donations)) {
-      if (d > 0) {
-        const dBigInt = BigInt(Math.round(d)) * DECIMALS;
-        sumSqrt += sqrtBigInt(dBigInt * SCALE);
-        totalDonated += dBigInt;
-      }
-    }
-
-    return {
-      id: p.id,
-      sumSqrt,
-      totalDonated,
-    };
-  });
-
-  const results = computeMatchingBigInt(projectInputs, poolBigInt, 10000n);
-
-  return results.map((r, i) => {
-    const totalDonated = Number(projectInputs[i].totalDonated) / 1_000_000;
-    return {
-      id: String(r.id),
-      raw: Number(r.raw) / 1_000_000,
-      matching: Number(r.payout) / 1_000_000,
-      totalDonated,
-    };
-  });
 }

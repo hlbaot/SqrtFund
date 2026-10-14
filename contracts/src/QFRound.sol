@@ -15,6 +15,7 @@ contract QFRound is ReentrancyGuard {
     uint256 public constant MAX_PROJECTS = 50;
     uint256 public constant MAX_REQUESTERS = 500;
     uint256 public constant MAX_BATCH_SIZE = 50;
+    uint256 public constant FINALIZE_GRACE = 1 days;
 
     address public immutable admin;
     IERC20 public immutable token;
@@ -102,6 +103,8 @@ contract QFRound is ReentrancyGuard {
     error NameLengthInvalid();
     error DescriptionLengthInvalid();
     error UrlTooLong();
+    error FinalizeGracePeriodActive();
+    error ZeroAmount();
 
     // Events
     event VerificationRequested(address indexed requester);
@@ -197,13 +200,14 @@ contract QFRound is ReentrancyGuard {
 
     // --- Project Registration ---
 
-    /// @notice Anyone can register a project before round endTime (max 50 projects).
+    /// @notice Whitelisted student registers a project before round endTime (max 50 projects).
     function registerProject(
         string calldata name,
         string calldata description,
         string calldata imageUrl,
         string calldata link
     ) external returns (uint256 projectId) {
+        if (!isWhitelisted[msg.sender]) revert NotWhitelisted();
         if (block.timestamp >= endTime) revert RoundEnded();
         if (bytes(name).length == 0 || bytes(name).length > 60) revert NameLengthInvalid();
         if (bytes(description).length == 0 || bytes(description).length > 280) revert DescriptionLengthInvalid();
@@ -231,6 +235,8 @@ contract QFRound is ReentrancyGuard {
 
     /// @notice Admin approves project to participate in round and receive donations.
     function approveProject(uint256 id) external onlyAdmin {
+        if (finalized) revert AlreadyFinalized();
+        if (block.timestamp >= endTime) revert RoundEnded();
         if (id == 0 || id > projectCount) revert ProjectNotFound();
         if (_projects[id].approved) revert ProjectAlreadyApproved();
 
@@ -245,7 +251,7 @@ contract QFRound is ReentrancyGuard {
     /// @notice Admin deposits matching funds into the pool prior to round finalization.
     function depositPool(uint256 amount) external nonReentrant onlyAdmin {
         if (finalized) revert AlreadyFinalized();
-        if (amount == 0) revert DonationBelowMin();
+        if (amount == 0) revert ZeroAmount();
 
         pool += amount;
         emit PoolDeposited(msg.sender, amount, pool);
@@ -355,10 +361,13 @@ contract QFRound is ReentrancyGuard {
         (projectIds, estimatedPayouts, , ) = _computeMatching();
     }
 
-    /// @notice Finalize the round after endTime. Loops over approved projects only.
+    /// @notice Finalize the round after endTime. Only admin can finalize during FINALIZE_GRACE (1 day); after that anyone can.
     function finalize() external nonReentrant {
         if (block.timestamp < endTime) revert RoundNotEnded();
         if (finalized) revert AlreadyFinalized();
+        if (block.timestamp < endTime + FINALIZE_GRACE && msg.sender != admin) {
+            revert FinalizeGracePeriodActive();
+        }
 
         finalized = true;
 

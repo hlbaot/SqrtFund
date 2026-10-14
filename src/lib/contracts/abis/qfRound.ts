@@ -43,6 +43,19 @@ export const qfRoundAbi = [
   },
   {
     "type": "function",
+    "name": "FINALIZE_GRACE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_BATCH_SIZE",
     "inputs": [],
     "outputs": [
@@ -930,6 +943,11 @@ export const qfRoundAbi = [
   },
   {
     "type": "error",
+    "name": "FinalizeGracePeriodActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidDonationBounds",
     "inputs": []
   },
@@ -1042,6 +1060,11 @@ export const qfRoundAbi = [
   {
     "type": "error",
     "name": "ZeroAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAmount",
     "inputs": []
   }
 ] as const;

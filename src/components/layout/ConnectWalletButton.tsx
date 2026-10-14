@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useAccount, useConnect, useDisconnect, useChainId } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { shortAddress } from "@/lib/format";
 import { Wallet, LogOut, ChevronDown, Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -13,20 +13,43 @@ export function ConnectWalletButton() {
   const { address, isConnected } = useAccount();
   const { connectors, connect, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
+  const { switchChain } = useSwitchChain();
   const chainId = useChainId();
   const { t } = useLocale();
   const { isAdmin, isStudent, isProjectOwner } = useRole();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isFuji = chainId === TARGET_CHAIN_ID;
 
   const handleConnect = () => {
-    const injectedConnector = connectors.find((c) => c.id === "injected") ?? connectors[0];
-    if (injectedConnector) {
-      connect({ connector: injectedConnector });
+    setError(null);
+    console.log(
+      "Wallet connectors:",
+      connectors.map((connector) => ({ name: connector.name, id: connector.id })),
+    );
+
+    const connector =
+      connectors.find((c) => c.id === "app.core.extension" || /core/i.test(c.name)) ??
+      connectors.find((c) => c.id === "injected") ??
+      connectors[0];
+
+    if (!connector) {
+      setError("Wallet not found. Install/enable Core and reload.");
+      return;
     }
+
+    connect(
+      { connector, chainId: TARGET_CHAIN_ID },
+      {
+        onError: (err) => {
+          console.error("Connect failed:", err);
+          setError(err.message.split("\n")[0]);
+        },
+      },
+    );
   };
 
   const roleLabel = isAdmin
@@ -39,16 +62,19 @@ export function ConnectWalletButton() {
 
   if (!isConnected || !address) {
     return (
-      <Button
-        variant="primary"
-        size="sm"
-        onClick={handleConnect}
-        disabled={isConnecting}
-        className="font-bold"
-      >
-        <Wallet className="h-3.5 w-3.5 mr-1.5" />
-        {isConnecting ? "Connecting..." : t.nav.connectWallet}
-      </Button>
+      <div className="flex flex-col items-start gap-1">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleConnect}
+          disabled={isConnecting}
+          className="font-bold"
+        >
+          <Wallet className="h-3.5 w-3.5 mr-1.5" />
+          {isConnecting ? "Connecting..." : t.nav.connectWallet}
+        </Button>
+        {error && <p className="max-w-[260px] text-xs text-primary">{error}</p>}
+      </div>
     );
   }
 
@@ -70,6 +96,15 @@ export function ConnectWalletButton() {
           />
           <span>{isFuji ? "Avalanche Fuji" : "Wrong Net"}</span>
         </div>
+        {!isFuji && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => switchChain({ chainId: TARGET_CHAIN_ID })}
+          >
+            Switch to Fuji
+          </Button>
+        )}
 
         {/* Short address trigger button */}
         <button
