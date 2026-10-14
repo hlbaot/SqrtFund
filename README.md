@@ -46,10 +46,13 @@ The smart contracts and frontend enforce the following mathematical and economic
 
 Contracts are located in `contracts/`:
 - `contracts/src/MockUSDC.sol`: ERC-20 token with 6 decimals, faucet cooldown and lifetime limits.
-- `contracts/src/QFRound.sol`: Core quadratic funding round implementation with OpenZeppelin `SafeERC20`, `ReentrancyGuard`, and `Math.sqrt`.
-- `contracts/src/RoundFactory.sol`: Deploys and indexes rounds on Fuji.
+- `contracts/src/QFRound.sol`: Core quadratic funding round implementation with OpenZeppelin `SafeERC20`, `ReentrancyGuard`, and `Math.sqrt`. Stores on-chain round `name` (1..60 bytes) and `organizer` (0..60 bytes).
+- `contracts/src/RoundFactory.sol`: Deploys and indexes rounds on Fuji via `createRound(string name, string organizer, address token, uint256 startTime, uint256 endTime, uint256 minDonation, uint256 maxDonation, uint256 maxMatchBps)`.
 - `contracts/script/Deploy.s.sol`: Deployment script for `MockUSDC` and `RoundFactory`.
-- `contracts/test/QFRound.t.sol`: Comprehensive Foundry test suite (16 tests including fuzzing and dust invariants).
+- `contracts/script/DeployFactory.s.sol`: Deploys only a new `RoundFactory` (reusing existing `MockUSDC` from `deployments/fuji.json`).
+- `contracts/test/QFRound.t.sol`: Comprehensive Foundry test suite (29 tests including name/organizer validation, fuzzing, and dust invariants).
+
+> **Important**: The `RoundFactory` contract must be redeployed to support custom on-chain round names and organizer details. Existing `MockUSDC` tokens can be retained.
 
 ---
 
@@ -98,6 +101,16 @@ Validates the BigInt implementation in `src/lib/qf.ts` against the identical tes
 
 ## Exact Deployment Steps (Avalanche Fuji)
 
+### Option A: Redeploy ONLY RoundFactory (Recommended - preserves MockUSDC)
+```bash
+cd contracts
+forge script script/DeployFactory.s.sol:DeployFactory --rpc-url fuji --account deployer --broadcast
+cd ..
+pnpm abi
+```
+Update `NEXT_PUBLIC_FACTORY_ADDRESS` in `.env.local` and Vercel with the newly deployed `roundFactory` address from `contracts/deployments/fuji.json`.
+
+### Option B: Full Fresh Deployment (MockUSDC + RoundFactory)
 1. **Import your deployer account into the Foundry keystore** (never commit or pass private keys directly):
    ```bash
    cast wallet import deployer --interactive

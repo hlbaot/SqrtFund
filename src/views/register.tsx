@@ -3,12 +3,13 @@
 import React from "react";
 import { ProjectForm } from "@/components/project/ProjectForm";
 import { useLocale } from "@/lib/context/locale";
+import { Container } from "@/components/layout/Container";
 
 export function RegisterView() {
   const { t } = useLocale();
 
   return (
-    <div className="space-y-8">
+    <Container className="py-8 sm:py-10 space-y-8">
       <div data-aos="fade-down" data-aos-duration="600">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
           {t.register.title}
@@ -19,6 +20,6 @@ export function RegisterView() {
       </div>
 
       <ProjectForm />
-    </div>
+    </Container>
   );
 }

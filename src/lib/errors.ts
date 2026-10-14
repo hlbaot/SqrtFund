@@ -233,7 +233,7 @@ export function getContractErrorMessage(error: unknown, locale: "en" | "vi" = "e
   }
 
   // 4. Common web3 / RPC failure patterns
-  if (/user rejected|user denied/i.test(fullMessage)) {
+  if (isUserRejected(error)) {
     return locale === "vi"
       ? "Giao dịch đã bị từ chối trên ví của bạn."
       : "Transaction was rejected in your wallet.";
@@ -272,4 +272,22 @@ export function getContractErrorMessage(error: unknown, locale: "en" | "vi" = "e
   }
 
   return String(error);
+}
+
+/** Wallet libraries wrap EIP-1193 rejection errors in nested causes. */
+export function isUserRejected(error: unknown): boolean {
+  const seen = new Set<unknown>();
+  let current = error;
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    if (typeof current === "object") {
+      const value = current as { code?: unknown; message?: string; shortMessage?: string; cause?: unknown };
+      if (value.code === 4001 || value.code === "4001" || value.code === "ACTION_REJECTED") return true;
+      if (/user rejected|user denied|ACTION_REJECTED/i.test(`${value.message ?? ""} ${value.shortMessage ?? ""}`)) return true;
+      current = value.cause;
+    } else {
+      return /user rejected|user denied|ACTION_REJECTED/i.test(String(current));
+    }
+  }
+  return false;
 }

@@ -1,13 +1,13 @@
 "use client";
 
+import { useTxFlow } from "@/hooks/useTxFlow";
+
 import React, { useState } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { roundFactoryAbi } from "@/lib/contracts/abis";
 import { factoryAddress, usdcAddress } from "@/lib/contracts/addresses";
 import { useLocale } from "@/lib/context/locale";
-import { useToast } from "@/lib/context/toast";
 import { useRound } from "@/hooks/useRound";
-import { getContractErrorMessage } from "@/lib/errors";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
@@ -23,12 +23,17 @@ function toLocalDatetimeString(date: Date): string {
 }
 
 export function CreateRoundForm() {
-  const { t } = useLocale();
+  const beginFlow = useTxFlow();
+  const { t, locale } = useLocale();
   const { isConnected } = useAccount();
-  const { addToast } = useToast();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { refetch } = useRound();
+
+  const [roundName, setRoundName] = useState("");
+  const [organizer, setOrganizer] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [organizerError, setOrganizerError] = useState<string | null>(null);
 
   const [startDateTime, setStartDateTime] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -51,23 +56,60 @@ export function CreateRoundForm() {
   const [maxMatchPercent, setMaxMatchPercent] = useState("30");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const roundNameBytes = React.useMemo(
+    () => new TextEncoder().encode(roundName.trim()).length,
+    [roundName]
+  );
+  const organizerBytes = React.useMemo(
+    () => new TextEncoder().encode(organizer.trim()).length,
+    [organizer]
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
+    const flow = beginFlow();
     e.preventDefault();
+    const toastId = "create-round";
+
     if (!isConnected || !factoryAddress || !publicClient) {
-      addToast({
-        type: "error",
-        title: "Factory not ready",
-        description: "Please connect the factory owner wallet.",
-      });
+      flow.toast.error(
+        toastId,
+        locale === "vi" ? "Factory chưa sẵn sàng" : "Factory not ready",
+        locale === "vi" ? "Vui lòng kết nối ví sở hữu factory." : "Please connect the factory owner wallet."
+      );
       return;
     }
 
+    const trimmedName = roundName.trim();
+    const trimmedOrg = organizer.trim();
+    const nBytes = new TextEncoder().encode(trimmedName).length;
+    const oBytes = new TextEncoder().encode(trimmedOrg).length;
+
+    let hasValidationErr = false;
+    if (nBytes === 0) {
+      setNameError(t.admin.validationRoundNameRequired);
+      hasValidationErr = true;
+    } else if (nBytes > 60) {
+      setNameError(t.admin.validationRoundNameTooLong);
+      hasValidationErr = true;
+    } else {
+      setNameError(null);
+    }
+
+    if (oBytes > 60) {
+      setOrganizerError(t.admin.validationOrganizerTooLong);
+      hasValidationErr = true;
+    } else {
+      setOrganizerError(null);
+    }
+
+    if (hasValidationErr) return;
+
     if (!startDateTime || !endDateTime) {
-      addToast({
-        type: "error",
-        title: "Invalid schedule",
-        description: "Please enter start and end dates.",
-      });
+      flow.toast.error(
+        toastId,
+        locale === "vi" ? "Lịch trình không hợp lệ" : "Invalid schedule",
+        locale === "vi" ? "Vui lòng nhập ngày bắt đầu và kết thúc." : "Please enter start and end dates."
+      );
       return;
     }
 
@@ -75,11 +117,11 @@ export function CreateRoundForm() {
     const endTimestamp = BigInt(Math.floor(new Date(endDateTime).getTime() / 1000));
 
     if (endTimestamp <= startTimestamp) {
-      addToast({
-        type: "error",
-        title: "Invalid schedule",
-        description: "End time must be after start time.",
-      });
+      flow.toast.error(
+        toastId,
+        locale === "vi" ? "Lịch trình không hợp lệ" : "Invalid schedule",
+        locale === "vi" ? "Thời gian kết thúc phải sau thời gian bắt đầu." : "End time must be after start time."
+      );
       return;
     }
 
@@ -89,17 +131,19 @@ export function CreateRoundForm() {
 
     setIsSubmitting(true);
     try {
-      addToast({
-        type: "pending",
-        title: "Creating QF Round...",
-        description: "Please confirm in your wallet.",
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang tạo round QF..." : "Creating QF Round...",
+        locale === "vi" ? "Vui lòng xác nhận trong ví của bạn." : "Please confirm in your wallet."
+      );
 
-      const hash = await writeContractAsync({
+      const hash = await flow.wait(() => writeContractAsync({
         address: factoryAddress,
         abi: roundFactoryAbi,
         functionName: "createRound",
         args: [
+          trimmedName,
+          trimmedOrg,
           usdcAddress,
           startTimestamp,
           endTimestamp,
@@ -107,42 +151,50 @@ export function CreateRoundForm() {
           maxDonation,
           maxMatchBps,
         ],
-      });
+      }));
 
-      addToast({
-        type: "pending",
-        title: "Confirming round deployment...",
-        description: "Deploying QFRound smart contract on Avalanche Fuji.",
-        txHash: hash,
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang xác nhận triển khai..." : "Confirming round deployment...",
+        locale === "vi"
+          ? "Đang triển khai hợp đồng QFRound trên Avalanche Fuji."
+          : "Deploying QFRound smart contract on Avalanche Fuji.",
+        hash
+      );
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
       if (receipt.status !== "success") {
         throw new Error("createRound transaction reverted.");
       }
 
-      addToast({
-        type: "success",
-        title: "Round deployed successfully!",
-        description: "New QFRound contract is live on Fuji.",
-        txHash: hash,
-      });
+      flow.toast.success(
+        toastId,
+        locale === "vi" ? "Tạo round thành công!" : "Round deployed successfully!",
+        locale === "vi" ? "Hợp đồng QFRound mới đã hoạt động trên Fuji." : "New QFRound contract is live on Fuji.",
+        hash
+      );
 
+      setRoundName("");
+      setOrganizer("");
       refetch();
     } catch (err: unknown) {
-      const msg = getContractErrorMessage(err);
-      addToast({
-        type: "error",
-        title: "Failed to create round",
-        description: msg,
-      });
+      if (flow.cancelled) return false;
+      flow.error(
+        toastId,
+        err,
+        locale === "vi" ? "Tạo round thất bại" : "Failed to create round",
+        locale
+      );
     } finally {
-      setIsSubmitting(false);
+      flow.finish();
+      if (!flow.cancelled) {
+        setIsSubmitting(false);
+      }
     }
   };
 
   return (
-    <div className="border border-line bg-surface p-6 space-y-4">
+    <div className="border border-line bg-surface p-6 space-y-4 max-w-[720px]">
       <div>
         <h3 className="text-base font-bold text-foreground tracking-tight">
           {t.admin.createRoundTitle}
@@ -153,6 +205,55 @@ export function CreateRoundForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
+        <div className="space-y-3">
+          <Input
+            label={`${t.admin.roundNameLabel} *`}
+            type="text"
+            value={roundName}
+            onChange={(e) => {
+              setRoundName(e.target.value);
+              if (nameError) setNameError(null);
+            }}
+            placeholder={t.admin.roundNamePlaceholder}
+            suffixElement={
+              <span
+                className={`tabular-mono text-xs ${roundNameBytes > 60 ? "text-primary font-bold" : "text-muted"
+                  }`}
+              >
+                {roundNameBytes}/60B
+              </span>
+            }
+            error={
+              nameError ||
+              (roundNameBytes > 60 ? t.admin.validationRoundNameTooLong : undefined)
+            }
+            required
+          />
+
+          <Input
+            label={`${t.admin.organizerLabel} (${t.admin.optionalLabel})`}
+            type="text"
+            value={organizer}
+            onChange={(e) => {
+              setOrganizer(e.target.value);
+              if (organizerError) setOrganizerError(null);
+            }}
+            placeholder={t.admin.organizerPlaceholder}
+            suffixElement={
+              <span
+                className={`tabular-mono text-xs ${organizerBytes > 60 ? "text-primary font-bold" : "text-muted"
+                  }`}
+              >
+                {organizerBytes}/60B
+              </span>
+            }
+            error={
+              organizerError ||
+              (organizerBytes > 60 ? t.admin.validationOrganizerTooLong : undefined)
+            }
+          />
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
             label={`Start Date & Time${tzLabel ? ` (${tzLabel})` : ""}`}

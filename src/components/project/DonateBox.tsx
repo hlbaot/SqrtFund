@@ -1,12 +1,13 @@
 "use client";
 
+import { useTxFlow } from "@/hooks/useTxFlow";
+
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import type { Project } from "@/types";
 import { useAccount, useReadContract, useWriteContract, usePublicClient } from "wagmi";
 import { qfRoundAbi, mockUsdcAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
-import { useToast } from "@/lib/context/toast";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
@@ -19,7 +20,6 @@ import { TxStatusDisplay } from "@/components/tx/TxStatusToast";
 import { Button } from "@/components/ui/Button";
 import { Frame } from "@/components/ui/Frame";
 import { AlertCircle, Sparkles, ShieldCheck, Check } from "lucide-react";
-import { getContractErrorMessage } from "@/lib/errors";
 
 export interface DonateBoxProps {
   project: Project & {
@@ -31,9 +31,9 @@ export interface DonateBoxProps {
 }
 
 export function DonateBox({ project, className = "" }: DonateBoxProps) {
+  const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
   const { address, isConnected } = useAccount();
-  const { addToast } = useToast();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
@@ -154,45 +154,54 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
 
   // Request Student Verification
   const handleRequestVerification = async () => {
+    const flow = beginFlow();
     if (!roundAddress || !publicClient) return;
+    const toastId = "request-verification";
     setIsRequestingVerification(true);
     try {
-      addToast({
-        type: "pending",
-        title: "Requesting verification...",
-        description: "Please confirm in your wallet.",
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang gửi yêu cầu xác minh..." : "Requesting verification...",
+        locale === "vi" ? "Vui lòng xác nhận trong ví của bạn." : "Please confirm in your wallet."
+      );
 
-      const hash = await writeContractAsync({
+      const hash = await flow.wait(() => writeContractAsync({
         address: roundAddress,
         abi: qfRoundAbi,
         functionName: "requestVerification",
-      });
+      }));
 
-      addToast({
-        type: "pending",
-        title: "Confirming request...",
-        description: "Adding your wallet to the verification queue.",
-        txHash: hash,
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang xác nhận yêu cầu..." : "Confirming request...",
+        locale === "vi" ? "Đang thêm ví của bạn vào hàng chờ xác minh." : "Adding your wallet to the verification queue.",
+        hash
+      );
 
-      await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
+      if (receipt.status !== "success") {
+        throw new Error("requestVerification transaction reverted.");
+      }
 
-      addToast({
-        type: "success",
-        title: "Verification requested!",
-        description: "Your request is now pending admin review.",
-        txHash: hash,
-      });
+      flow.toast.success(
+        toastId,
+        locale === "vi" ? "Đã gửi yêu cầu xác minh!" : "Verification requested!",
+        locale === "vi" ? "Yêu cầu của bạn đang chờ quản trị viên xem xét." : "Your request is now pending admin review.",
+        hash
+      );
     } catch (err: unknown) {
-      const msg = getContractErrorMessage(err);
-      addToast({
-        type: "error",
-        title: "Request failed",
-        description: msg,
-      });
+      if (flow.cancelled) return false;
+      flow.error(
+        toastId,
+        err,
+        locale === "vi" ? "Yêu cầu xác minh thất bại" : "Request failed",
+        locale
+      );
     } finally {
-      setIsRequestingVerification(false);
+      flow.finish();
+      if (!flow.cancelled) {
+        setIsRequestingVerification(false);
+      }
     }
   };
 
@@ -206,8 +215,8 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
         donationStep === "donating" || donationStep === "success"
           ? "completed"
           : donationStep === "approving"
-          ? "current"
-          : "upcoming",
+            ? "current"
+            : "upcoming",
     },
     {
       id: 2,
@@ -353,11 +362,10 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
                       type="button"
                       disabled={isDisabled}
                       onClick={() => handleQuickSelect(val)}
-                      className={`border border-line px-2.5 py-2 text-xs font-bold transition-colors ${
-                        amount === val && !error
-                          ? "border-primary bg-primary text-foreground"
-                          : "bg-surface-2 text-foreground hover:border-line-strong"
-                      } disabled:opacity-30`}
+                      className={`border border-line px-2.5 py-2 text-xs font-bold transition-colors ${amount === val && !error
+                        ? "border-primary bg-primary text-foreground"
+                        : "bg-surface-2 text-foreground hover:border-line-strong"
+                        } disabled:opacity-30`}
                     >
                       {val}
                     </button>
@@ -470,8 +478,8 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
                 {donationStep === "approving"
                   ? "Approving USDC (Step 1/2)..."
                   : donationStep === "donating"
-                  ? "Confirming Donation (Step 2/2)..."
-                  : `Donate ${amount} USDC`}
+                    ? "Confirming Donation (Step 2/2)..."
+                    : `Donate ${amount} USDC`}
               </Button>
             )}
           </div>

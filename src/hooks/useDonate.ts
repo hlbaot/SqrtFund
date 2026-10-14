@@ -1,9 +1,10 @@
 "use client";
 
+import { useTxFlow } from "@/hooks/useTxFlow";
+
 import { useState } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { mockUsdcAbi, qfRoundAbi } from "@/lib/contracts/abis";
-import { useToast } from "@/lib/context/toast";
 import { useLocale } from "@/lib/context/locale";
 import { getContractErrorMessage } from "@/lib/errors";
 import { useRound } from "@/hooks/useRound";
@@ -11,10 +12,10 @@ import { useRound } from "@/hooks/useRound";
 export type DonationStep = "idle" | "approving" | "donating" | "success" | "error";
 
 export function useDonate() {
+  const beginFlow = useTxFlow();
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
-  const { addToast } = useToast();
   const { locale } = useLocale();
   const { roundAddress, token } = useRound();
 
@@ -22,16 +23,19 @@ export function useDonate() {
   const [activeTxHash, setActiveTxHash] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const approveId = "donate-approve";
+  const donateId = "donate-confirm";
+
   const donate = async (projectId: bigint, amount: bigint) => {
+    const flow = beginFlow();
     if (!address || !roundAddress || !token || !publicClient) {
-      addToast({
-        type: "error",
-        title: locale === "vi" ? "Chưa kết nối ví" : "Wallet not connected",
-        description:
-          locale === "vi"
-            ? "Vui lòng kết nối ví trước khi thực hiện quyên góp."
-            : "Please connect your wallet first.",
-      });
+      flow.toast.error(
+        donateId,
+        locale === "vi" ? "Chưa kết nối ví" : "Wallet not connected",
+        locale === "vi"
+          ? "Vui lòng kết nối ví trước khi thực hiện quyên góp."
+          : "Please connect your wallet first."
+      );
       return false;
     }
 
@@ -39,12 +43,12 @@ export function useDonate() {
 
     try {
       // 1. Check user's USDC balance first to prevent gas estimation reverts
-      const userBalance = await publicClient.readContract({
+      const userBalance = await flow.wait(() => publicClient.readContract({
         address: token,
         abi: mockUsdcAbi,
         functionName: "balanceOf",
         args: [address],
-      });
+      }));
 
       if (userBalance < amount) {
         const balFormatted = (Number(userBalance) / 1_000_000).toFixed(0);
@@ -53,100 +57,183 @@ export function useDonate() {
           locale === "vi"
             ? `Số dư USDC không đủ. Ví của bạn hiện có ${balFormatted} USDC nhưng cần ${reqFormatted} USDC để quyên góp. Vui lòng nhận 100 USDC từ Faucet tại trang 'My Dashboard'.`
             : `Insufficient USDC balance. Your wallet has ${balFormatted} USDC but ${reqFormatted} USDC is required. Please claim 100 USDC from the Faucet in 'My Dashboard'.`;
-        throw new Error(errorMsg);
+        setErrorMessage(errorMsg);
+        flow.toast.error(
+          donateId,
+          locale === "vi" ? "Số dư USDC không đủ" : "Insufficient USDC balance",
+          errorMsg
+        );
+        return false;
       }
 
       // 2. Check existing allowance
-      const currentAllowance = await publicClient.readContract({
+      const currentAllowance = await flow.wait(() => publicClient.readContract({
         address: token,
         abi: mockUsdcAbi,
         functionName: "allowance",
         args: [address, roundAddress],
-      });
+      }));
 
       // 2. If allowance is less than amount, approve first
       if (currentAllowance < amount) {
         setStep("approving");
-        addToast({
-          type: "pending",
-          title: "Step 1/2: Approve USDC",
-          description: "Please confirm the approval in your wallet (your wallet will prompt twice).",
-        });
+        flow.toast.pending(
+          approveId,
+          locale === "vi" ? "Bước 1/2: Phê duyệt USDC" : "Step 1/2: Approve USDC",
+          locale === "vi"
+            ? "Vui lòng xác nhận phê duyệt trong ví của bạn."
+            : "Please confirm the approval in your wallet (your wallet will prompt twice)."
+        );
 
-        const approveHash = await writeContractAsync({
-          address: token,
-          abi: mockUsdcAbi,
-          functionName: "approve",
-          args: [roundAddress, amount],
-        });
+        let approveHash: `0x${string}`;
+        try {
+          approveHash = await flow.wait(() => writeContractAsync({
+            address: token,
+            abi: mockUsdcAbi,
+            functionName: "approve",
+            args: [roundAddress, amount],
+          }));
+        } catch (err) {
+          if (flow.cancelled) return false;
+          setStep("error");
+          const msg = getContractErrorMessage(err, locale);
+          setErrorMessage(msg);
+          flow.error(
+            approveId,
+            err,
+            locale === "vi" ? "Phê duyệt thất bại" : "Approval failed",
+            locale
+          );
+          flow.toast.dismiss(donateId);
+          return false;
+        }
 
         setActiveTxHash(approveHash);
-        addToast({
-          type: "pending",
-          title: "Confirming USDC approval...",
-          description: "Waiting for transaction to be mined on Avalanche Fuji.",
-          txHash: approveHash,
-        });
+        flow.toast.pending(
+          approveId,
+          locale === "vi" ? "Bước 1/2: Đang xác nhận phê duyệt..." : "Confirming USDC approval...",
+          locale === "vi"
+            ? "Đang chờ giao dịch được ghi nhận trên Avalanche Fuji."
+            : "Waiting for transaction to be mined on Avalanche Fuji.",
+          approveHash
+        );
 
-        const approveReceipt = await publicClient.waitForTransactionReceipt({
-          hash: approveHash,
-        });
+        try {
+          const approveReceipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash: approveHash }), 120_000);
 
-        if (approveReceipt.status !== "success") {
-          throw new Error("Approval transaction reverted.");
+          if (approveReceipt.status !== "success") {
+            throw new Error("Approval transaction reverted.");
+          }
+
+          flow.toast.success(
+            approveId,
+            locale === "vi" ? "Bước 1/2: Phê duyệt thành công" : "Step 1/2: USDC Approved",
+            locale === "vi" ? "Đã phê duyệt token thành công." : "Token approval confirmed.",
+            approveHash
+          );
+        } catch (err) {
+          if (flow.cancelled) return false;
+          setStep("error");
+          const msg = getContractErrorMessage(err, locale);
+          setErrorMessage(msg);
+          flow.error(
+            approveId,
+            err,
+            locale === "vi" ? "Xác nhận phê duyệt thất bại" : "Approval confirmation failed",
+            locale
+          );
+          flow.toast.dismiss(donateId);
+          return false;
         }
       }
 
       // 3. Send donate transaction
       setStep("donating");
-      addToast({
-        type: "pending",
-        title: "Step 2/2: Confirm Donation",
-        description: "Please confirm the donation transaction in your wallet.",
-      });
+      flow.toast.pending(
+        donateId,
+        locale === "vi" ? "Bước 2/2: Xác nhận quyên góp" : "Step 2/2: Confirm Donation",
+        locale === "vi"
+          ? "Vui lòng xác nhận giao dịch quyên góp trong ví của bạn."
+          : "Please confirm the donation transaction in your wallet."
+      );
 
-      const donateHash = await writeContractAsync({
-        address: roundAddress,
-        abi: qfRoundAbi,
-        functionName: "donate",
-        args: [projectId, amount],
-      });
-
-      setActiveTxHash(donateHash);
-      addToast({
-        type: "pending",
-        title: "Confirming donation...",
-        description: "Recording your quadratic donation on chain.",
-        txHash: donateHash,
-      });
-
-      const donateReceipt = await publicClient.waitForTransactionReceipt({
-        hash: donateHash,
-      });
-
-      if (donateReceipt.status !== "success") {
-        throw new Error("Donation transaction reverted.");
+      let donateHash: `0x${string}`;
+      try {
+        donateHash = await flow.wait(() => writeContractAsync({
+          address: roundAddress,
+          abi: qfRoundAbi,
+          functionName: "donate",
+          args: [projectId, amount],
+        }));
+      } catch (err) {
+        if (flow.cancelled) return false;
+        setStep("error");
+        const msg = getContractErrorMessage(err, locale);
+        setErrorMessage(msg);
+        flow.error(
+          donateId,
+          err,
+          locale === "vi" ? "Quyên góp thất bại" : "Donation failed",
+          locale
+        );
+        return false;
       }
 
-      setStep("success");
-      addToast({
-        type: "success",
-        title: "Donation successful!",
-        description: "Your quadratic donation has been confirmed on Avalanche Fuji.",
-        txHash: donateHash,
-      });
+      setActiveTxHash(donateHash);
+      flow.toast.pending(
+        donateId,
+        locale === "vi" ? "Bước 2/2: Đang xác nhận quyên góp..." : "Confirming donation...",
+        locale === "vi"
+          ? "Đang ghi nhận quyên góp bậc hai trên blockchain."
+          : "Recording your quadratic donation on chain.",
+        donateHash
+      );
 
-      return true;
+      try {
+        const donateReceipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash: donateHash }), 120_000);
+
+        if (donateReceipt.status !== "success") {
+          throw new Error("Donation transaction reverted.");
+        }
+
+        setStep("success");
+        flow.toast.success(
+          donateId,
+          locale === "vi" ? "Quyên góp thành công!" : "Donation successful!",
+          locale === "vi"
+            ? "Đóng góp bậc hai của bạn đã được xác nhận trên Avalanche Fuji."
+            : "Your quadratic donation has been confirmed on Avalanche Fuji.",
+          donateHash
+        );
+
+        return true;
+      } catch (err) {
+        if (flow.cancelled) return false;
+        setStep("error");
+        const msg = getContractErrorMessage(err, locale);
+        setErrorMessage(msg);
+        flow.error(
+          donateId,
+          err,
+          locale === "vi" ? "Xác nhận quyên góp thất bại" : "Donation confirmation failed",
+          locale
+        );
+        return false;
+      }
     } catch (err: unknown) {
+      if (flow.cancelled) return false;
       setStep("error");
       const message = getContractErrorMessage(err, locale);
       setErrorMessage(message);
-      addToast({
-        type: "error",
-        title: locale === "vi" ? "Quyên góp thất bại" : "Donation failed",
-        description: message,
-      });
+      flow.error(
+        donateId,
+        err,
+        locale === "vi" ? "Quyên góp thất bại" : "Donation failed",
+        locale
+      );
       return false;
+    } finally {
+      flow.finish();
     }
   };
 

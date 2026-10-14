@@ -1,5 +1,4 @@
-import { createConfig, http } from "wagmi";
-import { injected } from "wagmi/connectors";
+import { createConfig, http, injected } from "wagmi";
 import { fuji } from "@/lib/chains";
 
 export const wagmiConfig = createConfig({

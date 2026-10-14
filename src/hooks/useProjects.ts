@@ -125,7 +125,7 @@ export function useProjects(customRoundAddress?: Address) {
   return {
     projects,
     isLoading: Boolean(roundAddress) && isLoading,
-    isError,
+    isError: isError || contractData?.[0]?.status === "failure",
     refetch,
   };
 }

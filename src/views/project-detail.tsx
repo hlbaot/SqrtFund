@@ -12,6 +12,7 @@ import { SupporterMarks } from "@/components/project/SupporterMarks";
 import { ProjectDetailSkeleton } from "@/components/common/PageSkeletons";
 import { ErrorState } from "@/components/common/ErrorState";
 import { Badge } from "@/components/ui/Badge";
+import { Container } from "@/components/layout/Container";
 import { formatUsdc, shortAddress } from "@/lib/format";
 import {
   ArrowLeft,
@@ -41,16 +42,22 @@ export function ProjectDetailView() {
   }, [projects, projectId]);
 
   if (isRoundLoading || isProjectsLoading) {
-    return <ProjectDetailSkeleton />;
+    return (
+      <Container className="py-8 sm:py-10">
+        <ProjectDetailSkeleton />
+      </Container>
+    );
   }
 
   if (isRoundError || isProjectsError || !project) {
     return (
-      <ErrorState
-        title="Project could not be found"
-        reason={`Project ID "${projectId}" not found or failed to load on-chain metadata.`}
-        onRetry={() => refetch()}
-      />
+      <Container className="py-12">
+        <ErrorState
+          title="Project could not be found"
+          reason={`Project ID "${projectId}" not found or failed to load on-chain metadata.`}
+          onRetry={() => refetch()}
+        />
+      </Container>
     );
   }
 
@@ -62,7 +69,7 @@ export function ProjectDetailView() {
   }[project.category] || Sparkles;
 
   return (
-    <div className="space-y-8 pb-24 lg:pb-0">
+    <Container className="py-8 sm:py-10 space-y-8 pb-24 lg:pb-8">
       {/* Back Link */}
       <div>
         <Link
@@ -224,6 +231,6 @@ export function ProjectDetailView() {
           </div>
         )}
       </div>
-    </div>
+    </Container>
   );
 }

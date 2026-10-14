@@ -8,7 +8,8 @@ export type BadgeVariant =
   | "accent"
   | "secondary"
   | "outline"
-  | "warning";
+  | "warning"
+  | "owner";
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
@@ -21,6 +22,7 @@ export function Badge({ className, variant = "default", children, ...props }: Ba
     accent: "bg-money/10 text-money border-money/40 font-semibold",
     secondary: "bg-surface text-muted border-line",
     outline: "border-line-strong text-foreground bg-transparent",
+    owner: "bg-blue-400/10 text-blue-300 border-blue-400/40 font-semibold",
     warning: "bg-amber-400/10 text-amber-300 border-amber-400/40 font-semibold",
   };
 

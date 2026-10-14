@@ -10,6 +10,16 @@ export const roundFactoryAbi = [
     "name": "createRound",
     "inputs": [
       {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "organizer",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
         "name": "token",
         "type": "address",
         "internalType": "address"
@@ -167,6 +177,12 @@ export const roundFactoryAbi = [
         "type": "address",
         "indexed": false,
         "internalType": "address"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
       }
     ],
     "anonymous": false

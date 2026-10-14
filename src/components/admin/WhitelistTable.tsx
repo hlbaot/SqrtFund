@@ -1,12 +1,12 @@
 "use client";
 
+import { useTxFlow } from "@/hooks/useTxFlow";
 import React, { useState } from "react";
 import { useReadContract, useWriteContract, usePublicClient } from "wagmi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
 import { useLocale } from "@/lib/context/locale";
-import { useToast } from "@/lib/context/toast";
-import { getContractErrorMessage } from "@/lib/errors";
+import { txToast } from "@/lib/txToast";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -16,8 +16,8 @@ import { Check, X, UserPlus } from "lucide-react";
 import type { Address } from "viem";
 
 export function WhitelistTable() {
-  const { t } = useLocale();
-  const { addToast } = useToast();
+  const beginFlow = useTxFlow();
+  const { t, locale } = useLocale();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { roundAddress } = useRound();
@@ -42,61 +42,91 @@ export function WhitelistTable() {
   const totalRequesters = Number(requestersData?.[1] ?? 0n);
 
   const handleSetWhitelist = async (account: Address, status: boolean) => {
+    const flow = beginFlow();
     if (!roundAddress || !publicClient) return;
 
+    const toastId = `whitelist-${account.toLowerCase()}`;
     setPendingActionAddr(account);
     try {
-      addToast({
-        type: "pending",
-        title: status ? "Approving student..." : "Rejecting student...",
-        description: `Updating whitelist status for ${shortAddress(account)}.`,
-      });
+      flow.toast.pending(
+        toastId,
+        status
+          ? locale === "vi" ? "Đang duyệt sinh viên..." : "Approving student..."
+          : locale === "vi" ? "Đang từ chối sinh viên..." : "Rejecting student...",
+        locale === "vi"
+          ? `Đang cập nhật trạng thái whitelist cho ${shortAddress(account)}.`
+          : `Updating whitelist status for ${shortAddress(account)}.`
+      );
 
-      const hash = await writeContractAsync({
+      const hash = await flow.wait(() => writeContractAsync({
         address: roundAddress,
         abi: qfRoundAbi,
         functionName: "setWhitelist",
         args: [account, status],
-      });
+      }));
 
-      addToast({
-        type: "pending",
-        title: "Confirming on chain...",
-        txHash: hash,
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang xác nhận trên chuỗi..." : "Confirming on chain...",
+        locale === "vi" ? "Đang chờ xác nhận khối trên Avalanche Fuji." : "Waiting for block confirmation on Avalanche Fuji.",
+        hash
+      );
 
-      await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
+      if (receipt.status !== "success") {
+        throw new Error("setWhitelist transaction reverted.");
+      }
 
-      addToast({
-        type: "success",
-        title: status ? "Student Approved!" : "Student Rejected",
-        description: `${shortAddress(account)} has been ${status ? "whitelisted" : "removed from queue"}.`,
-        txHash: hash,
-      });
+      flow.toast.success(
+        toastId,
+        status
+          ? locale === "vi" ? "Đã duyệt sinh viên!" : "Student Approved!"
+          : locale === "vi" ? "Đã từ chối sinh viên" : "Student Rejected",
+        locale === "vi"
+          ? `${shortAddress(account)} đã được ${status ? "thêm vào whitelist" : "xoá khỏi hàng chờ"}.`
+          : `${shortAddress(account)} has been ${status ? "whitelisted" : "removed from queue"}.`,
+        hash
+      );
 
       refetch();
     } catch (err: unknown) {
-      const msg = getContractErrorMessage(err);
-      addToast({
-        type: "error",
-        title: "Whitelist update failed",
-        description: msg,
-      });
+      if (flow.cancelled) return false;
+      flow.error(
+        toastId,
+        err,
+        locale === "vi" ? "Cập nhật danh sách thất bại" : "Whitelist update failed",
+        locale
+      );
     } finally {
-      setPendingActionAddr(null);
+      flow.finish();
+      if (!flow.cancelled) {
+        setPendingActionAddr(null);
+      }
     }
   };
 
   const handleManualAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    const manualToastId = "whitelist-manual";
     if (!manualAddress.trim().startsWith("0x") || manualAddress.length !== 42) {
-      addToast({ type: "error", title: "Invalid address", description: "Please enter a valid 0x address." });
+      txToast.error(
+        manualToastId,
+        locale === "vi" ? "Địa chỉ không hợp lệ" : "Invalid address",
+        locale === "vi" ? "Vui lòng nhập địa chỉ 0x hợp lệ." : "Please enter a valid 0x address."
+      );
       return;
     }
+    const flow = beginFlow("manual-whitelist");
     setIsManualPending(true);
-    await handleSetWhitelist(manualAddress.trim() as Address, true);
-    setManualAddress("");
-    setIsManualPending(false);
+    try {
+      await flow.wait(() => handleSetWhitelist(manualAddress.trim() as Address, true));
+      setManualAddress("");
+    } catch {
+      // The transaction step reports failures; cancellation only stops this form.
+    } finally {
+      flow.finish();
+      if (!flow.cancelled) setIsManualPending(false);
+    }
   };
 
   return (

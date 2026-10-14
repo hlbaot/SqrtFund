@@ -4,6 +4,16 @@ export const qfRoundAbi = [
     "type": "constructor",
     "inputs": [
       {
+        "name": "_name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_organizer",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
         "name": "_admin",
         "type": "address",
         "internalType": "address"
@@ -517,6 +527,32 @@ export const qfRoundAbi = [
   },
   {
     "type": "function",
+    "name": "name",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "organizer",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "payoutOf",
     "inputs": [
       {
@@ -1003,6 +1039,11 @@ export const qfRoundAbi = [
   },
   {
     "type": "error",
+    "name": "OrganizerTooLong",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ProjectAlreadyApproved",
     "inputs": []
   },
@@ -1024,6 +1065,11 @@ export const qfRoundAbi = [
   {
     "type": "error",
     "name": "RoundEnded",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RoundNameInvalid",
     "inputs": []
   },
   {

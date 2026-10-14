@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/context/locale";
@@ -16,6 +16,7 @@ import { Frame } from "@/components/ui/Frame";
 import { GradientBorder } from "@/components/ui/GradientBorder";
 import { MonoLabel } from "@/components/ui/MonoLabel";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Container } from "@/components/layout/Container";
 import type { Round } from "@/types";
 import {
   ArrowRight,
@@ -29,69 +30,179 @@ import {
 
 function QuadraticVisual() {
   const { t } = useLocale();
-  const bars = [18, 28, 42, 58, 76, 92];
+
+  // 6 columns with mathematically computed quadratic growth values (y = 178 - 144 * sqrt(x/600))
+  // Baseline at y = 195. Height = 195 - y
+  const columns = [
+    { cx: 50, y: 136, height: 59 },
+    { cx: 150, y: 106, height: 89 },
+    { cx: 250, y: 85, height: 110 },
+    { cx: 350, y: 68, height: 127 },
+    { cx: 450, y: 53, height: 142 },
+    { cx: 550, y: 40, height: 155 },
+  ];
 
   return (
-    <div data-aos="fade-left" data-aos-duration="800">
+    <div
+      data-aos="fade-left"
+      data-aos-duration="800"
+      className="flex h-full w-full flex-col justify-center xl:pr-6 2xl:pr-8"
+    >
       <Frame className="overflow-hidden p-5 sm:p-6" interactive>
-      <div className="flex items-start justify-between gap-4 border-b border-line pb-4">
-        <div>
-          <MonoLabel className="text-primary">{t.homeIntro.visualLabel}</MonoLabel>
-          <p className="mt-2 max-w-xs text-sm text-muted">
-            {t.homeIntro.visualDescription}
-          </p>
+        {/* Header: SQRT SIGNAL / Subtitle / LIVE status badge */}
+        <div className="flex items-start justify-between gap-4 border-b border-line pb-4">
+          <div>
+            <MonoLabel className="text-primary">{t.homeIntro.visualLabel}</MonoLabel>
+            <p className="mt-1 text-xs text-muted sm:text-sm">
+              {t.homeIntro.visualDescription}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 border border-money/40 bg-money/10 px-2.5 py-1 text-xs font-semibold tabular-mono text-money">
+            <span className="h-1.5 w-1.5 rounded-full bg-money animate-pulse" />
+            <span className="mono-label">{t.homeIntro.visualStatus}</span>
+          </div>
         </div>
-        <span className="terminal-caret mono-label text-money">{t.homeIntro.visualStatus}</span>
-      </div>
 
-      <div className="relative mt-6 h-56 overflow-hidden border border-line bg-bg/60 p-4">
-        <div className="absolute inset-0 bg-[linear-gradient(var(--line)_1px,transparent_1px),linear-gradient(90deg,var(--line)_1px,transparent_1px)] bg-[length:28px_28px] opacity-50" />
-        <svg
-          viewBox="0 0 260 170"
-          className="absolute inset-x-3 top-4 h-44 w-[calc(100%-1.5rem)]"
-          aria-hidden="true"
-        >
-          <path
-            d="M12 146 C64 140 82 86 118 72 C158 56 184 96 246 18"
-            fill="none"
-            stroke="var(--money)"
-            strokeWidth="2"
-            strokeLinecap="square"
-            className="qf-curve"
-          />
-          <path
-            d="M12 146 C64 140 82 86 118 72 C158 56 184 96 246 18"
-            fill="none"
-            stroke="var(--primary)"
-            strokeWidth="8"
-            strokeLinecap="square"
-            opacity="0.12"
-          />
-        </svg>
-        <div className="relative z-10 flex h-full items-end justify-between gap-2">
-          {bars.map((height, index) => (
-            <div key={height} className="flex flex-1 flex-col items-center gap-2">
-              <div
-                className="qf-bar w-full border border-money/40 bg-money/15"
-                style={{
-                  height: `${height}%`,
-                  animationDelay: `${index * 90}ms`,
-                }}
+        {/* Single Unified Chart Area with 0 0 600 240 viewBox */}
+        <div className="relative mt-5 w-full aspect-[600/240] min-h-[170px] max-h-[250px] overflow-hidden border border-line bg-bg/80">
+          <svg
+            viewBox="0 0 600 240"
+            preserveAspectRatio="none"
+            className="w-full h-full block"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id="qf-curve-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--money)" stopOpacity="0.22" />
+                <stop offset="85%" stopColor="var(--money)" stopOpacity="0.04" />
+                <stop offset="100%" stopColor="var(--money)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+
+            {/* Subtle background coordinate grid */}
+            {[50, 95, 145, 195].map((y) => (
+              <line
+                key={`h-${y}`}
+                x1={0}
+                y1={y}
+                x2={600}
+                y2={y}
+                stroke="var(--line)"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+                opacity="0.5"
               />
-              <span className="h-1.5 w-1.5 bg-primary" />
+            ))}
+            {[100, 200, 300, 400, 500].map((x) => (
+              <line
+                key={`v-${x}`}
+                x1={x}
+                y1={0}
+                x2={x}
+                y2={200}
+                stroke="var(--line)"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+                opacity="0.4"
+              />
+            ))}
+
+            {/* Shaded quadratic area under curve */}
+            <path
+              d="M 0 178 C 40 148 100 118 150 106 C 210 92 290 78 350 68 C 420 57 510 43 600 34 L 600 195 L 0 195 Z"
+              fill="url(#qf-curve-grad)"
+            />
+
+            {/* 6 Column Bars, vertical guidelines, baseline segments and centered red dots */}
+            {columns.map((col, idx) => (
+              <g key={col.cx}>
+                {/* Vertical guideline from dot up to curve */}
+                <line
+                  x1={col.cx}
+                  y1={col.y}
+                  x2={col.cx}
+                  y2={206}
+                  stroke="var(--money)"
+                  strokeWidth="1"
+                  strokeDasharray="2 3"
+                  opacity="0.3"
+                />
+
+                {/* Vertical column bar aligned with the curve top */}
+                <rect
+                  x={col.cx - 26}
+                  y={col.y}
+                  width={52}
+                  height={col.height}
+                  fill="var(--money)"
+                  fillOpacity="0.12"
+                  stroke="var(--money)"
+                  strokeOpacity="0.35"
+                  strokeWidth="1"
+                  className="qf-bar"
+                  style={{ animationDelay: `${idx * 120}ms` }}
+                />
+
+                {/* Baseline segment at y = 195 */}
+                <line
+                  x1={col.cx - 30}
+                  y1={195}
+                  x2={col.cx + 30}
+                  y2={195}
+                  stroke="var(--money)"
+                  strokeWidth="2.5"
+                  strokeLinecap="square"
+                />
+
+                {/* Centered red dot directly below baseline */}
+                <rect
+                  x={col.cx - 3}
+                  y={210}
+                  width={6}
+                  height={6}
+                  fill="var(--primary)"
+                />
+              </g>
+            ))}
+
+            {/* Red accent glow under main curve */}
+            <path
+              d="M 0 178 C 40 148 100 118 150 106 C 210 92 290 78 350 68 C 420 57 510 43 600 34"
+              fill="none"
+              stroke="var(--primary)"
+              strokeWidth="6"
+              strokeOpacity="0.14"
+            />
+
+            {/* Quadratic growth curve: starts at left edge (0, 178), ends at right edge (600, 34) */}
+            <path
+              d="M 0 178 C 40 148 100 118 150 106 C 210 92 290 78 350 68 C 420 57 510 43 600 34"
+              fill="none"
+              stroke="var(--money)"
+              strokeWidth="2.5"
+              strokeLinecap="square"
+              className="qf-curve"
+            />
+
+            {/* End point on curve */}
+            <circle cx={600} cy={34} r={3.5} fill="var(--money)" />
+          </svg>
+        </div>
+
+        {/* Bottom row: three equal boxes with clear labels */}
+        <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3 text-center">
+          {[t.homeIntro.visualOne, t.homeIntro.visualRoot, t.homeIntro.visualMatch].map((label) => (
+            <div
+              key={label}
+              className="flex min-h-[44px] items-center justify-center border border-line bg-surface/90 px-2 py-2"
+            >
+              <span className="mono-label text-xs font-bold tracking-wider text-muted whitespace-nowrap">
+                {label}
+              </span>
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-        {[t.homeIntro.visualOne, t.homeIntro.visualRoot, t.homeIntro.visualMatch].map((label) => (
-          <div key={label} className="border border-line bg-surface px-2 py-2">
-            <span className="mono-label text-muted">{label}</span>
-          </div>
-        ))}
-      </div>
-    </Frame>
+      </Frame>
     </div>
   );
 }
@@ -102,6 +213,10 @@ export function HomeView() {
   const { isAdmin } = useRole();
   const {
     roundAddress,
+    allRounds,
+    admin,
+    name: roundName,
+    organizer: roundOrganizer,
     pool,
     startTime,
     endTime,
@@ -116,43 +231,58 @@ export function HomeView() {
     isError: isProjectsError,
     refetch: refetchProjects,
   } = useProjects();
+  const pageRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState("intro");
 
   useEffect(() => {
-    const sectionIds = ["intro", "how-it-works", "projects-list"];
-    let ticking = false;
+    const sectionIds = ["intro", "stats", "how-it-works", "current-round", "projects-list"];
+    let frame: number | null = null;
 
     const updateActiveSection = () => {
-      const marker = window.innerHeight * 0.35;
-      let nextActive = sectionIds[0];
+      frame = null;
+      // The splash temporarily collapses the document to one viewport. It must
+      // not count as reaching the bottom of the actual home page.
+      if (document.documentElement.classList.contains("splash-active")) return;
+      const sections = sectionIds.flatMap(id => {
+        const element = document.getElementById(id);
+        return element && element.getClientRects().length ? [{ id, element }] : [];
+      });
+      const headerBottom = document.querySelector("header")?.getBoundingClientRect().bottom ?? 0;
+      const scrollPadding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+      const scrollMargin = Math.max(0, ...sections.map(({ element }) => parseFloat(getComputedStyle(element).scrollMarginTop) || 0));
+      // Match anchor scrolling too: scroll-padding and scroll-margin are additive.
+      const activationLine = Math.max(Math.max(0, headerBottom) + 48, scrollPadding + scrollMargin + 1);
+      let nextActive = sections[0]?.id ?? "intro";
 
-      for (const id of sectionIds) {
-        const section = document.getElementById(id);
-        if (!section) continue;
-
-        const rect = section.getBoundingClientRect();
-        if (rect.top <= marker) {
-          nextActive = id;
-        }
+      for (const section of sections) {
+        // offsetTop is relative to an offset parent, not the scroll document.
+        if (section.element.getBoundingClientRect().top <= activationLine) nextActive = section.id;
       }
-
+      if (window.scrollY > 0 && document.documentElement.scrollHeight > window.innerHeight + 1 &&
+        window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+        nextActive = sections.at(-1)?.id ?? nextActive;
+      }
       setActiveSection(nextActive);
-      ticking = false;
     };
 
-    const handleScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      window.requestAnimationFrame(updateActiveSection);
+    const scheduleUpdate = () => {
+      if (frame === null) frame = window.requestAnimationFrame(updateActiveSection);
     };
-
-    updateActiveSection();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll);
+    const observer = new ResizeObserver(scheduleUpdate);
+    if (pageRef.current) observer.observe(pageRef.current);
+    const header = document.querySelector("header");
+    if (header) observer.observe(header);
+    scheduleUpdate();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("splash-intro-finished", scheduleUpdate);
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("splash-intro-finished", scheduleUpdate);
     };
   }, []);
 
@@ -175,12 +305,20 @@ export function HomeView() {
 
   const poolUsdc = Number(pool) / 1_000_000;
 
+  const roundIndex = useMemo(() => {
+    if (!roundAddress || !allRounds || allRounds.length === 0) return 1;
+    const idx = allRounds.indexOf(roundAddress);
+    return idx !== -1 ? idx + 1 : allRounds.length;
+  }, [roundAddress, allRounds]);
+
   const activeRound: Round | null = useMemo(() => {
     if (!roundAddress) return null;
     return {
       id: roundAddress,
-      title: t.homeIntro.roundTitle,
-      description: t.homeIntro.roundDescription,
+      title: roundName?.trim() ? roundName.trim() : `${t.homeIntro.roundTitle} #${roundIndex}`,
+      description: roundOrganizer?.trim() || "",
+      name: roundName,
+      organizer: roundOrganizer,
       matchingPool: poolUsdc,
       totalDonated: totalDirectDonated,
       totalSupporters,
@@ -190,10 +328,13 @@ export function HomeView() {
         : new Date().toISOString(),
       endTime: endTime ? new Date(Number(endTime) * 1000).toISOString() : new Date().toISOString(),
       status,
-      sponsorName: t.homeIntro.sponsorName,
+      sponsorName: roundOrganizer?.trim() || "",
     };
   }, [
     roundAddress,
+    roundIndex,
+    roundName,
+    roundOrganizer,
     poolUsdc,
     totalDirectDonated,
     totalSupporters,
@@ -201,18 +342,18 @@ export function HomeView() {
     startTime,
     endTime,
     status,
-    t.homeIntro.roundDescription,
     t.homeIntro.roundTitle,
-    t.homeIntro.sponsorName,
   ]);
 
   const sideNav = [
     { id: "intro", label: t.homeIntro.sideIntro },
+    { id: "stats", label: t.homeIntro.sideStats },
     { id: "how-it-works", label: t.homeIntro.sideFlow },
+    { id: "current-round", label: t.roundCard.openTitle },
     { id: "projects-list", label: t.homeIntro.sideProjects },
   ];
 
-  const howItWorks = [
+  const steps = [
     {
       icon: PenLine,
       step: "01",
@@ -237,17 +378,24 @@ export function HomeView() {
   ];
 
   return (
-    <div className="relative space-y-0 overflow-x-hidden">
+    <div ref={pageRef} className="relative space-y-0">
+      {/* Side dot navigation: visible only from xl (1280px+) screens where safe right margins exist */}
       <nav
         aria-label={t.homeIntro.sectionNavLabel}
-        className="fixed right-[max(1.5rem,calc((100vw-72rem)/2-4rem))] top-1/2 z-20 hidden -translate-y-1/2 lg:block"
+        className="fixed right-3 xl:right-4 2xl:right-6 top-1/2 z-20 hidden -translate-y-1/2 xl:block"
       >
-        <div className="flex flex-col items-center gap-3 border border-line bg-bg/80 px-2 py-3 backdrop-blur-md">
+        <div className="flex flex-col items-center gap-3 border border-line bg-bg/90 p-2 backdrop-blur-md">
           {sideNav.map((item) => (
             <a
               key={item.id}
               href={`#${item.id}`}
-              onClick={() => setActiveSection(item.id)}
+              onClick={(e) => {
+                e.preventDefault();
+                const target = document.getElementById(item.id);
+                if (target) {
+                  target.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
               className={`group relative h-2.5 w-2.5 border transition-colors ${
                 activeSection === item.id
                   ? "border-primary bg-primary"
@@ -256,7 +404,7 @@ export function HomeView() {
               aria-current={activeSection === item.id ? "true" : undefined}
             >
               <span className="sr-only">{item.label}</span>
-              <span className="mono-label pointer-events-none absolute right-5 top-1/2 hidden -translate-y-1/2 whitespace-nowrap border border-line bg-bg px-2 py-1 text-muted group-hover:block">
+              <span className="mono-label pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 whitespace-nowrap border border-line bg-bg px-2 py-1 text-muted shadow-md group-hover:block">
                 {item.label}
               </span>
             </a>
@@ -264,260 +412,261 @@ export function HomeView() {
         </div>
       </nav>
 
+      {/* 1. Hero Section: 2 columns from 1024px up, min-height: min(78svh, 720px), no step cards */}
+      <section id="intro" className="scroll-mt-20 border-b border-line">
+        <Container className="flex min-h-[min(78svh,720px)] flex-col justify-center py-[clamp(3rem,6vw,6rem)]">
+          <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16">
+            <div className="space-y-6" data-aos="fade-right" data-aos-duration="800">
+              <MonoLabel className="text-primary">{t.homeIntro.eyebrow}</MonoLabel>
+
+              <h1 className="hero-headline font-bold text-foreground max-w-2xl">
+                {t.homeIntro.headlineStart}{" "}
+                <GradientBorder className="inline-block bg-surface px-3 py-1 align-baseline">
+                  {t.homeIntro.headlineAccent}
+                </GradientBorder>
+              </h1>
+
+              <p className="max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+                {t.homeIntro.subheadline}
+              </p>
+
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+                <a
+                  href="#current-round"
+                  className="gradient-border mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 px-6 py-2.5 text-foreground focus:outline-none sm:w-auto"
+                >
+                  <span>{t.homeIntro.primaryCta}</span>
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+
+                <Link
+                  href="/register"
+                  className="mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 border border-line-strong bg-surface px-6 py-2.5 text-muted transition-colors hover:text-foreground focus:outline-none sm:w-auto"
+                >
+                  <Rocket className="h-4 w-4" />
+                  <span>{t.homeIntro.secondaryCta}</span>
+                </Link>
+              </div>
+            </div>
+
+            <QuadraticVisual />
+          </div>
+        </Container>
+      </section>
+
+      {/* 2. Stats strip: 3 stats in 1 row, full container width, big mono numbers, short captions */}
       <section
-        id="intro"
-        className="grid scroll-mt-24 gap-8 border-b border-line pb-10 pt-2 lg:grid-cols-[1.04fr_0.96fr] lg:items-center"
+        id="stats"
+        aria-label={t.homeIntro.statsAria}
+        className="scroll-mt-20 border-b border-line"
       >
-        <div className="space-y-6" data-aos="fade-right" data-aos-duration="800">
-          <MonoLabel className="text-primary">{t.homeIntro.eyebrow}</MonoLabel>
-          <h1 className="max-w-5xl text-[clamp(2.5rem,12vw,4.25rem)] font-bold leading-[0.94] text-foreground lg:text-[clamp(4rem,6vw,5.8rem)]">
-            {t.homeIntro.headlineStart}{" "}
-            <GradientBorder className="inline-block bg-surface px-3 py-1 align-baseline">
-              {t.homeIntro.headlineAccent}
-            </GradientBorder>
-          </h1>
+        <Container className="py-[clamp(3rem,6vw,6rem)]">
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+            </div>
+          ) : !roundAddress ? (
+            <div className="border border-line bg-surface p-6">
+              <MonoLabel className="text-primary">{t.homeIntro.noRoundTitle}</MonoLabel>
+              <p className="mt-2 max-w-xl text-sm text-muted">{t.homeIntro.noRoundDesc}</p>
+              <button
+                type="button"
+                onClick={() => router.push(isAdmin ? "/admin" : "/register")}
+                className="mono-label mt-4 inline-flex min-h-11 items-center border border-primary bg-primary/10 px-5 py-2 text-primary hover:bg-primary hover:text-foreground"
+              >
+                {isAdmin ? t.homeIntro.createRoundCta : t.homeIntro.registerFallbackCta}
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:gap-6">
+              <Frame
+                className="p-6"
+                data-aos="fade-up"
+                data-aos-delay="0"
+                data-aos-duration="600"
+              >
+                <div className="mono-label flex items-center gap-2 text-money">
+                  <Coins className="h-4 w-4" />
+                  <span>{t.hero.statPool}</span>
+                </div>
+                <div className="tabular-mono mt-3 text-3xl font-black text-money lg:text-4xl">
+                  {formatUsdc(poolUsdc)}
+                </div>
+                {t.homeIntro.poolNote && (
+                  <p className="mt-1 text-xs text-muted">{t.homeIntro.poolNote}</p>
+                )}
+              </Frame>
 
-          <p className="max-w-2xl text-base leading-8 text-muted sm:text-lg">
-            {t.homeIntro.subheadline}
-          </p>
+              <Frame
+                className="p-6"
+                data-aos="fade-up"
+                data-aos-delay="100"
+                data-aos-duration="600"
+              >
+                <div className="mono-label flex items-center gap-2 text-primary">
+                  <Users className="h-4 w-4" />
+                  <span>{t.hero.statSupporters}</span>
+                </div>
+                <div className="tabular-mono mt-3 text-3xl font-black text-foreground lg:text-4xl">
+                  {formatNumber(totalSupporters)}
+                </div>
+                {t.homeIntro.supportersNote && (
+                  <p className="mt-1 text-xs text-muted">{t.homeIntro.supportersNote}</p>
+                )}
+              </Frame>
 
-          <div className="grid gap-3 pt-2 sm:flex sm:flex-wrap sm:items-center">
-            <a
-              href="#round"
-              className="gradient-border mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 px-5 py-2.5 text-foreground focus:outline-none sm:w-auto"
-            >
-              <span>{t.homeIntro.primaryCta}</span>
-              <ArrowRight className="h-4 w-4" />
-            </a>
+              <Frame
+                className="p-6"
+                data-aos="fade-up"
+                data-aos-delay="200"
+                data-aos-duration="600"
+              >
+                <div className="mono-label flex items-center gap-2 text-muted">
+                  <Rocket className="h-4 w-4" />
+                  <span>{t.hero.statProjects}</span>
+                </div>
+                <div className="tabular-mono mt-3 text-3xl font-black text-foreground lg:text-4xl">
+                  {formatNumber(approvedProjects.length)}
+                </div>
+                {t.homeIntro.projectsNote && (
+                  <p className="mt-1 text-xs text-muted">{t.homeIntro.projectsNote}</p>
+                )}
+              </Frame>
+            </div>
+          )}
+        </Container>
+      </section>
 
-            <Link
-              href="/register"
-              className="mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 border border-line-strong bg-surface px-5 py-2.5 text-muted focus:outline-none sm:w-auto"
-            >
-              <Rocket className="h-4 w-4" />
-              <span>{t.homeIntro.secondaryCta}</span>
-            </Link>
+      {/* 3. How it works: label + title only (no long subtitle), 3 equal columns */}
+      <section id="how-it-works" className="scroll-mt-20 border-b border-line">
+        <Container className="space-y-8 py-[clamp(3rem,6vw,6rem)]">
+          <div data-aos="fade-up" data-aos-duration="600">
+            <MonoLabel className="text-primary">{t.howItWorks.title}</MonoLabel>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              {t.howItWorks.title}
+            </h2>
           </div>
 
-          <div className="grid gap-3 pt-3 sm:grid-cols-3">
-            {howItWorks.map((step, idx) => {
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {steps.map((step, idx) => {
               const Icon = step.icon;
               return (
-                <div
+                <Frame
                   key={step.step}
+                  className="p-6"
+                  interactive
                   data-aos="fade-up"
-                  data-aos-delay={idx * 120}
+                  data-aos-delay={idx * 150}
                   data-aos-duration="600"
                 >
-                  <Frame className="p-4 h-full" interactive>
-                    <div className="flex items-start gap-3">
-                      <div className={`border border-line-strong bg-bg p-2 ${step.tone}`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <MonoLabel className={step.tone}>
-                          {t.homeIntro.stepLabel} {step.step}
-                        </MonoLabel>
-                        <h3 className="mt-2 text-sm font-bold text-foreground">{step.title}</h3>
-                        <p className="mt-2 text-xs leading-relaxed text-muted">{step.description}</p>
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <div className={`inline-flex border border-line-strong bg-bg p-2.5 ${step.tone}`}>
+                      <Icon className="h-5 w-5" />
                     </div>
-                  </Frame>
-                </div>
+                    <span className={`mono-label ${step.tone}`}>
+                      {t.homeIntro.stepLabel} {step.step}
+                    </span>
+                  </div>
+                  <h3 className="mt-5 text-base font-bold text-foreground">{step.title}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-muted sm:text-sm">{step.description}</p>
+                </Frame>
               );
             })}
           </div>
-        </div>
-
-        <QuadraticVisual />
+        </Container>
       </section>
 
-      <section
-        aria-label={t.homeIntro.statsAria}
-        id="round"
-        className="grid scroll-mt-24 grid-cols-1 border-b border-line py-6 sm:grid-cols-3"
-      >
-        {isLoading ? (
-          <>
-            <Skeleton className="h-32 border-r-0" />
-            <Skeleton className="h-32 border-r-0" />
-            <Skeleton className="h-32" />
-          </>
-        ) : !roundAddress ? (
-          <div className="border border-line bg-surface p-5 sm:col-span-3">
-            <MonoLabel className="text-primary">{t.homeIntro.noRoundTitle}</MonoLabel>
-            <p className="mt-2 max-w-2xl text-sm text-muted">{t.homeIntro.noRoundDesc}</p>
-            <button
-              type="button"
-              onClick={() => router.push(isAdmin ? "/admin" : "/register")}
-              className="mono-label mt-4 inline-flex min-h-11 items-center border border-primary bg-primary/10 px-4 py-2 text-primary hover:bg-primary hover:text-foreground"
-            >
-              {isAdmin ? t.homeIntro.createRoundCta : t.homeIntro.registerFallbackCta}
-            </button>
-          </div>
-        ) : (
-          <>
-            <Frame
-              className="border-r-0 p-5"
-              data-aos="fade-up"
-              data-aos-delay="0"
-              data-aos-duration="600"
-            >
-              <div className="mono-label flex items-center gap-2 text-money">
-                <Coins className="h-4 w-4" />
-                <span>{t.hero.statPool}</span>
-              </div>
-              <div className="tabular-mono mt-2 text-3xl font-black text-money">
-                {formatUsdc(poolUsdc)}
-              </div>
-              <p className="mt-1 text-[11px] text-muted">{t.homeIntro.poolNote}</p>
-            </Frame>
-
-            <Frame
-              className="border-r-0 p-5"
-              data-aos="fade-up"
-              data-aos-delay="100"
-              data-aos-duration="600"
-            >
-              <div className="mono-label flex items-center gap-2 text-primary">
-                <Users className="h-4 w-4" />
-                <span>{t.hero.statSupporters}</span>
-              </div>
-              <div className="tabular-mono mt-2 text-3xl font-black text-foreground">
-                {formatNumber(totalSupporters)}
-              </div>
-              <p className="mt-1 text-[11px] text-muted">{t.homeIntro.supportersNote}</p>
-            </Frame>
-
-            <Frame
-              className="p-5"
-              data-aos="fade-up"
-              data-aos-delay="200"
-              data-aos-duration="600"
-            >
-              <div className="mono-label flex items-center gap-2 text-muted">
-                <Rocket className="h-4 w-4" />
-                <span>{t.hero.statProjects}</span>
-              </div>
-              <div className="tabular-mono mt-2 text-3xl font-black text-foreground">
-                {formatNumber(approvedProjects.length)}
-              </div>
-              <p className="mt-1 text-[11px] text-muted">{t.homeIntro.projectsNote}</p>
-            </Frame>
-          </>
-        )}
-      </section>
-
-      <section id="how-it-works" className="scroll-mt-24 space-y-6 border-b border-line py-10">
-        <div data-aos="fade-up" data-aos-duration="600">
-          <MonoLabel>{t.howItWorks.title}</MonoLabel>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
-            {t.howItWorks.title}
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted">{t.howItWorks.subtitle}</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-0 md:grid-cols-3">
-          {howItWorks.map((step, idx) => {
-            const Icon = step.icon;
-            return (
-              <Frame
-                key={step.step}
-                className="p-4"
-                interactive
-                data-aos="fade-up"
-                data-aos-delay={idx * 150}
-                data-aos-duration="600"
-              >
-                <div className={`inline-flex border border-line-strong bg-bg p-2 ${step.tone}`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <span className={`mono-label mt-4 block ${step.tone}`}>
-                  {t.homeIntro.stepLabel} {step.step}
-                </span>
-                <h3 className="mt-2 text-sm font-bold text-foreground">{step.title}</h3>
-                <p className="mt-2 text-xs leading-relaxed text-muted">{step.description}</p>
-              </Frame>
-            );
-          })}
-        </div>
-      </section>
-
+      {/* 4. Current round: wide card with dynamic round title, admin copy button, inline stats, responsive CTA */}
       {hasError ? (
-        <section className="py-10" data-aos="fade-up">
-          <ErrorState
-            title={t.homeIntro.errorTitle}
-            reason={t.homeIntro.errorReason}
-            solution={t.homeIntro.errorSolution}
-            onRetry={() => {
-              refetchRound();
-              refetchProjects();
-            }}
-          />
+        <section className="border-b border-line">
+          <Container className="py-[clamp(3rem,6vw,6rem)]" data-aos="fade-up">
+            <ErrorState
+              title={t.homeIntro.errorTitle}
+              reason={t.homeIntro.errorReason}
+              solution={t.homeIntro.errorSolution}
+              onRetry={() => {
+                refetchRound();
+                refetchProjects();
+              }}
+            />
+          </Container>
         </section>
       ) : activeRound ? (
-        <section className="space-y-4 border-b border-line py-10" data-aos="fade-up" data-aos-duration="700">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold tracking-tight text-foreground">
-              {t.roundCard.openTitle}
-            </h2>
-            <span className="mono-label text-muted">{t.homeIntro.activeRoundLabel}</span>
-          </div>
-          <RoundCard round={activeRound} />
+        <section id="current-round" className="scroll-mt-20 border-b border-line">
+          <Container className="space-y-6 py-[clamp(3rem,6vw,6rem)]" data-aos="fade-up" data-aos-duration="700">
+            <div className="flex items-center justify-between">
+              <div>
+                <MonoLabel className="text-primary">{t.homeIntro.activeRoundLabel}</MonoLabel>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                  {t.roundCard.openTitle}
+                </h2>
+              </div>
+            </div>
+            <RoundCard
+              round={activeRound}
+              adminAddress={admin}
+              roundIndex={roundIndex}
+            />
+          </Container>
         </section>
       ) : null}
 
-      <section id="projects-list" className="scroll-mt-24 space-y-6 py-10">
-        <div
-          className="flex flex-col justify-between gap-2 border-b border-line pb-4 sm:flex-row sm:items-end"
-          data-aos="fade-up"
-          data-aos-duration="600"
-        >
-          <div>
-            <MonoLabel>{t.homeIntro.projectsEyebrow}</MonoLabel>
-            <h2 className="mt-2 text-xl font-bold tracking-tight text-foreground">
-              {t.homeIntro.projectsTitle}
-            </h2>
-            <p className="text-xs text-muted sm:text-sm">{t.homeIntro.projectsSubtitle}</p>
+      {/* 5. Featured projects */}
+      <section id="projects-list" className="scroll-mt-20">
+        <Container className="space-y-8 py-[clamp(3rem,6vw,6rem)]">
+          <div
+            className="flex flex-col justify-between gap-3 border-b border-line pb-4 sm:flex-row sm:items-end"
+            data-aos="fade-up"
+            data-aos-duration="600"
+          >
+            <div>
+              <MonoLabel className="text-primary">{t.homeIntro.projectsEyebrow}</MonoLabel>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                {t.homeIntro.projectsTitle}
+              </h2>
+              <p className="mt-1 text-xs text-muted sm:text-sm">{t.homeIntro.projectsSubtitle}</p>
+            </div>
+            <div className="mono-label flex items-center gap-2 text-muted">
+              <span className="inline-block h-2 w-2 bg-money" />
+              <span>{t.homeIntro.formulaActive}</span>
+            </div>
           </div>
-          <div className="mono-label flex items-center gap-2 text-muted">
-            <span className="inline-block h-2 w-2 bg-money" />
-            <span>{t.homeIntro.formulaActive}</span>
-          </div>
-        </div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <Skeleton className="h-80" />
-            <Skeleton className="h-80" />
-          </div>
-        ) : approvedProjects.length === 0 ? (
-          <EmptyState
-            title={t.homeIntro.noProjectsTitle}
-            description={t.homeIntro.noProjectsDesc}
-            actionLabel={t.homeIntro.noProjectsCta}
-            onAction={() => router.push("/register")}
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {approvedProjects.map((project, index) => (
-              <div
-                key={project.id}
-                data-aos="fade-up"
-                data-aos-delay={(index % 4) * 100}
-                data-aos-duration="600"
-              >
-                <ProjectCard
-                  project={{
-                    ...project,
-                    rank: index + 1,
-                  }}
-                  roundId={roundAddress ?? ""}
-                />
-              </div>
-            ))}
-          </div>
-        )}
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <Skeleton className="h-80" />
+              <Skeleton className="h-80" />
+            </div>
+          ) : approvedProjects.length === 0 ? (
+            <EmptyState
+              title={t.homeIntro.noProjectsTitle}
+              description={t.homeIntro.noProjectsDesc}
+              actionLabel={t.homeIntro.noProjectsCta}
+              onAction={() => router.push("/register")}
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {approvedProjects.map((project, index) => (
+                <div
+                  key={project.id}
+                  data-aos="fade-up"
+                  data-aos-delay={(index % 4) * 100}
+                  data-aos-duration="600"
+                >
+                  <ProjectCard
+                    project={{
+                      ...project,
+                      rank: index + 1,
+                    }}
+                    roundId={roundAddress ?? ""}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </Container>
       </section>
     </div>
   );

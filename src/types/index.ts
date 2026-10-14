@@ -25,6 +25,8 @@ export type Round = {
   endTime: string; // ISO date
   status: RoundStatus;
   sponsorName: string;
+  name?: string;
+  organizer?: string;
 };
 
 export type ProjectCategory = "education" | "technology" | "environment" | "arts";

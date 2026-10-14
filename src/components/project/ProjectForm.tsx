@@ -1,12 +1,12 @@
 "use client";
 
+import { useTxFlow } from "@/hooks/useTxFlow";
+
 import React, { useState } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
 import { useLocale } from "@/lib/context/locale";
-import { useToast } from "@/lib/context/toast";
-import { getContractErrorMessage } from "@/lib/errors";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ProjectCard } from "@/components/project/ProjectCard";
@@ -16,9 +16,9 @@ import { CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 export function ProjectForm() {
+  const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
   const { address, isConnected } = useAccount();
-  const { addToast } = useToast();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { roundAddress, status: roundStatus } = useRound();
@@ -62,70 +62,77 @@ export function ProjectForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    const flow = beginFlow();
     e.preventDefault();
     if (!validate()) return;
 
+    const toastId = "register-project";
+
     if (!isConnected || !address) {
-      addToast({
-        type: "error",
-        title: "Wallet not connected",
-        description: "Please connect your wallet to register a project.",
-      });
+      flow.toast.error(
+        toastId,
+        locale === "vi" ? "Chưa kết nối ví" : "Wallet not connected",
+        locale === "vi" ? "Vui lòng kết nối ví để đăng ký dự án." : "Please connect your wallet to register a project."
+      );
       return;
     }
 
     if (!roundAddress || !publicClient) {
-      addToast({
-        type: "error",
-        title: "Round not active",
-        description: "No active quadratic funding round found.",
-      });
+      flow.toast.error(
+        toastId,
+        locale === "vi" ? "Round không hoạt động" : "Round not active",
+        locale === "vi" ? "Không tìm thấy round QF đang hoạt động." : "No active quadratic funding round found."
+      );
       return;
     }
 
     setIsSubmitting(true);
     try {
-      addToast({
-        type: "pending",
-        title: "Registering project...",
-        description: "Please confirm the transaction in your wallet.",
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang đăng ký dự án..." : "Registering project...",
+        locale === "vi" ? "Vui lòng xác nhận giao dịch trong ví của bạn." : "Please confirm the transaction in your wallet."
+      );
 
-      const hash = await writeContractAsync({
+      const hash = await flow.wait(() => writeContractAsync({
         address: roundAddress,
         abi: qfRoundAbi,
         functionName: "registerProject",
         args: [name.trim(), description.trim(), imageUrl.trim(), contactUrl.trim()],
-      });
+      }));
 
-      addToast({
-        type: "pending",
-        title: "Confirming registration...",
-        description: "Waiting for block confirmation on Avalanche Fuji.",
-        txHash: hash,
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang xác nhận đăng ký..." : "Confirming registration...",
+        locale === "vi" ? "Đang chờ xác nhận khối trên Avalanche Fuji." : "Waiting for block confirmation on Avalanche Fuji.",
+        hash
+      );
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
       if (receipt.status !== "success") {
         throw new Error("Registration transaction reverted.");
       }
 
       setIsSubmitted(true);
-      addToast({
-        type: "success",
-        title: "Project registered!",
-        description: "Your project was submitted and is pending admin approval.",
-        txHash: hash,
-      });
+      flow.toast.success(
+        toastId,
+        locale === "vi" ? "Đã đăng ký dự án!" : "Project registered!",
+        locale === "vi" ? "Dự án của bạn đã được gửi và đang chờ admin duyệt." : "Your project was submitted and is pending admin approval.",
+        hash
+      );
     } catch (err: unknown) {
-      const msg = getContractErrorMessage(err);
-      addToast({
-        type: "error",
-        title: "Registration failed",
-        description: msg,
-      });
+      if (flow.cancelled) return false;
+      flow.error(
+        toastId,
+        err,
+        locale === "vi" ? "Đăng ký thất bại" : "Registration failed",
+        locale
+      );
     } finally {
-      setIsSubmitting(false);
+      flow.finish();
+      if (!flow.cancelled) {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -212,7 +219,7 @@ export function ProjectForm() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 max-w-[720px]">
           <Input
             label={`${t.register.nameLabel} (max 60 bytes)`}
             placeholder={t.register.namePlaceholder}
@@ -255,11 +262,10 @@ export function ProjectForm() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t.register.fullDescPlaceholder}
-              className={`w-full border bg-bg p-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 transition-colors ${
-                errors.description
-                  ? "border-primary focus:border-primary focus:ring-primary"
-                  : "border-line-strong focus:border-primary focus:ring-primary"
-              }`}
+              className={`w-full border bg-bg p-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 transition-colors ${errors.description
+                ? "border-primary focus:border-primary focus:ring-primary"
+                : "border-line-strong focus:border-primary focus:ring-primary"
+                }`}
             />
             {errors.description && (
               <p className="text-xs font-medium text-primary" role="alert">
@@ -300,8 +306,8 @@ export function ProjectForm() {
               {!isStudent
                 ? "Student Verification Required"
                 : isSubmitting
-                ? "Registering on Fuji..."
-                : t.register.submitButton}
+                  ? "Registering on Fuji..."
+                  : t.register.submitButton}
             </Button>
           </div>
         </form>

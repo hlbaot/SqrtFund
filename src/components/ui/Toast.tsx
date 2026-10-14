@@ -2,11 +2,13 @@
 
 import React from "react";
 import { useToast } from "@/lib/context/toast";
+import { useLocale } from "@/lib/context/locale";
 import { CheckCircle2, AlertCircle, Info, Loader2, X, ExternalLink } from "lucide-react";
 import { getExplorerTxUrl, shortAddress } from "@/lib/format";
 
 export function ToastContainer() {
   const { toasts, removeToast } = useToast();
+  const { t } = useLocale();
 
   if (toasts.length === 0) return null;
 
@@ -14,7 +16,7 @@ export function ToastContainer() {
     <div
       aria-live="polite"
       aria-atomic="true"
-      className="fixed bottom-4 left-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full"
+      className="fixed bottom-4 left-4 z-50 flex flex-col gap-2 pointer-events-none w-[calc(100vw-2rem)] max-w-sm"
     >
       {toasts.map((toast) => {
         const isSuccess = toast.type === "success";
@@ -64,7 +66,7 @@ export function ToastContainer() {
 
             <button
               onClick={() => removeToast(toast.id)}
-              aria-label="Dismiss toast"
+              aria-label={t.transactions.dismiss}
               type="button"
               className="shrink-0 rounded p-1 text-muted hover:text-foreground"
             >

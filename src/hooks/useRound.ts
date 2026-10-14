@@ -15,6 +15,7 @@ export function useRound(customRoundAddress?: Address) {
   const {
     data: factoryData,
     isLoading: isFactoryLoading,
+    isError: isFactoryError,
     refetch: refetchFactory,
   } = useReadContracts({
     contracts: [
@@ -74,6 +75,8 @@ export function useRound(customRoundAddress?: Address) {
       { address: roundAddress, abi: qfRoundAbi, functionName: "leftover" },
       { address: roundAddress, abi: qfRoundAbi, functionName: "leftoverWithdrawn" },
       { address: roundAddress, abi: qfRoundAbi, functionName: "projectCount" },
+      { address: roundAddress, abi: qfRoundAbi, functionName: "name" },
+      { address: roundAddress, abi: qfRoundAbi, functionName: "organizer" },
     ],
     query: {
       enabled: Boolean(roundAddress),
@@ -93,6 +96,10 @@ export function useRound(customRoundAddress?: Address) {
   const leftover = roundData?.[9]?.result as bigint | undefined;
   const leftoverWithdrawn = Boolean(roundData?.[10]?.result);
   const projectCount = roundData?.[11]?.result as bigint | undefined;
+  const rawName = roundData?.[12]?.status === "success" ? (roundData[12].result as string) : undefined;
+  const rawOrganizer = roundData?.[13]?.status === "success" ? (roundData[13].result as string) : undefined;
+  const name = rawName && rawName.trim().length > 0 ? rawName.trim() : undefined;
+  const organizer = rawOrganizer && rawOrganizer.trim().length > 0 ? rawOrganizer.trim() : undefined;
 
   const status: RoundStatus = useMemo(() => {
     if (finalized) return "finalized";
@@ -112,6 +119,8 @@ export function useRound(customRoundAddress?: Address) {
     factoryOwner,
     admin,
     token,
+    name,
+    organizer,
     startTime,
     endTime,
     minDonation,
@@ -124,7 +133,7 @@ export function useRound(customRoundAddress?: Address) {
     projectCount: projectCount ?? 0n,
     status,
     isLoading: isFactoryLoading || (Boolean(roundAddress) && isRoundLoading),
-    isError: isRoundError,
+    isError: isFactoryError || isRoundError || Boolean(factoryData?.some(result => result.status === "failure")) || Boolean(roundData?.some((result, index) => index < 12 && result.status === "failure")),
     refetch,
   };
 }

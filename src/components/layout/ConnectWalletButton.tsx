@@ -1,172 +1,153 @@
 "use client";
 
-import React, { useState } from "react";
-import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
+import React, { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import Link from "next/link";
+import { useAccount, useConnect, useDisconnect, useBalance, useReadContract } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
+import { formatUnits } from "viem";
+import { Wallet, LogOut, ChevronDown, Check, Copy, Loader2 } from "lucide-react";
 import { shortAddress } from "@/lib/format";
-import { Wallet, LogOut, ChevronDown, Check, Copy } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
-import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { useNotificationCounts } from "@/hooks/useNotificationCounts";
+import { TARGET_CHAIN_ID, usdcAddress } from "@/lib/contracts/addresses";
+import { mockUsdcAbi } from "@/lib/contracts/abis";
+import { txToast } from "@/lib/txToast";
+import { getContractErrorMessage, isUserRejected } from "@/lib/errors";
+import { logoutWallet, markWalletConnected } from "@/lib/walletSession";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { GradientBorder } from "@/components/ui/GradientBorder";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { NotificationBadge } from "@/components/ui/NotificationBadge";
 
 export function ConnectWalletButton() {
-  const { address, isConnected } = useAccount();
-  const { connectors, connect, isPending: isConnecting } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { switchChain } = useSwitchChain();
-  const chainId = useChainId();
-  const { t } = useLocale();
-  const { isAdmin, isStudent, isProjectOwner, isLoading: isRoleLoading } = useRole();
-
+  const { address, isConnected, chainId } = useAccount();
+  const { connectors, connectAsync, isPending: isConnecting } = useConnect();
+  const { disconnectAsync } = useDisconnect();
+  const queryClient = useQueryClient();
+  const { t, locale } = useLocale();
+  const { role, isReady } = useRole();
+  const counts = useNotificationCounts(isReady ? role : "guest");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const roleLabel =
-    isRoleLoading && !isAdmin && !isStudent && !isProjectOwner
-      ? "..."
-      : isAdmin
-      ? "Admin"
-      : isProjectOwner
-      ? "Project Owner"
-      : isStudent
-      ? "Whitelisted Student"
-      : "Visitor";
-
+  const root = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ top: 0, right: 16 });
+  const trigger = useRef<HTMLButtonElement>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const mounted = useRef(false);
+  const menuId = useId();
   const isFuji = chainId === TARGET_CHAIN_ID;
+  const { data: avax } = useBalance({ address, chainId: TARGET_CHAIN_ID, query: { enabled: isConnected && isFuji, refetchInterval: 30_000 } });
+  const { data: usdc } = useReadContract({
+    address: usdcAddress, abi: mockUsdcAbi, functionName: "balanceOf", args: address ? [address] : undefined,
+    chainId: TARGET_CHAIN_ID, query: { enabled: Boolean(isConnected && isFuji && usdcAddress), refetchInterval: 30_000 },
+  });
 
-  const handleConnect = () => {
-    setError(null);
-    console.log(
-      "Wallet connectors:",
-      connectors.map((connector) => ({ name: connector.name, id: connector.id })),
-    );
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; clearTimeout(copyTimer.current); };
+  }, []);
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const outside = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node) && !panel.current?.contains(event.target as Node)) setDropdownOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setDropdownOpen(false); trigger.current?.focus(); }
+    };
+    const reposition = () => {
+      const rect = trigger.current?.getBoundingClientRect();
+      if (rect) setPosition({ top: rect.bottom + 8, right: Math.max(16, window.innerWidth - rect.right) });
+    };
+    reposition();
+    panel.current?.querySelector<HTMLElement>("button, a[href]")?.focus();
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => { window.removeEventListener("resize", reposition); window.removeEventListener("scroll", reposition, true); document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, [dropdownOpen]);
 
-    const connector =
-      connectors.find((c) => c.id === "app.core.extension" || /core/i.test(c.name)) ??
-      connectors.find((c) => c.id === "injected") ??
-      connectors[0];
-
-    if (!connector) {
-      setError("Wallet not found. Install/enable Core and reload.");
-      return;
+  const handleConnect = async () => {
+    const connector = connectors.find(c => c.id === "app.core.extension" || /core/i.test(c.name)) ?? connectors.find(c => c.id === "injected") ?? connectors[0];
+    if (!connector) { txToast.error("wallet-connect", t.wallet.connectionFailed, t.wallet.walletMissing); return; }
+    try {
+      await connectAsync({ connector, chainId: TARGET_CHAIN_ID });
+      markWalletConnected();
+      if (mounted.current) txToast.success("wallet-connect", t.wallet.connected);
+    } catch (error) {
+      if (mounted.current) txToast.error("wallet-connect", isUserRejected(error) ? t.wallet.connectionRejected : t.wallet.connectionFailed, getContractErrorMessage(error, locale));
     }
-
-    connect(
-      { connector, chainId: TARGET_CHAIN_ID },
-      {
-        onError: (err) => {
-          console.error("Connect failed:", err);
-          setError(err.message.split("\n")[0]);
-        },
-      },
-    );
   };
-
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(address!);
+      if (!mounted.current) return;
+      setCopied(true);
+      clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 1500);
+    } catch { if (mounted.current) txToast.error("wallet-copy", t.wallet.copyFailed); }
+  };
 
   if (!isConnected || !address) {
     return (
-      <div className="flex flex-col items-start gap-1">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleConnect}
-          disabled={isConnecting}
-          className="font-bold"
-        >
-          <Wallet className="h-3.5 w-3.5 mr-1.5" />
-          {isConnecting ? "Connecting..." : t.nav.connectWallet}
+      <GradientBorder className="inline-flex rounded-sm">
+        <Button variant="ghost" size="sm" onClick={handleConnect} disabled={isConnecting} className="text-foreground font-bold">
+          {isConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Wallet className="h-3.5 w-3.5" aria-hidden="true" />}
+          {isConnecting ? t.wallet.connecting : t.nav.connectWallet}
         </Button>
-        {error && <p className="max-w-[260px] text-xs text-primary">{error}</p>}
-      </div>
+      </GradientBorder>
     );
   }
 
+  const avatarHue = parseInt(address.slice(2, 8), 16) % 360;
   return (
-    <div className="relative">
-      <div className="flex items-center gap-1.5">
-        {/* Avalanche Fuji chip */}
-        <div
-          className={`hidden sm:flex items-center gap-1.5 border px-2.5 py-1 text-xs font-semibold ${
-            isFuji
-              ? "border-money/40 bg-money/10 text-money"
-              : "border-primary/40 bg-primary/10 text-primary"
-          }`}
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${
-              isFuji ? "bg-money animate-pulse" : "bg-primary"
-            }`}
-          />
-          <span>{isFuji ? "Avalanche Fuji" : "Wrong Net"}</span>
-        </div>
-        {!isFuji && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => switchChain({ chainId: TARGET_CHAIN_ID })}
-          >
-            Switch to Fuji
-          </Button>
-        )}
-
-        {/* Short address trigger button */}
-        <button
-          type="button"
-          onClick={() => setDropdownOpen(!dropdownOpen)}
-          className="mono-label flex items-center gap-2 border border-line-strong bg-surface px-3 py-1.5 text-foreground transition-colors hover:bg-surface-2 focus:outline-none"
-          aria-expanded={dropdownOpen}
-          aria-haspopup="true"
-        >
-          <span className="font-mono">{shortAddress(address, 4)}</span>
-          <ChevronDown className="h-3.5 w-3.5 text-muted" />
-        </button>
-      </div>
-
-      {dropdownOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setDropdownOpen(false)}
-            aria-hidden="true"
-          />
-          <div className="absolute right-0 top-full z-50 mt-2 w-64 border border-line-strong bg-surface p-3 text-xs text-foreground shadow-2xl">
-            <div className="mb-2 border-b border-line pb-2">
-              <span className="mono-label text-muted text-[10px] uppercase tracking-wider">
-                {roleLabel}
-              </span>
-              <p className="tabular-mono mt-0.5 truncate text-xs text-foreground font-mono">
-                {address}
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(address);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                className="flex w-full items-center justify-between px-2.5 py-1.5 text-left text-muted hover:bg-surface-2 hover:text-foreground"
-              >
-                <span>{copied ? "Copied!" : t.common.copyAddress}</span>
-                {copied ? <Check className="h-3.5 w-3.5 text-money" /> : <Copy className="h-3.5 w-3.5" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  disconnect();
-                  setDropdownOpen(false);
-                }}
-                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-primary hover:bg-primary/10"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                <span>{t.nav.disconnect}</span>
-              </button>
+    <div ref={root} className="relative min-w-0 max-w-full" onBlur={event => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !panel.current?.contains(event.relatedTarget as Node | null)) setDropdownOpen(false);
+    }}>
+      <button ref={trigger} type="button" onClick={() => { const rect = trigger.current?.getBoundingClientRect(); if (rect) setPosition({ top: rect.bottom + 8, right: Math.max(16, window.innerWidth - rect.right) }); setDropdownOpen(open => !open); }} aria-label={t.wallet.profile}
+        aria-expanded={dropdownOpen} aria-haspopup="dialog" aria-controls={menuId}
+        className="mono-label relative flex max-w-full min-h-10 items-center gap-2 rounded-sm border border-line-strong bg-surface px-3 text-foreground hover:bg-surface-2">
+        <span className={`h-2 w-2 shrink-0 rounded-full ${isFuji ? "bg-money" : "bg-amber-400"}`} aria-hidden="true" />
+        <span className="min-w-0 truncate whitespace-nowrap text-[10px] border border-line px-1.5 py-0.5">{isFuji ? t.common.testnetBadge : t.wallet.switchNetwork}</span>
+        <span>{shortAddress(address, 4)}</span>
+        <ChevronDown className={`h-3.5 w-3.5 text-muted transition-transform ${dropdownOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+        {counts.total > 0 && <span aria-label={t.wallet.notifications} className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-bg" />}
+      </button>
+      {dropdownOpen && createPortal(
+        <div ref={panel} style={{ "--profile-top": `${position.top}px`, "--profile-right": `${position.right}px` } as React.CSSProperties}
+          onKeyDown={event => { if (event.key === "Escape") { setDropdownOpen(false); trigger.current?.focus(); } }}
+          onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !root.current?.contains(event.relatedTarget as Node | null)) setDropdownOpen(false); }}
+          id={menuId} role="dialog" aria-label={t.wallet.profile} className="fixed left-4 right-4 bottom-4 z-50 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-sm border border-line-strong bg-bg p-4 text-xs text-foreground shadow-2xl lg:left-auto lg:bottom-auto lg:right-[var(--profile-right)] lg:top-[var(--profile-top)] lg:w-80">
+          <div className="flex items-center gap-3 border-b border-line pb-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line-strong font-mono font-bold"
+              style={{ background: `hsl(${avatarHue} 40% 18%)`, color: `hsl(${avatarHue} 70% 75%)` }} aria-hidden="true">{address.slice(2, 4).toUpperCase()}</div>
+            <div className="min-w-0 space-y-1">
+              <p className="mono-label text-muted text-[10px]">{t.common.testnetBadge}</p>
+              {isReady ? <Badge variant={role === "admin" ? "warning" : role === "student" ? "accent" : role === "owner" ? "owner" : "default"}>{t.wallet[role]}</Badge> : <Skeleton className="h-6 w-32" />}
             </div>
           </div>
-        </>
+          <p className="mt-4 break-all font-mono leading-relaxed">{address}</p>
+          <button type="button" onClick={copyAddress} className="mono-label my-2 flex w-full items-center justify-between px-2 py-2 text-muted hover:bg-surface hover:text-foreground">
+            <span aria-live="polite">{copied ? t.wallet.copied : t.common.copyAddress}</span>
+            {copied ? <Check className="h-3.5 w-3.5 text-money" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+          {(avax || usdc !== undefined) && <div className="mb-3 space-y-2 border-y border-line py-3 font-mono" aria-label={t.wallet.balance}>
+            {avax && <p className="flex justify-between"><span className="text-muted">AVAX</span><span>{Number(formatUnits(avax.value, avax.decimals)).toFixed(4)}</span></p>}
+            {usdc !== undefined && <p className="flex justify-between"><span className="text-muted">USDC</span><span>{Number(formatUnits(usdc, 6)).toFixed(2)}</span></p>}
+          </div>}
+          <div className="space-y-1">
+            {isReady && role === "admin" && <Link href="/admin" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.nav.admin}<NotificationBadge count={counts.admin} /></Link>}
+            <Link href="/my" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.wallet.myProjects}<NotificationBadge count={counts.owner} /></Link>
+            {isReady && role === "student" && <Link href="/my#claim-usdc" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.wallet.claimUsdc}<NotificationBadge count={counts.student} /></Link>}
+          </div>
+          <button type="button" onClick={() => { setDropdownOpen(false); void logoutWallet(disconnectAsync, queryClient).catch(() => { }); }} className="mono-label mt-3 flex w-full items-center gap-2 border-t border-line px-2 pt-4 pb-1 text-primary hover:bg-primary/10">
+            <LogOut className="h-3.5 w-3.5" />{t.nav.disconnect}
+          </button>
+        </div>, document.body
       )}
     </div>
   );

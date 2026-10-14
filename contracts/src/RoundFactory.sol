@@ -9,12 +9,14 @@ import {QFRound} from "./QFRound.sol";
 contract RoundFactory is Ownable {
     address[] public rounds;
 
-    event RoundCreated(address indexed roundAddress, address indexed admin, address token);
+    event RoundCreated(address indexed roundAddress, address indexed admin, address token, string name);
 
     constructor() Ownable(msg.sender) {}
 
     /// @notice Deploys a new QFRound with admin = msg.sender. Callable only by the factory owner.
     function createRound(
+        string calldata name,
+        string calldata organizer,
         address token,
         uint256 startTime,
         uint256 endTime,
@@ -23,6 +25,8 @@ contract RoundFactory is Ownable {
         uint256 maxMatchBps
     ) external onlyOwner returns (address roundAddress) {
         QFRound round = new QFRound(
+            name,
+            organizer,
             msg.sender,
             token,
             startTime,
@@ -35,7 +39,7 @@ contract RoundFactory is Ownable {
         roundAddress = address(round);
         rounds.push(roundAddress);
 
-        emit RoundCreated(roundAddress, msg.sender, token);
+        emit RoundCreated(roundAddress, msg.sender, token, name);
     }
 
     /// @notice Returns total number of deployed rounds.

@@ -1,19 +1,18 @@
 "use client";
 
+import { useTxFlow } from "@/hooks/useTxFlow";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { useLocale } from "@/lib/context/locale";
-import { useToast } from "@/lib/context/toast";
 import { useRound } from "@/hooks/useRound";
 import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
 import { useWriteContract, usePublicClient } from "wagmi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
-import { getContractErrorMessage } from "@/lib/errors";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 
 export function FinalizeButton() {
-  const { t } = useLocale();
-  const { addToast } = useToast();
+  const beginFlow = useTxFlow();
+  const { t, locale } = useLocale();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { roundAddress, endTime, finalized, refetch } = useRound();
@@ -25,51 +24,59 @@ export function FinalizeButton() {
   const canFinalize = Boolean(roundAddress && !finalized && endTime && nowSec > 0 && BigInt(nowSec) >= endTime);
 
   const handleFinalize = async () => {
+    const flow = beginFlow();
     if (!roundAddress || !publicClient) return;
 
+    const toastId = "finalize-round";
     setIsPending(true);
     try {
-      addToast({
-        type: "pending",
-        title: "Finalizing round...",
-        description: "Please confirm in your wallet.",
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang chốt round..." : "Finalizing round...",
+        locale === "vi" ? "Vui lòng xác nhận trong ví của bạn." : "Please confirm in your wallet."
+      );
 
-      const hash = await writeContractAsync({
+      const hash = await flow.wait(() => writeContractAsync({
         address: roundAddress,
         abi: qfRoundAbi,
         functionName: "finalize",
-      });
+      }));
 
-      addToast({
-        type: "pending",
-        title: "Computing quadratic payouts...",
-        description: "Waiting for blockchain confirmation.",
-        txHash: hash,
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang tính toán phân bổ quỹ..." : "Computing quadratic payouts...",
+        locale === "vi" ? "Đang chờ xác nhận khối trên blockchain." : "Waiting for blockchain confirmation.",
+        hash
+      );
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
       if (receipt.status !== "success") {
         throw new Error("Finalize transaction reverted.");
       }
 
-      addToast({
-        type: "success",
-        title: "Round finalized successfully!",
-        description: "Allocations computed and payouts unlocked for approved projects.",
-        txHash: hash,
-      });
+      flow.toast.success(
+        toastId,
+        locale === "vi" ? "Chốt round thành công!" : "Round finalized successfully!",
+        locale === "vi"
+          ? "Đã tính toán phân bổ và mở khoá chi trả cho các dự án được duyệt."
+          : "Allocations computed and payouts unlocked for approved projects.",
+        hash
+      );
 
       refetch();
     } catch (err: unknown) {
-      const msg = getContractErrorMessage(err);
-      addToast({
-        type: "error",
-        title: "Finalize failed",
-        description: msg,
-      });
+      if (flow.cancelled) return false;
+      flow.error(
+        toastId,
+        err,
+        locale === "vi" ? "Chốt round thất bại" : "Finalize failed",
+        locale
+      );
     } finally {
-      setIsPending(false);
+      flow.finish();
+      if (!flow.cancelled) {
+        setIsPending(false);
+      }
     }
   };
 

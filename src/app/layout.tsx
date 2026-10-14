@@ -34,22 +34,33 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${beVietnamPro.variable} ${jetBrainsMono.variable}`}>
-      <body className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/30 selection:text-foreground">
+      <head>
+        <script
+          id="splash-lock"
+          dangerouslySetInnerHTML={{
+            __html:
+              "if(typeof window!=='undefined'&&window.location.pathname==='/'){document.documentElement.classList.add('splash-active');}",
+          }}
+        />
+      </head>
+      <body className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary selection:text-white">
         <Suspense fallback={null}>
           <SplashIntro />
         </Suspense>
-        <Providers>
-          <Suspense fallback={null}>
-            <AOSInit />
-          </Suspense>
-          <Suspense fallback={<header className="h-16 border-b border-line bg-background" />}>
-            <Navbar />
-          </Suspense>
-          <main className="app-frame mx-auto flex w-full max-w-6xl flex-1 flex-col pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] py-8 sm:px-6 lg:px-8">
-            {children}
-          </main>
-          <Footer />
-        </Providers>
+        <div id="app-content" className="flex min-h-screen flex-col">
+          <Providers>
+            <Suspense fallback={null}>
+              <AOSInit />
+            </Suspense>
+            <Suspense fallback={<header className="h-16 border-b border-line bg-background" />}>
+              <Navbar />
+            </Suspense>
+            <main className="flex w-full flex-1 flex-col">
+              {children}
+            </main>
+            <Footer />
+          </Providers>
+        </div>
       </body>
     </html>
   );

@@ -34,6 +34,8 @@ contract QFRoundTest is Test {
 
         vm.prank(admin);
         address roundAddr = factory.createRound(
+            "Test Round",
+            "Test Organizer",
             address(usdc),
             startTime,
             endTime,
@@ -207,6 +209,8 @@ contract QFRoundTest is Test {
         // Deploy a round with maxMatchBps = 10000 so the per-project cap does not leave artificial leftover
         vm.prank(admin);
         address rAddr = factory.createRound(
+            "Uncapped Round",
+            "Test Org",
             address(usdc),
             startTime,
             endTime,
@@ -767,13 +771,13 @@ contract QFRoundTest is Test {
         address stranger = address(0x123);
         vm.prank(stranger);
         vm.expectRevert();
-        factory.createRound(address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+        factory.createRound("R1", "Org1", address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
 
         // Admin creates round 2 and round 3
         vm.prank(admin);
-        address r2 = factory.createRound(address(usdc), startTime + 10 days, endTime + 10 days, minDonation, maxDonation, maxMatchBps);
+        address r2 = factory.createRound("R2", "Org2", address(usdc), startTime + 10 days, endTime + 10 days, minDonation, maxDonation, maxMatchBps);
         vm.prank(admin);
-        address r3 = factory.createRound(address(usdc), startTime + 20 days, endTime + 20 days, minDonation, maxDonation, maxMatchBps);
+        address r3 = factory.createRound("R3", "Org3", address(usdc), startTime + 20 days, endTime + 20 days, minDonation, maxDonation, maxMatchBps);
 
         assertEq(factory.roundCount(), 3);
         address[] memory all = factory.getRounds();
@@ -785,27 +789,103 @@ contract QFRoundTest is Test {
     function test_QFRound_ConstructorValidation() public {
         // endTime <= startTime
         vm.expectRevert(QFRound.InvalidTimeRange.selector);
-        new QFRound(admin, address(usdc), endTime, startTime, minDonation, maxDonation, maxMatchBps);
+        new QFRound("Round 1", "Org 1", admin, address(usdc), endTime, startTime, minDonation, maxDonation, maxMatchBps);
 
         // minDonation == 0
         vm.expectRevert(QFRound.InvalidDonationBounds.selector);
-        new QFRound(admin, address(usdc), startTime, endTime, 0, maxDonation, maxMatchBps);
+        new QFRound("Round 1", "Org 1", admin, address(usdc), startTime, endTime, 0, maxDonation, maxMatchBps);
 
         // minDonation > maxDonation
         vm.expectRevert(QFRound.InvalidDonationBounds.selector);
-        new QFRound(admin, address(usdc), startTime, endTime, 10 * 10 ** 6, 5 * 10 ** 6, maxMatchBps);
+        new QFRound("Round 1", "Org 1", admin, address(usdc), startTime, endTime, 10 * 10 ** 6, 5 * 10 ** 6, maxMatchBps);
 
         // maxMatchBps > 10000
         vm.expectRevert(QFRound.InvalidMaxMatchBps.selector);
-        new QFRound(admin, address(usdc), startTime, endTime, minDonation, maxDonation, 10001);
+        new QFRound("Round 1", "Org 1", admin, address(usdc), startTime, endTime, minDonation, maxDonation, 10001);
 
         // zero address admin
         vm.expectRevert(QFRound.ZeroAddress.selector);
-        new QFRound(address(0), address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+        new QFRound("Round 1", "Org 1", address(0), address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
 
         // zero address token
         vm.expectRevert(QFRound.ZeroAddress.selector);
-        new QFRound(admin, address(0), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+        new QFRound("Round 1", "Org 1", admin, address(0), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+    }
+
+    function test_QFRound_NameAndOrganizerValidation() public {
+        // Valid name and organizer
+        QFRound rValid = new QFRound(
+            "Valid Round Name",
+            "Valid Organizer",
+            admin,
+            address(usdc),
+            startTime,
+            endTime,
+            minDonation,
+            maxDonation,
+            maxMatchBps
+        );
+        assertEq(rValid.name(), "Valid Round Name");
+        assertEq(rValid.organizer(), "Valid Organizer");
+
+        // Organizer can be empty (0 bytes)
+        QFRound rEmptyOrg = new QFRound(
+            "Round With No Org",
+            "",
+            admin,
+            address(usdc),
+            startTime,
+            endTime,
+            minDonation,
+            maxDonation,
+            maxMatchBps
+        );
+        assertEq(rEmptyOrg.name(), "Round With No Org");
+        assertEq(rEmptyOrg.organizer(), "");
+
+        // Empty name reverts
+        vm.expectRevert(QFRound.RoundNameInvalid.selector);
+        new QFRound(
+            "",
+            "Valid Organizer",
+            admin,
+            address(usdc),
+            startTime,
+            endTime,
+            minDonation,
+            maxDonation,
+            maxMatchBps
+        );
+
+        // Name too long (> 60 bytes) reverts
+        string memory longName = "1234567890123456789012345678901234567890123456789012345678901"; // 61 bytes
+        vm.expectRevert(QFRound.RoundNameInvalid.selector);
+        new QFRound(
+            longName,
+            "Valid Organizer",
+            admin,
+            address(usdc),
+            startTime,
+            endTime,
+            minDonation,
+            maxDonation,
+            maxMatchBps
+        );
+
+        // Organizer too long (> 60 bytes) reverts
+        string memory longOrg = "1234567890123456789012345678901234567890123456789012345678901"; // 61 bytes
+        vm.expectRevert(QFRound.OrganizerTooLong.selector);
+        new QFRound(
+            "Valid Round",
+            longOrg,
+            admin,
+            address(usdc),
+            startTime,
+            endTime,
+            minDonation,
+            maxDonation,
+            maxMatchBps
+        );
     }
 
     function test_RegisterProject_LengthLimits() public {
@@ -872,7 +952,7 @@ contract QFRoundTest is Test {
 
         // Test with pool > 0 and 0 approved projects
         vm.prank(admin);
-        address rAddr = factory.createRound(address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+        address rAddr = factory.createRound("Empty Round", "Org", address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
         QFRound r2 = QFRound(rAddr);
 
         deal(address(usdc), admin, 100 * 10 ** 6);
@@ -897,6 +977,8 @@ contract QFRoundTest is Test {
         // Deploy round with maxMatchBps = 10000 (100% cap)
         vm.prank(admin);
         address rAddr = factory.createRound(
+            "Math Round",
+            "Org",
             address(usdc),
             startTime,
             endTime,

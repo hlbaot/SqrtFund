@@ -24,6 +24,12 @@
   --primary-foreground: var(--text);
   --accent: var(--money);
   --accent-foreground: var(--bg);
+  --scroll-track: #0b0b12;
+  --scroll-thumb: #e84142;
+  --scroll-thumb-hover: #ff5a5b;
+  --scroll-thumb-active: #c73536;
+  --container-max: 1600px;
+  --page-pad: clamp(1rem, 4vw, 4rem);
 }
 
 @theme inline {
@@ -49,6 +55,12 @@
   --color-money: var(--money);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-scroll-track: var(--scroll-track);
+  --color-scroll-thumb: var(--scroll-thumb);
+  --color-scroll-thumb-hover: var(--scroll-thumb-hover);
+  --color-scroll-thumb-active: var(--scroll-thumb-active);
+  --container-max: var(--container-max);
+  --page-pad: var(--page-pad);
   --font-sans: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -59,8 +71,11 @@
 
 html {
   color-scheme: dark;
+  accent-color: var(--primary);
   scroll-behavior: smooth;
-  scroll-padding-top: 6rem;
+  scroll-padding-top: 5rem;
+  scrollbar-gutter: auto;
+  overflow-x: clip;
 }
 
 body {
@@ -74,8 +89,15 @@ body {
   font-family: var(--font-sans);
   margin: 0;
   min-height: 100vh;
+  accent-color: var(--primary);
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: var(--primary);
+  color: #ffffff;
 }
 
 a,
@@ -110,28 +132,10 @@ button:not(:disabled):hover,
   outline-offset: 3px;
 }
 
-.app-frame {
-  position: relative;
-}
-
-.app-frame::before,
-.app-frame::after {
-  content: "";
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--line);
-  pointer-events: none;
-  z-index: 10;
-}
-
-.app-frame::before {
-  left: max(0px, calc((100vw - 72rem) / 2));
-}
-
-.app-frame::after {
-  right: max(0px, calc((100vw - 72rem) / 2));
+.hero-headline {
+  font-size: clamp(2.5rem, 5.2vw, 5rem);
+  line-height: 1.02;
+  text-wrap: balance;
 }
 
 .mono-label {
@@ -203,11 +207,8 @@ button:not(:disabled):hover,
 }
 
 @keyframes splash-overlay {
-  0% {
-    opacity: 1;
-  }
-  20%,
-  80% {
+  0%,
+  90% {
     opacity: 1;
   }
   100% {
@@ -265,18 +266,16 @@ button:not(:disabled):hover,
 @keyframes qf-bar-pulse {
   0%,
   100% {
-    transform: scaleY(0.86);
-    opacity: 0.78;
+    opacity: 0.75;
   }
   50% {
-    transform: scaleY(1);
     opacity: 1;
   }
 }
 
 @keyframes qf-curve-draw {
   from {
-    stroke-dashoffset: 360;
+    stroke-dashoffset: 700;
   }
   to {
     stroke-dashoffset: 0;
@@ -313,14 +312,70 @@ button:not(:disabled):hover,
   animation: splash-tagline-in 3s ease both;
 }
 
+/*
+ * Splash Intro Lock & Clean Presentation:
+ * While intro is running, lock viewport completely:
+ * - No scrollbars (Chromium, Safari, Firefox)
+ * - No scrollbar gutter reservation
+ * - Block all scrolling on html & body
+ * - Hide background content until intro finishes
+ */
+#app-content {
+  transition: opacity 0.25s ease-out;
+}
+
+html.splash-active {
+  overflow: hidden !important;
+  scrollbar-gutter: auto !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+}
+
+html.splash-active body {
+  overflow: hidden !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+}
+
+html.splash-active ::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+html.splash-active,
+html.splash-active * {
+  scrollbar-width: none !important;
+}
+
+html.splash-active #app-content {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 .qf-bar {
-  transform-origin: bottom;
-  animation: qf-bar-pulse 1.4s ease-in-out infinite;
+  animation: qf-bar-pulse 2.2s ease-in-out infinite;
 }
 
 .qf-curve {
-  stroke-dasharray: 360;
-  animation: qf-curve-draw 1.35s ease-out both;
+  stroke-dasharray: 700;
+  stroke-dashoffset: 0;
+  animation: qf-curve-draw 1.4s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qf-bar,
+  .qf-curve {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+    opacity: 1 !important;
+  }
 }
 
 .hud-frame {
@@ -404,25 +459,38 @@ button:not(:disabled):hover,
   }
 }
 
-/* Custom subtle scrollbar for tables */
-.custom-scrollbar::-webkit-scrollbar {
-  height: 6px;
-  width: 6px;
+/* Hide scrollbar chrome while retaining wheel, touch, and keyboard scrolling. */
+html,
+body,
+* {
+  scrollbar-width: none;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: var(--bg);
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--line-strong);
-  border-radius: 0;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
+::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
-@media (max-width: 1023px) {
-  .app-frame::before,
-  .app-frame::after {
-    display: none;
-  }
+/* Same gradient as Connect Wallet; a masked layer fades without changing layout. */
+.gradient-border.nav-border {
+  background: var(--bg);
+  border-color: transparent;
 }
+.nav-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--accent-gradient);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.nav-border:hover { border-color: var(--line-strong); }
+.nav-border.nav-selected::before,
+.nav-border:has(a:focus-visible)::before { opacity: 1; }

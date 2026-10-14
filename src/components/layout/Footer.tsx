@@ -4,12 +4,14 @@ import React from "react";
 import { useLocale } from "@/lib/context/locale";
 import { Badge } from "@/components/ui/Badge";
 
+import { Container } from "./Container";
+
 export function Footer() {
   const { t } = useLocale();
 
   return (
     <footer className="mt-auto border-t border-line bg-bg py-8 text-xs text-muted">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+      <Container className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -25,12 +27,12 @@ export function Footer() {
           </Badge>
         </div>
 
-        <div className="mono-label flex items-center gap-4 text-muted">
-          <span>Vietnam UniHack Team 1</span>
+        <div className="mono-label flex items-center gap-3 text-muted">
+          <span>Quadratic Funding</span>
           <span>/</span>
-          <span>Quadratic Funding Model</span>
+          <span>Avalanche Fuji</span>
         </div>
-      </div>
+      </Container>
     </footer>
   );
 }

@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import { useTxFlow } from "@/hooks/useTxFlow";
+
+import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { txToast } from "@/lib/txToast";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
-import { useToast } from "@/lib/context/toast";
 import { useRole } from "@/hooks/useRole";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { formatUsdc, formatNumber } from "@/lib/format";
-import { getContractErrorMessage } from "@/lib/errors";
 import { CreateRoundForm } from "@/components/admin/CreateRoundForm";
 import { DepositPoolForm } from "@/components/admin/DepositPoolForm";
 import { WhitelistTable } from "@/components/admin/WhitelistTable";
@@ -18,12 +20,16 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { AdminSkeleton } from "@/components/common/PageSkeletons";
-import { ShieldAlert, Check, Award, ArrowDownLeft } from "lucide-react";
+import { Container } from "@/components/layout/Container";
+import { Check, Award, ArrowDownLeft } from "lucide-react";
 
 export function AdminView() {
-  const { t } = useLocale();
-  const { isConnected, address } = useAccount();
-  const { isAdmin, isLoading: isRoleLoading } = useRole();
+  const beginFlow = useTxFlow();
+  const { t, locale } = useLocale();
+  const { isConnected, status: accountStatus } = useAccount();
+  const { role, isLoading: isRoleLoading, isReady } = useRole();
+  const isAdmin = isReady && role === "admin";
+  const router = useRouter();
   const {
     roundAddress,
     finalized,
@@ -33,137 +39,154 @@ export function AdminView() {
     isLoading: isRoundLoading,
   } = useRound();
   const { projects, refetch: refetchProjects } = useProjects();
-  const { addToast } = useToast();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
+
+  useEffect(() => {
+    if (accountStatus === "reconnecting" || accountStatus === "connecting" || isRoleLoading || isRoundLoading) return;
+    if (!isConnected || !isAdmin) {
+      txToast.error("admin-access", t.wallet.accessDenied);
+      router.replace("/");
+    }
+  }, [accountStatus, isRoleLoading, isRoundLoading, isConnected, isAdmin, router, t.wallet.accessDenied]);
 
   const [busyProjectId, setBusyProjectId] = useState<bigint | null>(null);
   const [isWithdrawingLeftover, setIsWithdrawingLeftover] = useState(false);
 
   // Approve project on chain
   const handleApproveProject = async (projectId: bigint, projectName: string) => {
+    const flow = beginFlow("approve-project");
     if (!roundAddress || !publicClient) return;
 
+    const toastId = `approve-project-${projectId}`;
     setBusyProjectId(projectId);
     try {
-      addToast({
-        type: "pending",
-        title: "Approving project...",
-        description: `Approving ${projectName} to participate in round.`,
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang duyệt dự án..." : "Approving project...",
+        locale === "vi" ? `Đang duyệt ${projectName} tham gia round.` : `Approving ${projectName} to participate in round.`
+      );
 
-      const hash = await writeContractAsync({
+      const hash = await flow.wait(() => writeContractAsync({
         address: roundAddress,
         abi: qfRoundAbi,
         functionName: "approveProject",
         args: [projectId],
-      });
+      }));
 
-      addToast({
-        type: "pending",
-        title: "Confirming approval...",
-        txHash: hash,
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang xác nhận duyệt..." : "Confirming approval...",
+        locale === "vi" ? "Đang chờ xác nhận khối trên Avalanche Fuji." : "Waiting for block confirmation on Avalanche Fuji.",
+        hash
+      );
 
-      await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
+      if (receipt.status !== "success") {
+        throw new Error("Approval transaction reverted.");
+      }
 
-      addToast({
-        type: "success",
-        title: "Project approved!",
-        description: `${projectName} is now active and ready to receive student donations.`,
-        txHash: hash,
-      });
+      flow.toast.success(
+        toastId,
+        locale === "vi" ? "Dự án đã được duyệt!" : "Project approved!",
+        locale === "vi"
+          ? `${projectName} đã hoạt động và sẵn sàng nhận ủng hộ từ sinh viên.`
+          : `${projectName} is now active and ready to receive student donations.`,
+        hash
+      );
 
       refetchProjects();
       refetchRound();
     } catch (err: unknown) {
-      const msg = getContractErrorMessage(err);
-      addToast({
-        type: "error",
-        title: "Project approval failed",
-        description: msg,
-      });
+      if (flow.cancelled) return false;
+      flow.error(
+        toastId,
+        err,
+        locale === "vi" ? "Duyệt dự án thất bại" : "Project approval failed",
+        locale
+      );
     } finally {
-      setBusyProjectId(null);
+      flow.finish();
+      if (!flow.cancelled) {
+        setBusyProjectId(null);
+      }
     }
   };
 
   // Withdraw unallocated leftover funds
   const handleWithdrawLeftover = async () => {
+    const flow = beginFlow("withdraw-leftover");
     if (!roundAddress || !publicClient) return;
 
+    const toastId = "withdraw-leftover";
     setIsWithdrawingLeftover(true);
     try {
-      addToast({
-        type: "pending",
-        title: "Withdrawing leftover pool...",
-        description: "Please confirm in your wallet.",
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang rút pool thừa..." : "Withdrawing leftover pool...",
+        locale === "vi" ? "Vui lòng xác nhận trong ví của bạn." : "Please confirm in your wallet."
+      );
 
-      const hash = await writeContractAsync({
+      const hash = await flow.wait(() => writeContractAsync({
         address: roundAddress,
         abi: qfRoundAbi,
         functionName: "withdrawLeftover",
-      });
+      }));
 
-      addToast({
-        type: "pending",
-        title: "Confirming withdrawal...",
-        txHash: hash,
-      });
+      flow.toast.pending(
+        toastId,
+        locale === "vi" ? "Đang xác nhận rút..." : "Confirming withdrawal...",
+        locale === "vi" ? "Đang chờ xác nhận khối trên Avalanche Fuji." : "Waiting for block confirmation on Avalanche Fuji.",
+        hash
+      );
 
-      await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
+      if (receipt.status !== "success") {
+        throw new Error("Withdraw transaction reverted.");
+      }
 
-      addToast({
-        type: "success",
-        title: "Leftover withdrawn!",
-        description: "Unallocated matching pool funds transferred to admin address.",
-        txHash: hash,
-      });
+      flow.toast.success(
+        toastId,
+        locale === "vi" ? "Đã rút tiền thừa!" : "Leftover withdrawn!",
+        locale === "vi"
+          ? "Tiền thưởng quỹ đối ứng chưa phân bổ đã chuyển về ví admin."
+          : "Unallocated matching pool funds transferred to admin address.",
+        hash
+      );
 
       refetchRound();
     } catch (err: unknown) {
-      const msg = getContractErrorMessage(err);
-      addToast({
-        type: "error",
-        title: "Withdraw failed",
-        description: msg,
-      });
+      if (flow.cancelled) return false;
+      flow.error(
+        toastId,
+        err,
+        locale === "vi" ? "Rút tiền thất bại" : "Withdraw failed",
+        locale
+      );
     } finally {
-      setIsWithdrawingLeftover(false);
+      flow.finish();
+      if (!flow.cancelled) {
+        setIsWithdrawingLeftover(false);
+      }
     }
   };
 
-  if (isRoleLoading || isRoundLoading) {
-    return <AdminSkeleton />;
-  }
-
-  // Gate: visible only to round admin or factory owner
-  if (!isConnected || !isAdmin) {
+  if (accountStatus === "reconnecting" || accountStatus === "connecting" || isRoleLoading || isRoundLoading) {
     return (
-      <div className="mx-auto max-w-xl py-16 text-center space-y-4">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center border border-primary/40 bg-primary/10 text-primary">
-          <ShieldAlert className="h-7 w-7" />
-        </div>
-        <h1 className="text-xl font-bold text-foreground tracking-tight">
-          Admin wallet required
-        </h1>
-        <p className="text-sm text-muted leading-relaxed">
-          {t.admin.restrictedMsg}
-        </p>
-        <p className="mono-label text-xs text-muted">
-          Connected address: {address ? address : "Not connected"}
-        </p>
-      </div>
+      <Container className="py-8 sm:py-10">
+        <AdminSkeleton />
+      </Container>
     );
   }
+
+  if (!isConnected || !isAdmin) return null;
 
   const pendingProjects = projects.filter((p) => !p.approved);
   const approvedProjects = projects.filter((p) => p.approved);
   const leftoverUsdc = Number(leftover) / 1_000_000;
 
   return (
-    <div className="space-y-8">
+    <Container className="py-8 sm:py-10 space-y-8">
       {/* Admin Header with FinalizeButton */}
       <div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-6"
@@ -333,6 +356,6 @@ export function AdminView() {
         <CreateRoundForm />
         <DepositPoolForm />
       </div>
-    </div>
+    </Container>
   );
 }

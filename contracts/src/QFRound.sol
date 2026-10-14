@@ -17,6 +17,8 @@ contract QFRound is ReentrancyGuard {
     uint256 public constant MAX_BATCH_SIZE = 50;
     uint256 public constant FINALIZE_GRACE = 1 days;
 
+    string public name;
+    string public organizer;
     address public immutable admin;
     IERC20 public immutable token;
     uint256 public immutable startTime;
@@ -100,6 +102,8 @@ contract QFRound is ReentrancyGuard {
     error AlreadyClaimed();
     error NotProjectOwner();
     error LeftoverAlreadyWithdrawn();
+    error RoundNameInvalid();
+    error OrganizerTooLong();
     error NameLengthInvalid();
     error DescriptionLengthInvalid();
     error UrlTooLong();
@@ -123,6 +127,8 @@ contract QFRound is ReentrancyGuard {
     }
 
     constructor(
+        string memory _name,
+        string memory _organizer,
         address _admin,
         address _token,
         uint256 _startTime,
@@ -131,11 +137,16 @@ contract QFRound is ReentrancyGuard {
         uint256 _maxDonation,
         uint256 _maxMatchBps
     ) {
+        uint256 nameLen = bytes(_name).length;
+        if (nameLen == 0 || nameLen > 60) revert RoundNameInvalid();
+        if (bytes(_organizer).length > 60) revert OrganizerTooLong();
         if (_admin == address(0) || _token == address(0)) revert ZeroAddress();
         if (_endTime <= _startTime) revert InvalidTimeRange();
         if (_minDonation == 0 || _minDonation > _maxDonation) revert InvalidDonationBounds();
         if (_maxMatchBps > 10000) revert InvalidMaxMatchBps();
 
+        name = _name;
+        organizer = _organizer;
         admin = _admin;
         token = IERC20(_token);
         startTime = _startTime;
