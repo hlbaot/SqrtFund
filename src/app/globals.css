@@ -494,3 +494,11 @@ body,
 .nav-border:hover { border-color: var(--line-strong); }
 .nav-border.nav-selected::before,
 .nav-border:has(a:focus-visible)::before { opacity: 1; }
+
+.gradient-border.avatar-choice[data-selected="false"] {
+  background: var(--bg);
+  border-color: var(--line-strong);
+}
+.avatar-choice[data-auto="true"][data-selected="false"] {
+  border-style: dashed;
+}

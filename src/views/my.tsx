@@ -2,13 +2,12 @@
 
 import { useTxFlow } from "@/hooks/useTxFlow";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useReadContracts, useWriteContract, usePublicClient } from "wagmi";
 import { qfRoundAbi, mockUsdcAbi } from "@/lib/contracts/abis";
 import { usdcAddress } from "@/lib/contracts/addresses";
 import { useLocale } from "@/lib/context/locale";
-import { txToast } from "@/lib/txToast";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
@@ -18,8 +17,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Dialog } from "@/components/ui/Dialog";
-import { Input } from "@/components/ui/Input";
+import { Avatar } from "@/components/ui/Avatar";
+import { AvatarPickerDialog } from "@/components/layout/AvatarPickerDialog";
+import { useAvatar } from "@/hooks/useAvatar";
 import { EmptyState } from "@/components/common/EmptyState";
 import { MyActivitySkeleton } from "@/components/common/PageSkeletons";
 import { Container } from "@/components/layout/Container";
@@ -27,24 +27,12 @@ import {
   Check,
   Coins,
   FolderKanban,
-  Camera,
-  GraduationCap,
-  Sparkles,
+  Pencil,
   User,
-  Bot,
-  Rocket,
   ShieldCheck,
   ExternalLink,
   Droplets,
 } from "lucide-react";
-
-const PRESET_AVATARS = [
-  { id: "student", label: "Student", icon: GraduationCap, bg: "border-primary/40 bg-primary/15 text-primary" },
-  { id: "coder", label: "Coder", icon: Sparkles, bg: "border-money/40 bg-money/10 text-money" },
-  { id: "robot", label: "Robot", icon: Bot, bg: "border-line-strong bg-surface-2 text-foreground" },
-  { id: "astronaut", label: "Builder", icon: Rocket, bg: "border-line-strong bg-surface text-muted" },
-  { id: "scholar", label: "Scholar", icon: User, bg: "border-money/30 bg-surface-2 text-money" },
-];
 
 export function MyView() {
   const beginFlow = useTxFlow();
@@ -62,12 +50,10 @@ export function MyView() {
   const [activeTab, setActiveTab] = useState("donations");
   const [isMintingFaucet, setIsMintingFaucet] = useState(false);
 
-  // Avatar state
-  const [avatarPreset, setAvatarPreset] = useState("student");
-  const [customAvatarUrl, setCustomAvatarUrl] = useState("");
+  const { avatar } = useAvatar(address);
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
-  const [tempPreset, setTempPreset] = useState("student");
-  const [tempCustomUrl, setTempCustomUrl] = useState("");
+  const closeAvatarDialog = useCallback(() => setIsAvatarDialogOpen(false), []);
+  const handleOpenAvatarDialog = () => setIsAvatarDialogOpen(true);
 
   // Read donations for all projects via multicall
   const approvedProjects = useMemo(() => projects.filter((p) => p.approved), [projects]);
@@ -173,27 +159,7 @@ export function MyView() {
     }
   };
 
-  const currentPresetObj = PRESET_AVATARS.find((a) => a.id === avatarPreset) || PRESET_AVATARS[0];
-  const CurrentIcon = currentPresetObj.icon;
-
-  const handleOpenAvatarDialog = () => {
-    setTempPreset(avatarPreset);
-    setTempCustomUrl(customAvatarUrl);
-    setIsAvatarDialogOpen(true);
-  };
-
-  const handleSaveAvatar = () => {
-    setAvatarPreset(tempPreset);
-    setCustomAvatarUrl(tempCustomUrl.trim());
-    setIsAvatarDialogOpen(false);
-    txToast.success(
-      "avatar-update",
-      locale === "vi" ? "Đã cập nhật ảnh đại diện" : "Avatar updated",
-      locale === "vi" ? "Đã thay đổi ảnh đại diện thành công." : "Profile avatar changed successfully."
-    );
-  };
-
-  if (!isConnected) {
+  if (!isConnected || !address) {
     return (
       <Container className="py-8 sm:py-10">
         <div className="mx-auto max-w-xl py-16 text-center space-y-4">
@@ -231,30 +197,17 @@ export function MyView() {
           <div className="flex items-center gap-4">
             {/* Avatar with edit button */}
             <div className="relative group shrink-0">
-              {customAvatarUrl ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={customAvatarUrl}
-                  alt="Avatar"
-                  className="h-16 w-16 rounded-full object-cover border-2 border-primary"
-                />
-              ) : (
-                <div
-                  className={`flex h-16 w-16 items-center justify-center rounded-full border-2 ${currentPresetObj.bg}`}
-                >
-                  <CurrentIcon className="h-8 w-8" />
-                </div>
-              )}
+              <Avatar address={address} size={64} avatarId={avatar} />
 
-              {/* Hover/click camera badge */}
+              {/* Avatar edit button */}
               <button
                 type="button"
                 onClick={handleOpenAvatarDialog}
-                aria-label="Change avatar"
-                title="Change avatar"
+                aria-label={t.avatar.change}
+                title={t.avatar.change}
                 className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-foreground hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary transition-transform hover:scale-110"
               >
-                <Camera className="h-3 w-3" />
+                <Pencil className="h-3 w-3" />
               </button>
             </div>
 
@@ -314,8 +267,8 @@ export function MyView() {
               onClick={handleOpenAvatarDialog}
               className="text-xs font-semibold gap-1.5"
             >
-              <Camera className="h-3.5 w-3.5" />
-              <span>Avatar</span>
+              <Pencil className="h-3.5 w-3.5" />
+              <span>{t.avatar.change}</span>
             </Button>
           </div>
         </div>
@@ -494,84 +447,7 @@ export function MyView() {
         </Tabs>
       </div>
 
-      {/* Change Avatar Dialog */}
-      <Dialog
-        isOpen={isAvatarDialogOpen}
-        onClose={() => setIsAvatarDialogOpen(false)}
-        title="Change Avatar"
-        description="Choose a preset student character or provide a custom image URL."
-      >
-        <div className="space-y-5 pt-2">
-          {/* Preset Avatars Grid */}
-          <div className="space-y-2">
-            <span className="block text-xs font-semibold uppercase tracking-wider text-foreground">
-              Choose Preset Avatar
-            </span>
-            <div className="grid grid-cols-5 gap-2.5">
-              {PRESET_AVATARS.map((preset) => {
-                const Icon = preset.icon;
-                const isSelected = !tempCustomUrl && tempPreset === preset.id;
-
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => {
-                      setTempPreset(preset.id);
-                      setTempCustomUrl("");
-                    }}
-                    className={`flex flex-col items-center gap-1.5 p-2.5 border transition-all ${isSelected
-                      ? "border-primary bg-primary/15 ring-2 ring-primary"
-                      : "border-line bg-surface hover:border-line-strong hover:bg-surface-2"
-                      }`}
-                  >
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full border ${preset.bg}`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <span className="text-[11px] font-medium text-foreground truncate w-full text-center">
-                      {preset.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Or Custom URL Input */}
-          <div className="space-y-2 border-t border-line pt-3">
-            <span className="block text-xs font-semibold uppercase tracking-wider text-foreground">
-              Or Custom Avatar URL
-            </span>
-            <Input
-              placeholder="https://example.com/my-photo.jpg"
-              value={tempCustomUrl}
-              onChange={(e) => setTempCustomUrl(e.target.value)}
-              helperText="Paste a link to any PNG, JPG, or WebP image"
-            />
-          </div>
-
-          {/* Dialog Action Buttons */}
-          <div className="flex justify-end gap-2.5 pt-2 border-t border-line">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsAvatarDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSaveAvatar}
-              className="font-bold"
-            >
-              Save Avatar
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+      {isAvatarDialogOpen && address && <AvatarPickerDialog key={address.toLowerCase()} address={address} onClose={closeAvatarDialog} />}
     </Container>
   );
 }

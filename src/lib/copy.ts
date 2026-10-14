@@ -1,6 +1,16 @@
 export type Locale = "en" | "vi";
 
 const enData = {
+    avatar: {
+      "title": "Avatar",
+      "choose": "Choose your avatar",
+      "change": "Change avatar",
+      "auto": "Auto",
+      "save": "Save",
+      "cancel": "Cancel",
+      "updated": "Avatar updated",
+      "forAddress": "Avatar for wallet {address}"
+},
     wallet: {
       "connecting": "Connecting...",
       "connected": "Wallet connected",
@@ -337,6 +347,16 @@ const enData = {
   };
 
 const viData = {
+    avatar: {
+      "title": "Ảnh đại diện",
+      "choose": "Chọn ảnh đại diện",
+      "change": "Đổi ảnh đại diện",
+      "auto": "Tự động",
+      "save": "Lưu",
+      "cancel": "Huỷ",
+      "updated": "Đã cập nhật ảnh đại diện",
+      "forAddress": "Ảnh đại diện cho ví {address}"
+},
     wallet: {
       "connecting": "Đang kết nối...",
       "connected": "Đã kết nối ví",

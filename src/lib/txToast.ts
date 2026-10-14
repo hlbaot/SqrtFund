@@ -75,8 +75,8 @@ class TxToastStore {
     this.upsert({ id, type: "pending", title, description, txHash }, Infinity);
   }
 
-  success(id: string, title: string, description?: string, txHash?: string) {
-    this.upsert({ id, type: "success", title, description, txHash }, SUCCESS_MS);
+  success(id: string, title: string, description?: string, txHash?: string, duration = SUCCESS_MS) {
+    this.upsert({ id, type: "success", title, description, txHash }, duration);
   }
 
   error(id: string, title: string, description?: string) {

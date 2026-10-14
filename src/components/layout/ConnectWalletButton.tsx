@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useAccount, useConnect, useDisconnect, useBalance, useReadContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatUnits } from "viem";
-import { Wallet, LogOut, ChevronDown, Check, Copy, Loader2 } from "lucide-react";
+import { Wallet, LogOut, ChevronDown, Check, Copy, Loader2, Pencil } from "lucide-react";
+import { AvatarPickerDialog } from "./AvatarPickerDialog";
+import { Avatar } from "@/components/ui/Avatar";
+import { useAvatar } from "@/hooks/useAvatar";
 import { shortAddress } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
@@ -31,6 +34,8 @@ export function ConnectWalletButton() {
   const { role, isReady } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const { avatar } = useAvatar(address);
   const [copied, setCopied] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -39,6 +44,14 @@ export function ConnectWalletButton() {
   const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const mounted = useRef(false);
   const menuId = useId();
+  const closeAvatarPicker = useCallback(() => {
+    setAvatarPickerOpen(false);
+    window.requestAnimationFrame(() => trigger.current?.focus());
+  }, []);
+  const openAvatarPicker = () => {
+    setDropdownOpen(false);
+    setAvatarPickerOpen(true);
+  };
   const isFuji = chainId === TARGET_CHAIN_ID;
   const { data: avax } = useBalance({ address, chainId: TARGET_CHAIN_ID, query: { enabled: isConnected && isFuji, refetchInterval: 30_000 } });
   const { data: usdc } = useReadContract({
@@ -103,7 +116,6 @@ export function ConnectWalletButton() {
     );
   }
 
-  const avatarHue = parseInt(address.slice(2, 8), 16) % 360;
   return (
     <div ref={root} className="relative min-w-0 max-w-full" onBlur={event => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !panel.current?.contains(event.relatedTarget as Node | null)) setDropdownOpen(false);
@@ -111,6 +123,7 @@ export function ConnectWalletButton() {
       <button ref={trigger} type="button" onClick={() => { const rect = trigger.current?.getBoundingClientRect(); if (rect) setPosition({ top: rect.bottom + 8, right: Math.max(16, window.innerWidth - rect.right) }); setDropdownOpen(open => !open); }} aria-label={t.wallet.profile}
         aria-expanded={dropdownOpen} aria-haspopup="dialog" aria-controls={menuId}
         className="mono-label relative flex max-w-full min-h-10 items-center gap-2 rounded-sm border border-line-strong bg-surface px-3 text-foreground hover:bg-surface-2">
+        <Avatar address={address} size={24} avatarId={avatar} />
         <span className={`h-2 w-2 shrink-0 rounded-full ${isFuji ? "bg-money" : "bg-amber-400"}`} aria-hidden="true" />
         <span className="min-w-0 truncate whitespace-nowrap text-[10px] border border-line px-1.5 py-0.5">{isFuji ? t.common.testnetBadge : t.wallet.switchNetwork}</span>
         <span>{shortAddress(address, 4)}</span>
@@ -123,11 +136,17 @@ export function ConnectWalletButton() {
           onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !root.current?.contains(event.relatedTarget as Node | null)) setDropdownOpen(false); }}
           id={menuId} role="dialog" aria-label={t.wallet.profile} className="fixed left-4 right-4 bottom-4 z-50 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-sm border border-line-strong bg-bg p-4 text-xs text-foreground shadow-2xl lg:left-auto lg:bottom-auto lg:right-[var(--profile-right)] lg:top-[var(--profile-top)] lg:w-80">
           <div className="flex items-center gap-3 border-b border-line pb-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line-strong font-mono font-bold"
-              style={{ background: `hsl(${avatarHue} 40% 18%)`, color: `hsl(${avatarHue} 70% 75%)` }} aria-hidden="true">{address.slice(2, 4).toUpperCase()}</div>
+            <button type="button" onClick={openAvatarPicker} aria-label={t.avatar.change}
+              className="group relative shrink-0 rounded-full">
+              <Avatar address={address} size={48} avatarId={avatar} />
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+              </span>
+            </button>
             <div className="min-w-0 space-y-1">
               <p className="mono-label text-muted text-[10px]">{t.common.testnetBadge}</p>
               {isReady ? <Badge variant={role === "admin" ? "warning" : role === "student" ? "accent" : role === "owner" ? "owner" : "default"}>{t.wallet[role]}</Badge> : <Skeleton className="h-6 w-32" />}
+              <button type="button" onClick={openAvatarPicker} className="mono-label block text-[10px] text-muted hover:text-foreground">{t.avatar.change}</button>
             </div>
           </div>
           <p className="mt-4 break-all font-mono leading-relaxed">{address}</p>
@@ -149,6 +168,7 @@ export function ConnectWalletButton() {
           </button>
         </div>, document.body
       )}
+      {avatarPickerOpen && <AvatarPickerDialog key={address.toLowerCase()} address={address} onClose={closeAvatarPicker} />}
     </div>
   );
 }
