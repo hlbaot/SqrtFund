@@ -18,7 +18,7 @@ export function DepositPoolForm() {
   const { writeContractAsync } = useWriteContract();
   const { roundAddress, token, refetch, finalized } = useRound();
 
-  const [amount, setAmount] = useState("1000");
+  const [amount, setAmount] = useState("100");
   const [isPending, setIsPending] = useState(false);
 
   const approveId = "deposit-approve";
@@ -204,7 +204,7 @@ export function DepositPoolForm() {
         <Input
           label={t.admin.depositAmountLabel}
           type="number"
-          placeholder="1000"
+          placeholder="100"
           value={amount}
           disabled={isPending || finalized}
           onChange={(e) => setAmount(e.target.value)}

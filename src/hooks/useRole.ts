@@ -45,6 +45,7 @@ export function useRole() {
     query: {
       enabled: Boolean(roundAddress && address && isConnected && isTargetChain),
       refetchInterval: 5000,
+      refetchOnWindowFocus: true,
     },
   });
 

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
+import { Avatar } from "../src/components/ui/Avatar";
+import { LocaleProvider } from "../src/lib/context/locale";
 import { AVATARS, AVATAR_IDS } from "../src/config/avatars";
 import { avatarStorageKey, readAvatar, saveAvatar, subscribeAvatar, useAvatar } from "../src/hooks/useAvatar";
 import { clearWalletStorage } from "../src/lib/walletSession";
@@ -83,6 +85,12 @@ describe("avatar catalog and persistence", () => {
     expect(readAvatar("0xBlocked")).toBe("auto");
     expect(saveAvatar("0xBlocked", "sqrt-06")).toBe(true);
     expect(readAvatar("0xBlocked")).toBe("sqrt-06");
+  });
+  it("forces Auto for admin request rows even if a custom avatar ID is supplied", () => {
+    const markup = renderToString(createElement(LocaleProvider, null,
+      createElement(Avatar, { address, avatarId: "sqrt-01", forceAuto: true })));
+    expect(markup).toContain("Auto");
+    expect(markup).not.toContain("data:image");
   });
   it("dismisses the fixed avatar update toast after exactly two seconds", () => {
     vi.useFakeTimers();

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { verificationStatus } from "@/lib/verification";
 import { shortAddress, getExplorerAddressUrl, formatTimeAgo } from "@/lib/format";
 
 describe("Verification Formatting and UI helpers", () => {
@@ -42,63 +43,14 @@ describe("Verification Formatting and UI helpers", () => {
     });
   });
 
-  describe("Verification status mapping logic", () => {
-    type VerificationStatus = "none" | "pending" | "approved" | "rejected";
-
-    function getVerificationUiState(status: VerificationStatus, isStudentOrAdmin: boolean) {
-      if (isStudentOrAdmin || status === "approved") {
-        return { showBlock: false };
-      }
-      switch (status) {
-        case "none":
-          return {
-            showBlock: true,
-            canSubmit: true,
-            actionLabel: "REQUEST VERIFICATION",
-            chip: null,
-          };
-        case "pending":
-          return {
-            showBlock: true,
-            canSubmit: false,
-            actionLabel: null,
-            chip: "PENDING APPROVAL",
-          };
-        case "rejected":
-          return {
-            showBlock: true,
-            canSubmit: true,
-            actionLabel: "REQUEST AGAIN",
-            chip: "REJECTED",
-          };
-      }
-    }
-
-    it("hides verification block for students or admins", () => {
-      expect(getVerificationUiState("none", true).showBlock).toBe(false);
-      expect(getVerificationUiState("approved", false).showBlock).toBe(false);
+  describe("on-chain verification status", () => {
+    it("maps a fresh wallet to none and an on-chain false decision to rejected", () => {
+      expect(verificationStatus(false, false)).toBe("none");
+      expect(verificationStatus(false, false, false)).toBe("rejected");
     });
-
-    it("renders submit action for new guest with status none", () => {
-      const state = getVerificationUiState("none", false);
-      expect(state.showBlock).toBe(true);
-      expect(state.canSubmit).toBe(true);
-      expect(state.actionLabel).toBe("REQUEST VERIFICATION");
-    });
-
-    it("renders pending chip and disables submit for status pending", () => {
-      const state = getVerificationUiState("pending", false);
-      expect(state.showBlock).toBe(true);
-      expect(state.canSubmit).toBe(false);
-      expect(state.chip).toBe("PENDING APPROVAL");
-    });
-
-    it("renders rejected chip and allows request again for status rejected", () => {
-      const state = getVerificationUiState("rejected", false);
-      expect(state.showBlock).toBe(true);
-      expect(state.canSubmit).toBe(true);
-      expect(state.actionLabel).toBe("REQUEST AGAIN");
-      expect(state.chip).toBe("REJECTED");
+    it("prioritizes live whitelist and pending state over old rejection events", () => {
+      expect(verificationStatus(true, false, false)).toBe("approved");
+      expect(verificationStatus(false, true, false)).toBe("pending");
     });
   });
 });

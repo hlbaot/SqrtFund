@@ -1,5 +1,7 @@
 "use client";
 
+import { AOSInit } from "@/components/common/AOSInit";
+
 import React from "react";
 import { ProjectForm } from "@/components/project/ProjectForm";
 import { useLocale } from "@/lib/context/locale";
@@ -10,6 +12,7 @@ export function RegisterView() {
 
   return (
     <Container className="py-8 sm:py-10 space-y-8">
+      <AOSInit />
       <div data-aos="fade-down" data-aos-duration="600">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
           {t.register.title}

@@ -464,6 +464,25 @@ contract QFRoundTest is Test {
         round.setWhitelistBatch(users, statuses);
     }
 
+    function test_RejectedVerificationCanRetryImmediately() public {
+        // The existing contract deliberately has no retry cooldown.
+        address student = address(0x888);
+        vm.prank(student);
+        round.requestVerification();
+        vm.prank(admin);
+        round.setWhitelist(student, false);
+        assertFalse(round.requested(student));
+        assertFalse(round.isWhitelisted(student));
+        (, uint256 count) = round.getRequesters(0, 20);
+        assertEq(count, 0);
+        vm.prank(student);
+        round.requestVerification();
+        assertTrue(round.requested(student));
+        (address[] memory requests, uint256 newCount) = round.getRequesters(0, 20);
+        assertEq(newCount, 1);
+        assertEq(requests[0], student);
+    }
+
     // --- Batch Whitelist ---
 
     function test_BatchWhitelist() public {

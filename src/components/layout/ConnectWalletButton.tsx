@@ -10,11 +10,12 @@ import { Wallet, LogOut, ChevronDown, Check, Copy, Loader2, Pencil, AlertCircle 
 import { AvatarPickerDialog } from "./AvatarPickerDialog";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAvatar } from "@/hooks/useAvatar";
-import { shortAddress } from "@/lib/format";
+import { shortAddress, formatCooldown } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
 import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 import { useVerificationRequest } from "@/hooks/useVerificationRequest";
+import { useClaim } from "@/hooks/useClaim";
 import { TARGET_CHAIN_ID, usdcAddress } from "@/lib/contracts/addresses";
 import { mockUsdcAbi } from "@/lib/contracts/abis";
 import { txToast } from "@/lib/txToast";
@@ -35,6 +36,7 @@ export function ConnectWalletButton() {
   const { t, locale } = useLocale();
   const { role, isReady } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
+  const { canClaim, remainingSeconds } = useClaim();
   const { status: verifyStatus, isSubmitting: isSubmittingVerify, submit: submitVerify } = useVerificationRequest();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
@@ -50,6 +52,10 @@ export function ConnectWalletButton() {
   const menuId = useId();
   const closeAvatarPicker = useCallback(() => {
     setAvatarPickerOpen(false);
+    window.requestAnimationFrame(() => trigger.current?.focus());
+  }, []);
+  const closeVerificationDialog = useCallback(() => {
+    setIsConfirmDialogOpen(false);
     window.requestAnimationFrame(() => trigger.current?.focus());
   }, []);
   const openAvatarPicker = () => {
@@ -88,13 +94,25 @@ export function ConnectWalletButton() {
     return () => { window.removeEventListener("resize", reposition); window.removeEventListener("scroll", reposition, true); document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
   }, [dropdownOpen]);
 
+  const isReadyRef = useRef(isReady);
+  useEffect(() => {
+    isReadyRef.current = isReady;
+  }, [isReady]);
+
   const handleConnect = async () => {
     const connector = connectors.find(c => c.id === "app.core.extension" || /core/i.test(c.name)) ?? connectors.find(c => c.id === "injected") ?? connectors[0];
     if (!connector) { txToast.error("wallet-connect", t.wallet.connectionFailed, t.wallet.walletMissing); return; }
     try {
       await connectAsync({ connector, chainId: TARGET_CHAIN_ID });
       markWalletConnected();
-      if (mounted.current) txToast.success("wallet-connect", t.wallet.connected);
+
+      // Wait up to 1500ms for role to resolve so toast and profile appear smoothly together
+      const start = Date.now();
+      while (!isReadyRef.current && Date.now() - start < 1500) {
+        await new Promise(r => setTimeout(r, 50));
+      }
+
+      if (mounted.current) txToast.success("wallet-connect", t.wallet.connected, undefined, undefined, 3000);
     } catch (error) {
       if (mounted.current) txToast.error("wallet-connect", isUserRejected(error) ? t.wallet.connectionRejected : t.wallet.connectionFailed, getContractErrorMessage(error, locale));
     }
@@ -111,17 +129,19 @@ export function ConnectWalletButton() {
 
   if (!isConnected || !address) {
     return (
-      <GradientBorder className="inline-flex rounded-sm">
-        <Button variant="ghost" size="sm" onClick={handleConnect} disabled={isConnecting} className="text-foreground font-bold">
-          {isConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Wallet className="h-3.5 w-3.5" aria-hidden="true" />}
-          {isConnecting ? t.wallet.connecting : t.nav.connectWallet}
-        </Button>
-      </GradientBorder>
+      <div className="flex min-h-10 min-w-[170px] items-center justify-end transition-opacity duration-200 ease-in-out">
+        <GradientBorder className="inline-flex rounded-sm">
+          <Button variant="ghost" size="sm" onClick={handleConnect} disabled={isConnecting} className="text-foreground font-bold">
+            {isConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Wallet className="h-3.5 w-3.5" aria-hidden="true" />}
+            {isConnecting ? t.wallet.connecting : t.nav.connectWallet}
+          </Button>
+        </GradientBorder>
+      </div>
     );
   }
 
   return (
-    <div ref={root} className="relative min-w-0 max-w-full" onBlur={event => {
+    <div ref={root} className="relative flex min-h-10 min-w-[170px] items-center justify-end transition-opacity duration-200 ease-in-out" onBlur={event => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !panel.current?.contains(event.relatedTarget as Node | null)) setDropdownOpen(false);
     }}>
       <button ref={trigger} type="button" onClick={() => { const rect = trigger.current?.getBoundingClientRect(); if (rect) setPosition({ top: rect.bottom + 8, right: Math.max(16, window.innerWidth - rect.right) }); setDropdownOpen(open => !open); }} aria-label={t.wallet.profile}
@@ -164,7 +184,7 @@ export function ConnectWalletButton() {
           </div>}
 
           {/* Student Verification section for non-admin, non-student wallets */}
-          {isReady && role !== "admin" && role !== "student" && (
+          {isReady && role !== "admin" && role !== "student" && verifyStatus !== "approved" && (
             <div className="mb-3 space-y-2 border-b border-line pb-3">
               <span className="mono-label text-[10px] text-muted uppercase tracking-wider block">
                 {t.verification.title}
@@ -222,7 +242,22 @@ export function ConnectWalletButton() {
           <div className="space-y-1">
             {isReady && role === "admin" && <Link href="/admin" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.nav.admin}<NotificationBadge count={counts.admin} /></Link>}
             <Link href="/my" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.wallet.myProjects}<NotificationBadge count={counts.owner} /></Link>
-            {isReady && role === "student" && <Link href="/my#claim-usdc" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.wallet.claimUsdc}<NotificationBadge count={counts.student} /></Link>}
+            {isReady && role === "student" && (
+              <Link
+                href="/my#claim-usdc"
+                onClick={() => setDropdownOpen(false)}
+                className="mono-label flex items-center justify-between px-2 py-2 hover:bg-surface"
+              >
+                <span>{t.wallet.claimUsdc}</span>
+                {canClaim ? (
+                  <NotificationBadge count={counts.student} />
+                ) : (
+                  <span className="tabular-mono text-[10px] text-muted border border-line px-1.5 py-0.5 rounded">
+                    IN {formatCooldown(remainingSeconds)}
+                  </span>
+                )}
+              </Link>
+            )}
           </div>
           <button type="button" onClick={() => { setDropdownOpen(false); void logoutWallet(disconnectAsync, queryClient).catch(() => { }); }} className="mono-label mt-3 flex w-full items-center gap-2 border-t border-line px-2 pt-4 pb-1 text-primary hover:bg-primary/10">
             <LogOut className="h-3.5 w-3.5" />{t.nav.disconnect}
@@ -233,12 +268,13 @@ export function ConnectWalletButton() {
       {isConfirmDialogOpen && (
         <Dialog
           isOpen={isConfirmDialogOpen}
-          onClose={() => setIsConfirmDialogOpen(false)}
+          onClose={closeVerificationDialog}
           title={t.verification.title}
           description={t.verification.confirmDesc}
         >
           <div className="space-y-4 pt-2">
             <div className="border border-line bg-surface p-3 space-y-1">
+              <Avatar address={address} size={48} avatarId={avatar} />
               <span className="mono-label text-[10px] text-muted block uppercase">
                 {t.verification.addressToVerify}
               </span>

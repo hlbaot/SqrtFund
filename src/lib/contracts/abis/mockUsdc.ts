@@ -431,5 +431,16 @@ export const mockUsdcAbi = [
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "ClaimCooldown",
+    "inputs": [
+      {
+        "name": "nextClaimAt",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   }
 ] as const;

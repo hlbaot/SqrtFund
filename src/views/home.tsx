@@ -1,5 +1,7 @@
 "use client";
 
+import { AOSInit } from "@/components/common/AOSInit";
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -240,8 +242,6 @@ export function HomeView() {
 
     const updateActiveSection = () => {
       frame = null;
-      // The splash temporarily collapses the document to one viewport. It must
-      // not count as reaching the bottom of the actual home page.
       if (document.documentElement.classList.contains("splash-active")) return;
       const sections = sectionIds.flatMap(id => {
         const element = document.getElementById(id);
@@ -379,6 +379,7 @@ export function HomeView() {
 
   return (
     <div ref={pageRef} className="relative space-y-0">
+      <AOSInit />
       {/* Side dot navigation: visible only from xl (1280px+) screens where safe right margins exist */}
       <nav
         aria-label={t.homeIntro.sectionNavLabel}

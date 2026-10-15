@@ -1,93 +1,327 @@
 "use client";
 
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useAccount, useChainId, useReadContracts, useWriteContract, usePublicClient } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
+import { TARGET_CHAIN_ID, usdcAddress } from "@/lib/contracts/addresses";
+import { mockUsdcAbi, qfRoundAbi } from "@/lib/contracts/abis";
+import { useRound } from "@/hooks/useRound";
 import { useLocale } from "@/lib/context/locale";
 import { useTxFlow } from "@/hooks/useTxFlow";
-
-import { useState } from "react";
-import { useWriteContract, usePublicClient, useAccount, useChainId, useReadContracts } from "wagmi";
 import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
-import { TARGET_CHAIN_ID, usdcAddress } from "@/lib/contracts/addresses";
-import { qfRoundAbi, mockUsdcAbi } from "@/lib/contracts/abis";
-import { useRound } from "@/hooks/useRound";
+import { calculateRemainingSeconds, calculateCanClaim } from "@/lib/format";
 
 export function useClaim() {
   const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: TARGET_CHAIN_ID });
+  const queryClient = useQueryClient();
   const { address, isConnected, chainId: accountChainId } = useAccount();
   const configChainId = useChainId();
   const chainId = accountChainId ?? configChainId;
-  const now = useCurrentTimestamp();
-  const { data: faucet } = useReadContracts({
-    contracts: [
-      { address: usdcAddress, abi: mockUsdcAbi, functionName: "lastFaucetMint", args: address ? [address] : undefined },
-      { address: usdcAddress, abi: mockUsdcAbi, functionName: "lifetimeMinted", args: address ? [address] : undefined },
-      { address: usdcAddress, abi: mockUsdcAbi, functionName: "FAUCET_AMOUNT" },
-      { address: usdcAddress, abi: mockUsdcAbi, functionName: "FAUCET_COOLDOWN" },
-      { address: usdcAddress, abi: mockUsdcAbi, functionName: "LIFETIME_CAP" },
-    ],
-    query: { enabled: Boolean(address && isConnected && usdcAddress && chainId === TARGET_CHAIN_ID), refetchInterval: 30_000 },
-  });
-  const values = faucet?.map(item => item.status === "success" ? item.result as bigint : undefined);
-  const [lastMint, minted, amount, cooldown, cap] = values ?? [];
-  const claimableUsdc = lastMint !== undefined && minted !== undefined && amount !== undefined && cooldown !== undefined && cap !== undefined && now > 0 &&
-    (lastMint === 0n || BigInt(now) >= lastMint + cooldown) && minted + amount <= cap ? Number(amount) / 1_000_000 : 0;
   const { writeContractAsync } = useWriteContract();
   const { roundAddress } = useRound();
-  const [isPending, setIsPending] = useState(false);
 
-  const claim = async (projectId: bigint) => {
-    const flow = beginFlow();
-    if (!roundAddress || !publicClient) return false;
+  const [isClaimingUsdc, setIsClaimingUsdc] = useState(false);
+  const [isPendingMatching, setIsPendingMatching] = useState(false);
+  const nowSec = useCurrentTimestamp();
 
-    const toastId = `claim-${projectId}`;
-    setIsPending(true);
+  const [clockSkew, setClockSkew] = useState(0);
+  const prevRemainingRef = useRef<number | null>(null);
+
+  const isTargetChain = chainId === TARGET_CHAIN_ID;
+  const enabled = Boolean(address && isConnected && usdcAddress && isTargetChain);
+
+  // 1. Fetch on-chain faucet configuration & user claim status
+  const {
+    data: faucetData,
+    isLoading: isReading,
+    refetch,
+  } = useReadContracts({
+    contracts: [
+      {
+        address: usdcAddress,
+        abi: mockUsdcAbi,
+        functionName: "lastFaucetMint",
+        args: address ? [address] : undefined,
+      },
+      {
+        address: usdcAddress,
+        abi: mockUsdcAbi,
+        functionName: "FAUCET_COOLDOWN",
+      },
+      {
+        address: usdcAddress,
+        abi: mockUsdcAbi,
+        functionName: "lifetimeMinted",
+        args: address ? [address] : undefined,
+      },
+      {
+        address: usdcAddress,
+        abi: mockUsdcAbi,
+        functionName: "FAUCET_AMOUNT",
+      },
+      {
+        address: usdcAddress,
+        abi: mockUsdcAbi,
+        functionName: "LIFETIME_CAP",
+      },
+    ],
+    query: {
+      enabled,
+      refetchInterval: 15_000,
+      refetchOnWindowFocus: true,
+    },
+  });
+
+  const lastMint = faucetData?.[0]?.result as bigint | undefined;
+  const cooldown = faucetData?.[1]?.result as bigint | undefined;
+  const lifetimeMinted = faucetData?.[2]?.result as bigint | undefined;
+  const amount = faucetData?.[3]?.result as bigint | undefined;
+  const cap = faucetData?.[4]?.result as bigint | undefined;
+
+  const cooldownDuration = cooldown !== undefined ? Number(cooldown) : 3600;
+
+  // Calculate nextClaimAt (seconds)
+  const nextClaimAt =
+    lastMint !== undefined && lastMint > 0n && cooldown !== undefined
+      ? Number(lastMint + cooldown)
+      : 0;
+
+  // 2. Calibrate clock skew against latest block once
+  useEffect(() => {
+    let cancelled = false;
+    if (!publicClient) return;
+
+    publicClient
+      .getBlock({ blockTag: "latest" })
+      .then((block) => {
+        if (cancelled) return;
+        const blockTimestampSec = Number(block.timestamp);
+        const localNowSec = Math.floor(Date.now() / 1000);
+        setClockSkew(blockTimestampSec - localNowSec);
+      })
+      .catch(() => {
+        // Fallback to local clock
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [publicClient]);
+
+  const currentNowSec = nowSec > 0 ? nowSec + clockSkew : 0;
+  const remainingSeconds =
+    nowSec > 0 && nextClaimAt > 0
+      ? calculateRemainingSeconds(nextClaimAt, currentNowSec)
+      : 0;
+
+  // Trigger refetch when countdown reaches 0
+  useEffect(() => {
+    if (
+      prevRemainingRef.current !== null &&
+      prevRemainingRef.current > 0 &&
+      remainingSeconds === 0 &&
+      nowSec > 0
+    ) {
+      void refetch();
+    }
+    if (nowSec > 0) {
+      prevRemainingRef.current = remainingSeconds;
+    }
+  }, [remainingSeconds, nowSec, refetch]);
+
+  const hasFaucetData = lastMint !== undefined && cooldown !== undefined &&
+    lifetimeMinted !== undefined && amount !== undefined && cap !== undefined;
+  const canClaim = enabled && hasFaucetData && nowSec > 0 && !isClaimingUsdc && calculateCanClaim({
+    isConnected,
+    nextClaimAt,
+    remainingSeconds,
+    lifetimeMinted,
+    amount,
+    cap,
+  });
+
+  // 4. Claim 100 test USDC from faucet
+  const claimUsdc = useCallback(async () => {
+    const flow = beginFlow("claim-usdc");
+    const toastId = "claim-usdc";
+    if (!address || !publicClient || !canClaim) {
+      flow.finish();
+      return false;
+    }
+
+    setIsClaimingUsdc(true);
     try {
       flow.toast.pending(
         toastId,
-        t.transactions.claiming,
-        t.transactions.signClaim
+        locale === "vi" ? "Đang nhận 100 USDC test..." : "Claiming 100 test USDC...",
+        locale === "vi"
+          ? "Vui lòng xác nhận giao dịch trong ví của bạn."
+          : "Please confirm the transaction in your wallet."
       );
 
-      const hash = await flow.wait(() => writeContractAsync({
-        address: roundAddress,
-        abi: qfRoundAbi,
-        functionName: "claim",
-        args: [projectId],
-      }));
+      const hash = await flow.wait(() =>
+        writeContractAsync({
+          address: usdcAddress,
+          abi: mockUsdcAbi,
+          functionName: "faucetMint",
+        })
+      );
 
       flow.toast.pending(
         toastId,
-        t.transactions.confirmingClaim,
-        t.transactions.confirming,
+        locale === "vi" ? "Đang xác nhận nhận USDC..." : "Confirming faucet mint...",
+        locale === "vi"
+          ? "Đang chờ xác nhận khối trên Avalanche Fuji."
+          : "Waiting for block confirmation on Avalanche Fuji.",
         hash
       );
 
-      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
+      const receipt = await flow.wait(
+        () => publicClient.waitForTransactionReceipt({ hash }),
+        120_000
+      );
 
       if (receipt.status !== "success") {
-        throw new Error("Claim transaction reverted.");
+        throw new Error("faucetMint transaction reverted.");
       }
 
       flow.toast.success(
         toastId,
-        t.transactions.claimSuccess,
-        t.transactions.claimSuccessDescription,
+        t.faucet.claimedSuccess,
+        locale === "vi"
+          ? "100 USDC testnet đã được cộng vào ví của bạn."
+          : "100 testnet USDC has been credited to your wallet.",
         hash
       );
+
+      // Instant refresh of cooldown & balance queries
+      await Promise.all([
+        refetch(),
+        queryClient.invalidateQueries(),
+      ]);
 
       return true;
     } catch (err: unknown) {
       if (flow.cancelled) return false;
-      flow.error(toastId, err, t.transactions.claimFailed, locale);
+      flow.error(
+        toastId,
+        err,
+        locale === "vi" ? "Nhận USDC thất bại" : "Claim failed",
+        locale
+      );
+      // If error might be due to cooldown, trigger a fast refetch to update local state
+      void refetch();
       return false;
     } finally {
       flow.finish();
       if (!flow.cancelled) {
-        setIsPending(false);
+        setIsClaimingUsdc(false);
       }
     }
-  };
+  }, [
+    address,
+    canClaim,
+    publicClient,
+    beginFlow,
+    locale,
+    writeContractAsync,
+    t.faucet.claimedSuccess,
+    refetch,
+    queryClient,
+  ]);
 
-  return { claim, isPending, claimableUsdc };
+  // 5. Claim project matching funds
+  const claimMatching = useCallback(
+    async (projectId: bigint) => {
+      const flow = beginFlow(`claim-${projectId}`);
+      if (!roundAddress || !publicClient) return false;
+
+      const toastId = `claim-${projectId}`;
+      setIsPendingMatching(true);
+      try {
+        flow.toast.pending(toastId, t.transactions.claiming, t.transactions.signClaim);
+
+        const hash = await flow.wait(() =>
+          writeContractAsync({
+            address: roundAddress,
+            abi: qfRoundAbi,
+            functionName: "claim",
+            args: [projectId],
+          })
+        );
+
+        flow.toast.pending(
+          toastId,
+          t.transactions.confirmingClaim,
+          t.transactions.confirming,
+          hash
+        );
+
+        const receipt = await flow.wait(
+          () => publicClient.waitForTransactionReceipt({ hash }),
+          120_000
+        );
+
+        if (receipt.status !== "success") {
+          throw new Error("Claim transaction reverted.");
+        }
+
+        flow.toast.success(
+          toastId,
+          t.transactions.claimSuccess,
+          t.transactions.claimSuccessDescription,
+          hash
+        );
+
+        await queryClient.invalidateQueries();
+        return true;
+      } catch (err: unknown) {
+        if (flow.cancelled) return false;
+        flow.error(toastId, err, t.transactions.claimFailed, locale);
+        return false;
+      } finally {
+        flow.finish();
+        if (!flow.cancelled) {
+          setIsPendingMatching(false);
+        }
+      }
+    },
+    [
+      beginFlow,
+      roundAddress,
+      publicClient,
+      t.transactions,
+      writeContractAsync,
+      queryClient,
+      locale,
+    ]
+  );
+
+  // Overloaded claim dispatcher
+  const claim = useCallback(
+    async (projectId?: bigint) => {
+      if (typeof projectId === "bigint") {
+        return claimMatching(projectId);
+      }
+      return claimUsdc();
+    },
+    [claimMatching, claimUsdc]
+  );
+
+  return {
+    canClaim,
+    nextClaimAt,
+    remainingSeconds,
+    cooldownDuration,
+    isLoading: enabled && (isReading || nowSec === 0),
+    claim,
+    claimUsdc,
+    claimMatching,
+    isClaiming: isClaimingUsdc || isPendingMatching,
+    isPending: isPendingMatching,
+    claimableUsdc: canClaim ? 1 : 0,
+    refetch,
+  };
 }

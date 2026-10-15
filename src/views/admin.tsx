@@ -1,5 +1,7 @@
 "use client";
 
+import { AOSInit } from "@/components/common/AOSInit";
+
 import { useTxFlow } from "@/hooks/useTxFlow";
 
 import { useRouter } from "next/navigation";
@@ -187,6 +189,7 @@ export function AdminView() {
 
   return (
     <Container className="py-8 sm:py-10 space-y-8">
+      <AOSInit />
       {/* Admin Header with FinalizeButton */}
       <div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-6"

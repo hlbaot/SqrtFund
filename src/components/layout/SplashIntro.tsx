@@ -1,93 +1,31 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { copy } from "@/lib/copy";
 
 const splashCopy = copy.en.splashIntro;
 
+function finishSplash() {
+  document.documentElement.classList.remove("splash-active");
+  window.dispatchEvent(new Event("splash-intro-finished"));
+}
+
 export function SplashIntro() {
-  const pathname = usePathname();
-  const isHome = pathname === "/";
-  const [dismissed, setDismissed] = useState(false);
-
-  const finishSplash = () => {
-    if (typeof document !== "undefined") {
-      document.documentElement.classList.remove("splash-active");
-    }
-    setDismissed(true);
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("splash-intro-finished"));
-    }
-  };
-
   useEffect(() => {
-    if (!isHome || dismissed) {
-      if (typeof document !== "undefined") {
-        document.documentElement.classList.remove("splash-active");
-      }
-      return;
-    }
+    if (!document.documentElement.classList.contains("splash-active")) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(finishSplash, reducedMotion ? 800 : 3000);
+    return () => { window.clearTimeout(timer); };
+  }, []);
 
-    if (typeof document !== "undefined") {
-      document.documentElement.classList.add("splash-active");
-    }
-    if (typeof window !== "undefined") {
-      window.scrollTo(0, 0);
-    }
-
-    const preventScroll = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    const preventKeyScroll = (e: KeyboardEvent) => {
-      const scrollKeys = [
-        "ArrowUp",
-        "ArrowDown",
-        "ArrowLeft",
-        "ArrowRight",
-        "Space",
-        " ",
-        "PageUp",
-        "PageDown",
-        "End",
-        "Home",
-      ];
-      if (scrollKeys.includes(e.key)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    window.addEventListener("wheel", preventScroll, { passive: false });
-    window.addEventListener("touchmove", preventScroll, { passive: false });
-    window.addEventListener("keydown", preventKeyScroll, { passive: false });
-
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const duration = prefersReducedMotion ? 800 : 3000;
-    const finishTimer = window.setTimeout(finishSplash, duration);
-
-    return () => {
-      window.clearTimeout(finishTimer);
-      window.removeEventListener("wheel", preventScroll);
-      window.removeEventListener("touchmove", preventScroll);
-      window.removeEventListener("keydown", preventKeyScroll);
-      if (typeof document !== "undefined") {
-        document.documentElement.classList.remove("splash-active");
-      }
-    };
-  }, [isHome, dismissed]);
-
-  if (!isHome || dismissed) return null;
-
+  // Static markup lets the head bootstrap show the intro before hydration.
   return (
     <div
       role="status"
       aria-label={splashCopy.ariaLabel}
       onClick={finishSplash}
-      className="splash-intro fixed inset-0 z-[2147483647] flex cursor-pointer select-none items-center justify-center overflow-hidden bg-bg px-[max(1.25rem,env(safe-area-inset-left))] py-[max(1.25rem,env(safe-area-inset-top))]"
+      className="splash-intro fixed inset-0 z-[2147483647] cursor-pointer select-none items-center justify-center overflow-hidden bg-bg px-[max(1.25rem,env(safe-area-inset-left))] py-[max(1.25rem,env(safe-area-inset-top))]"
     >
       <div className="splash-grid absolute inset-0" aria-hidden="true" />
       <div className="splash-glow absolute inset-0" aria-hidden="true" />

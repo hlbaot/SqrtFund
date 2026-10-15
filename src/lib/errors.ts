@@ -1,4 +1,5 @@
 import { ContractFunctionRevertedError, BaseError } from "viem";
+import { formatCooldown } from "@/lib/format";
 
 export const ERROR_SELECTORS: Record<string, string> = {
   // OpenZeppelin ERC20
@@ -47,6 +48,8 @@ export const ERROR_SELECTORS: Record<string, string> = {
   "0x21a5cdc3": "FinalizeGracePeriodActive",
   "0x1f2a2005": "ZeroAmount",
   "0x85d9f78c": "FaucetCooldownActive",
+  "0x1bb26aff": "FaucetCooldownActive",
+  "0x9bacae1e": "ClaimCooldown",
   "0x37583762": "FaucetCapExceeded",
 };
 
@@ -90,7 +93,8 @@ export const ERROR_MESSAGES_EN: Record<string, string> = {
   UrlTooLong: "Image or website URL exceeds the 200 character limit.",
   BatchTooLarge: "Batch operation exceeds the maximum allowed size (50 addresses).",
   BatchLengthMismatch: "Account addresses and approval status array lengths do not match.",
-  FaucetCooldownActive: "Faucet cooldown is active (1 hour). Please try again later.",
+  FaucetCooldownActive: "Faucet cooldown is active. Please try again later.",
+  ClaimCooldown: "Cooldown not finished, try again later.",
   FaucetCapExceeded: "Lifetime faucet limit of 1,000 USDC reached for this wallet.",
   FinalizeGracePeriodActive:
     "Finalization is restricted to the admin during the 24-hour grace period following round end.",
@@ -141,7 +145,8 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
   UrlTooLong: "Đường dẫn hình ảnh hoặc website vượt quá độ dài tối đa (200 ký tự).",
   BatchTooLarge: "Thao tác theo lô vượt quá số lượng tối đa cho phép (50).",
   BatchLengthMismatch: "Danh sách địa chỉ và trạng thái không khớp độ dài.",
-  FaucetCooldownActive: "Faucet đang trong thời gian chờ (1 giờ). Vui lòng thử lại sau.",
+  FaucetCooldownActive: "Faucet đang trong thời gian chờ. Vui lòng thử lại sau.",
+  ClaimCooldown: "Chưa hết thời gian chờ, thử lại sau.",
   FaucetCapExceeded: "Ví đã đạt hạn mức nhận tối đa 1,000 USDC từ Faucet.",
   FinalizeGracePeriodActive:
     "Trong vòng 24 giờ sau khi kết thúc, chỉ có Admin mới được quyền Finalize.",
@@ -224,6 +229,27 @@ export function getContractErrorMessage(error: unknown, locale: "en" | "vi" = "e
       if (lowerMessage.includes(name.toLowerCase())) {
         errorName = name;
         break;
+      }
+    }
+  }
+
+  if (errorName && (errorName === "FaucetCooldownActive" || errorName === "ClaimCooldown")) {
+    let nextAt: number | undefined;
+    if (error instanceof BaseError) {
+      const revertError = error.walk((err) => err instanceof ContractFunctionRevertedError) as
+        | ContractFunctionRevertedError
+        | undefined;
+      const rawArg = revertError?.data?.args?.[0];
+      if (typeof rawArg === "bigint" || typeof rawArg === "number") {
+        nextAt = Number(rawArg);
+      }
+    }
+    if (nextAt && nextAt > 0) {
+      const diff = Math.max(0, nextAt - Math.floor(Date.now() / 1000));
+      if (diff > 0) {
+        return locale === "vi"
+          ? `Chưa hết thời gian chờ, thử lại sau ${formatCooldown(diff)}`
+          : `Cooldown not finished, try again in ${formatCooldown(diff)}`;
       }
     }
   }

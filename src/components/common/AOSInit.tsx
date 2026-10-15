@@ -10,8 +10,6 @@ export function AOSInit() {
   const isInitializedRef = useRef(false);
 
   useEffect(() => {
-    const isHome = pathname === "/";
-
     const triggerAOS = () => {
       if (!isInitializedRef.current) {
         AOS.init({
@@ -27,35 +25,10 @@ export function AOSInit() {
       }
     };
 
-    // If on home, check if splash intro is currently active in the DOM
-    const splashEl = typeof document !== "undefined" ? document.querySelector(".splash-intro") : null;
-    if (isHome && splashEl) {
-      let fired = false;
-      const onSplashFinish = () => {
-        if (fired) return;
-        fired = true;
-        window.removeEventListener("splash-intro-finished", onSplashFinish);
-        // Small delay to ensure the splash overlay is completely gone from view
-        setTimeout(() => {
-          triggerAOS();
-        }, 80);
-      };
-
-      window.addEventListener("splash-intro-finished", onSplashFinish);
-
-      // Safety fallback in case event was missed or delayed
-      const fallbackTimer = setTimeout(() => {
-        onSplashFinish();
-      }, 3500);
-
-      return () => {
-        window.removeEventListener("splash-intro-finished", onSplashFinish);
-        clearTimeout(fallbackTimer);
-      };
-    } else {
-      // Non-home page or splash already dismissed
-      triggerAOS();
-    }
+    const onIntroFinished = () => { triggerAOS(); };
+    window.addEventListener("splash-intro-finished", onIntroFinished);
+    if (!document.documentElement.classList.contains("splash-active")) triggerAOS();
+    return () => { window.removeEventListener("splash-intro-finished", onIntroFinished); };
   }, [pathname]);
 
   return null;

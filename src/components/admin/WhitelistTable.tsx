@@ -5,6 +5,9 @@ import { useWriteContract, usePublicClient } from "wagmi";
 import { isAddress, type Address } from "viem";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
+import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
+import { useQueryClient } from "@tanstack/react-query";
+import { Avatar } from "@/components/ui/Avatar";
 import { useTxFlow } from "@/hooks/useTxFlow";
 import { useLocale } from "@/lib/context/locale";
 import { usePendingRequests } from "@/hooks/usePendingRequests";
@@ -19,6 +22,8 @@ import { Check, X, UserPlus, Copy, CheckCheck, Loader2 } from "lucide-react";
 
 export function WhitelistTable() {
   const beginFlow = useTxFlow();
+  const now = useCurrentTimestamp();
+  const queryClient = useQueryClient();
   const { t, locale } = useLocale();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
@@ -49,17 +54,17 @@ export function WhitelistTable() {
       if (next.has(addr)) {
         next.delete(addr);
       } else {
-        next.add(addr);
+        if (next.size < 50) next.add(addr);
       }
       return next;
     });
   };
 
   const toggleSelectAll = () => {
-    if (selectedAddresses.size === requesters.length && requesters.length > 0) {
+    if (requesters.length > 0 && requesters.slice(0, 50).every(account => selectedAddresses.has(account))) {
       setSelectedAddresses(new Set());
     } else {
-      setSelectedAddresses(new Set(requesters));
+      setSelectedAddresses(new Set(requesters.slice(0, 50)));
     }
   };
 
@@ -120,7 +125,8 @@ export function WhitelistTable() {
         return next;
       });
 
-      refetch();
+      await flow.wait(() => Promise.all([refetch(), queryClient.invalidateQueries()]));
+      return true;
     } catch (err: unknown) {
       if (flow.cancelled) return false;
       flow.error(
@@ -129,6 +135,7 @@ export function WhitelistTable() {
         locale === "vi" ? "Cập nhật danh sách thất bại" : "Whitelist update failed",
         locale
       );
+      return false;
     } finally {
       flow.finish();
       if (!flow.cancelled) {
@@ -142,7 +149,8 @@ export function WhitelistTable() {
 
     const flow = beginFlow("approve-batch");
     const toastId = "approve-batch";
-    const accounts = Array.from(selectedAddresses);
+    const accounts = Array.from(selectedAddresses).filter(account => requesters.includes(account)).slice(0, 50);
+    if (accounts.length === 0) { flow.finish(); return; }
     const statuses = Array(accounts.length).fill(true);
 
     setPendingActionId(toastId);
@@ -183,8 +191,8 @@ export function WhitelistTable() {
         hash
       );
 
-      setSelectedAddresses(new Set());
-      refetch();
+      setSelectedAddresses(previous => new Set([...previous].filter(account => !accounts.includes(account))));
+      await flow.wait(() => Promise.all([refetch(), queryClient.invalidateQueries()]));
     } catch (err: unknown) {
       if (flow.cancelled) return false;
       flow.error(
@@ -217,40 +225,30 @@ export function WhitelistTable() {
 
     if (!roundAddress || !publicClient) return;
 
+    const flow = beginFlow("manual-whitelist");
+    setIsManualPending(true);
     try {
-      const alreadyWhitelisted = await publicClient.readContract({
+      const alreadyWhitelisted = await flow.wait(() => publicClient.readContract({
         address: roundAddress,
         abi: qfRoundAbi,
         functionName: "isWhitelisted",
         args: [trimmed as Address],
-      });
-
+      }));
       if (alreadyWhitelisted) {
-        txToast.error(
-          manualToastId,
-          locale === "vi" ? "Đã được whitelist" : "Already Whitelisted",
-          t.verification.alreadyWhitelisted
-        );
+        flow.toast.error(manualToastId, t.verification.alreadyWhitelisted);
         return;
       }
-    } catch {
-      // Continue to setWhitelist
-    }
-
-    const flow = beginFlow("manual-whitelist");
-    setIsManualPending(true);
-    try {
-      await flow.wait(() => handleSetWhitelist(trimmed as Address, true));
-      setManualAddress("");
-    } catch {
-      // Managed in handleSetWhitelist
+      const succeeded = await flow.wait(() => handleSetWhitelist(trimmed as Address, true));
+      if (succeeded) setManualAddress("");
+    } catch (error) {
+      if (!flow.cancelled) flow.error(manualToastId, error, t.common.error, locale);
     } finally {
       flow.finish();
       if (!flow.cancelled) setIsManualPending(false);
     }
   };
 
-  const allSelected = requesters.length > 0 && selectedAddresses.size === requesters.length;
+  const allSelected = requesters.length > 0 && requesters.slice(0, 50).every(account => selectedAddresses.has(account));
 
   return (
     <div className="border border-line bg-surface p-6 space-y-5">
@@ -260,7 +258,7 @@ export function WhitelistTable() {
             {t.admin.whitelistTitle}
           </h3>
           <p className="text-xs text-muted">
-            Pending student verification requests on Avalanche Fuji (max 500 in queue).
+            {t.verification.queueDescription}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -287,7 +285,7 @@ export function WhitelistTable() {
       <form onSubmit={handleManualAdd} className="flex gap-2 items-center">
         <div className="flex-1">
           <Input
-            placeholder="Direct whitelist wallet (0x...)"
+            placeholder={t.verification.directWallet}
             value={manualAddress}
             onChange={(e) => setManualAddress(e.target.value)}
           />
@@ -296,12 +294,12 @@ export function WhitelistTable() {
           type="submit"
           variant="secondary"
           size="sm"
-          disabled={isManualPending || !manualAddress.trim()}
+          disabled={isManualPending || Boolean(pendingActionId) || !manualAddress.trim()}
           isLoading={isManualPending}
           className="text-xs font-bold shrink-0"
         >
           <UserPlus className="h-3.5 w-3.5 mr-1" />
-          Add Whitelist
+          {t.verification.addWhitelist}
         </Button>
       </form>
 
@@ -329,12 +327,12 @@ export function WhitelistTable() {
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleSelectAll}
-                    aria-label="Select all requesters"
+                    aria-label={t.verification.selectAll}
                     className="h-4 w-4 rounded border-line bg-bg text-primary focus:ring-primary accent-primary cursor-pointer"
                   />
                 </TableHead>
                 <TableHead>{t.admin.colAddress}</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>{t.verification.time}</TableHead>
                 <TableHead>{t.admin.colStatus}</TableHead>
                 <TableHead className="text-right">{t.admin.colActions}</TableHead>
               </TableRow>
@@ -348,11 +346,9 @@ export function WhitelistTable() {
                 const isRejecting = pendingActionId === rejectToastId;
                 const isBusy = Boolean(pendingActionId);
                 const reqTime = requestedAt[lower];
-                const timeText = reqTime
-                  ? formatTimeAgo(reqTime, locale)
-                  : locale === "vi"
-                  ? "Vừa xong"
-                  : "Just now";
+                const timeText = reqTime && now > 0
+                  ? formatTimeAgo(reqTime, locale, now * 1000)
+                  : t.verification.unknownTime;
 
                 return (
                   <TableRow key={addr}>
@@ -360,20 +356,22 @@ export function WhitelistTable() {
                       <input
                         type="checkbox"
                         checked={selectedAddresses.has(addr)}
+                        disabled={!selectedAddresses.has(addr) && selectedAddresses.size >= 50}
                         onChange={() => toggleSelect(addr)}
-                        aria-label={`Select ${addr}`}
+                        aria-label={`${t.verification.selectRow} ${addr}`}
                         className="h-4 w-4 rounded border-line bg-bg text-primary focus:ring-primary accent-primary cursor-pointer"
                       />
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
+                        <Avatar address={addr} size={32} forceAuto />
                         <span className="font-mono text-xs font-medium text-foreground">
                           {shortAddress(addr)}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleCopy(addr)}
-                          title="Copy address"
+                          title={t.common.copyAddress}
                           className="text-muted hover:text-foreground transition-colors p-1"
                         >
                           {copiedAddr === addr ? (
@@ -433,7 +431,7 @@ export function WhitelistTable() {
                 onClick={() => setLimit((prev) => prev + 20n)}
                 className="text-xs"
               >
-                {locale === "vi" ? "Xem thêm" : "Load more"}
+                {t.verification.loadMore}
               </Button>
             </div>
           )}

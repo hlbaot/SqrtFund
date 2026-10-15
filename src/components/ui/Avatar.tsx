@@ -4,13 +4,14 @@ import { useState } from "react";
 import { AVATARS } from "@/config/avatars";
 import { useLocale } from "@/lib/context/locale";
 
-export function Avatar({ address, size = 40, avatarId = "auto" }: {
+export function Avatar({ address, size = 40, avatarId = "auto", forceAuto = false }: {
   address: string;
   size?: number;
   avatarId?: string;
+  forceAuto?: boolean;
 }) {
   const { t } = useLocale();
-  const item = AVATARS.find(avatar => avatar.id === avatarId);
+  const item = forceAuto ? undefined : AVATARS.find(avatar => avatar.id === avatarId);
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const hue = (parseInt(address.slice(2, 8), 16) || 0) % 360;
   const label = t.avatar.forAddress.replace("{address}", address);

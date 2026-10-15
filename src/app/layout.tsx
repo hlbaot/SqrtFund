@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro, JetBrains_Mono } from "next/font/google";
 import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
 import { SplashIntro } from "@/components/layout/SplashIntro";
-import { AOSInit } from "@/components/common/AOSInit";
+import { VISIT_INTRO_BOOTSTRAP } from "@/lib/visitIntro";
+import { Footer } from "@/components/layout/Footer";
 import { Suspense } from "react";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -33,25 +33,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${beVietnamPro.variable} ${jetBrainsMono.variable}`}>
+    // The bootstrap intentionally sets the intro class before React hydrates.
+    <html suppressHydrationWarning lang="en" className={`${beVietnamPro.variable} ${jetBrainsMono.variable}`}>
       <head>
-        <script
-          id="splash-lock"
-          dangerouslySetInnerHTML={{
-            __html:
-              "if(typeof window!=='undefined'&&window.location.pathname==='/'){document.documentElement.classList.add('splash-active');}",
-          }}
-        />
+        <script id="visit-intro" dangerouslySetInnerHTML={{ __html: VISIT_INTRO_BOOTSTRAP }} />
       </head>
       <body className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary selection:text-white">
-        <Suspense fallback={null}>
-          <SplashIntro />
-        </Suspense>
+        <SplashIntro />
         <div id="app-content" className="flex min-h-screen flex-col">
           <Providers>
-            <Suspense fallback={null}>
-              <AOSInit />
-            </Suspense>
             <Suspense fallback={<header className="h-16 border-b border-line bg-background" />}>
               <Navbar />
             </Suspense>

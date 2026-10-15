@@ -1,5 +1,7 @@
 "use client";
 
+import { AOSInit } from "@/components/common/AOSInit";
+
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -70,6 +72,7 @@ export function ProjectDetailView() {
 
   return (
     <Container className="py-8 sm:py-10 space-y-8 pb-24 lg:pb-8">
+      <AOSInit />
       {/* Back Link */}
       <div>
         <Link

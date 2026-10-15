@@ -1,3 +1,4 @@
+import { markVisitIntroSeen } from "@/lib/visitIntro";
 import type { QueryClient } from "@tanstack/react-query";
 import { cancelTransactionFlows, txToast } from "@/lib/txToast";
 import type { WalletRole } from "@/hooks/useRole";
@@ -34,6 +35,51 @@ function markWalletLoggedOut() {
 export function walletChanged(previous: WalletSnapshot, next: WalletSnapshot) {
   return previous.address?.toLowerCase() !== next.address?.toLowerCase() || previous.chainId !== next.chainId || previous.role !== next.role;
 }
+
+export interface WalletState {
+  address: string | null | undefined;
+  status: "connected" | "disconnected" | "connecting" | "reconnecting";
+  chainId?: number;
+  role?: WalletRole;
+}
+
+/**
+ * Pure state machine deciding whether the application must reload.
+ *
+ * Reload ONLY in two cases:
+ * 1. Disconnect (previously had address, now disconnected/null).
+ * 2. Address changed from A to B (different non-null addresses).
+ *
+ * NEVER reload for:
+ * - undefined/null -> address (initial connect or auto-reconnect).
+ * - status 'connecting' or 'reconnecting'.
+ * - role change (e.g. guest -> student/admin) or role loading.
+ * - chainId changes.
+ */
+export function shouldReload(
+  prev: WalletState | null,
+  next: WalletState
+): boolean {
+  if (!prev) return false;
+  if (next.status === "connecting" || next.status === "reconnecting") return false;
+
+  // Case 1: Disconnect (previously had an address, now disconnected)
+  if (prev.address && (next.status === "disconnected" || !next.address)) {
+    return true;
+  }
+
+  // Case 2: Address change A -> B (both non-null, different addresses)
+  if (
+    prev.address &&
+    next.address &&
+    prev.address.toLowerCase() !== next.address.toLowerCase()
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export function saveSessionValue(key: string, value: string) {
   try { window.sessionStorage.setItem(key, value); } catch { /* Storage may be disabled. */ }
 }
@@ -55,6 +101,8 @@ export function reloadWallet(snapshot: WalletSnapshot) {
   cancelTransactionFlows();
   txToast.dismiss();
   saveSessionValue(WALLET_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  if (snapshot.address) markWalletConnected();
+  markVisitIntroSeen();
   window.location.reload();
 }
 export async function logoutWallet(disconnect: () => Promise<unknown>, queryClient: QueryClient) {
@@ -70,6 +118,7 @@ export async function logoutWallet(disconnect: () => Promise<unknown>, queryClie
     try { clearWalletStorage(window.localStorage); } catch { /* Storage may be disabled. */ }
     try { clearWalletStorage(window.sessionStorage); } catch { /* Storage may be disabled. */ }
     saveSessionValue(WALLET_SNAPSHOT_KEY, JSON.stringify({ address: null, chainId: TARGET_CHAIN_ID, role: "guest" }));
+    markVisitIntroSeen();
     window.location.replace("/");
   }
 }

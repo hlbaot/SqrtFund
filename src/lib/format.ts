@@ -74,3 +74,59 @@ export function formatTimeAgo(timestampMs: number, locale: "en" | "vi" = "en", n
   if (minutes > 0) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
   return "just now";
 }
+
+export function formatCooldown(remainingSeconds: number): string {
+  const s = Math.max(0, Math.floor(remainingSeconds));
+  const seconds = s % 60;
+  const minutes = Math.floor((s % 3600) / 60);
+  const hours = Math.floor(s / 3600);
+
+  if (s >= 86400) {
+    const days = Math.floor(s / 86400);
+    const remHours = Math.floor((s % 86400) / 3600);
+    const hh = String(remHours).padStart(2, "0");
+    const mm = String(minutes).padStart(2, "0");
+    const ss = String(seconds).padStart(2, "0");
+    return `${days}d ${hh}:${mm}:${ss}`;
+  }
+
+  const hh = String(hours).padStart(2, "0");
+  const mm = String(minutes).padStart(2, "0");
+  const ss = String(seconds).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
+export function calculateRemainingSeconds(nextClaimAt: number, currentNowSec: number): number {
+  if (!nextClaimAt || nextClaimAt <= 0) return 0;
+  return Math.max(0, nextClaimAt - currentNowSec);
+}
+
+export interface CanClaimParams {
+  isConnected: boolean;
+  nextClaimAt: number;
+  remainingSeconds: number;
+  lifetimeMinted?: bigint;
+  amount?: bigint;
+  cap?: bigint;
+}
+
+export function calculateCanClaim({
+  isConnected,
+  nextClaimAt,
+  remainingSeconds,
+  lifetimeMinted,
+  amount,
+  cap,
+}: CanClaimParams): boolean {
+  if (!isConnected) return false;
+  if (
+    lifetimeMinted !== undefined &&
+    amount !== undefined &&
+    cap !== undefined &&
+    lifetimeMinted + amount > cap
+  ) {
+    return false;
+  }
+  if (!nextClaimAt || nextClaimAt === 0) return true;
+  return remainingSeconds <= 0;
+}

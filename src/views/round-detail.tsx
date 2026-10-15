@@ -1,5 +1,7 @@
 "use client";
 
+import { AOSInit } from "@/components/common/AOSInit";
+
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -142,6 +144,7 @@ export function RoundDetailView() {
 
   return (
     <Container className="py-8 sm:py-10 space-y-8">
+      <AOSInit />
       {/* Back Link */}
       <div>
         <Link

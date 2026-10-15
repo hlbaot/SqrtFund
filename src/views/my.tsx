@@ -1,18 +1,17 @@
 "use client";
 
-import { useTxFlow } from "@/hooks/useTxFlow";
+import { AOSInit } from "@/components/common/AOSInit";
 
 import React, { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useReadContracts, useWriteContract, usePublicClient } from "wagmi";
-import { qfRoundAbi, mockUsdcAbi } from "@/lib/contracts/abis";
-import { usdcAddress } from "@/lib/contracts/addresses";
+import { useAccount, useReadContracts } from "wagmi";
+import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
 import { useClaim } from "@/hooks/useClaim";
-import { formatUsdc } from "@/lib/format";
+import { formatUsdc, formatCooldown } from "@/lib/format";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
@@ -32,23 +31,28 @@ import {
   ShieldCheck,
   ExternalLink,
   Droplets,
+  Clock,
 } from "lucide-react";
 
 export function MyView() {
-  const beginFlow = useTxFlow();
   const router = useRouter();
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const { address, isConnected } = useAccount();
-  const publicClient = usePublicClient();
-  const { writeContractAsync } = useWriteContract();
 
   const { roundAddress, finalized, isLoading: isRoundLoading } = useRound();
   const { projects, isLoading: isProjectsLoading, refetch: refetchProjects } = useProjects();
   const { isStudent, hasRequested } = useRole();
-  const { claim, isPending: isClaimPending } = useClaim();
+  const {
+    canClaim,
+    nextClaimAt,
+    remainingSeconds,
+    cooldownDuration,
+    isClaiming,
+    claim,
+    isPending: isClaimPending,
+  } = useClaim();
 
   const [activeTab, setActiveTab] = useState("donations");
-  const [isMintingFaucet, setIsMintingFaucet] = useState(false);
 
   const { avatar } = useAvatar(address);
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
@@ -99,58 +103,7 @@ export function MyView() {
     return projects.filter((p) => p.ownerAddress.toLowerCase() === addr);
   }, [projects, address]);
 
-  // Faucet Mint
-  const handleFaucetMint = async () => {
-    const flow = beginFlow();
-    if (!address || !publicClient) return;
-    const toastId = "faucet-mint";
-    setIsMintingFaucet(true);
-    try {
-      flow.toast.pending(
-        toastId,
-        locale === "vi" ? "Đang yêu cầu USDC thử nghiệm..." : "Requesting test USDC...",
-        locale === "vi" ? "Đang nhận 100 USDC từ faucet Fuji." : "Minting 100 USDC from Fuji faucet."
-      );
-
-      const hash = await flow.wait(() => writeContractAsync({
-        address: usdcAddress,
-        abi: mockUsdcAbi,
-        functionName: "faucetMint",
-      }));
-
-      flow.toast.pending(
-        toastId,
-        locale === "vi" ? "Đang xác nhận nhận USDC..." : "Confirming faucet mint...",
-        locale === "vi" ? "Đang chờ xác nhận khối trên Avalanche Fuji." : "Waiting for block confirmation on Avalanche Fuji.",
-        hash
-      );
-
-      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
-      if (receipt.status !== "success") {
-        throw new Error("faucetMint transaction reverted.");
-      }
-
-      flow.toast.success(
-        toastId,
-        locale === "vi" ? "Đã nhận 100 USDC!" : "100 USDC received!",
-        locale === "vi" ? "USDC testnet đã được cộng vào ví của bạn." : "Testnet USDC has been credited to your wallet.",
-        hash
-      );
-    } catch (err: unknown) {
-      if (flow.cancelled) return false;
-      flow.error(
-        toastId,
-        err,
-        locale === "vi" ? "Yêu cầu faucet thất bại" : "Faucet request failed",
-        locale
-      );
-    } finally {
-      flow.finish();
-      if (!flow.cancelled) {
-        setIsMintingFaucet(false);
-      }
-    }
-  };
+  const remainingMinutes = Math.floor(remainingSeconds / 60);
 
   const handleClaim = async (projectId: bigint) => {
     const ok = await claim(projectId);
@@ -187,6 +140,7 @@ export function MyView() {
 
   return (
     <Container className="py-8 sm:py-10 space-y-8">
+      <AOSInit />
       {/* User Profile Header with Change Avatar Feature */}
       <div
         className="border border-line bg-surface p-6"
@@ -240,18 +194,50 @@ export function MyView() {
 
           {/* Test Faucets & Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              variant="accent"
-              size="sm"
-              id="claim-usdc"
-              onClick={handleFaucetMint}
-              disabled={isMintingFaucet}
-              isLoading={isMintingFaucet}
-              className="text-xs font-bold gap-1.5"
-            >
-              <Droplets className="h-3.5 w-3.5" />
-              <span>Get 100 test USDC</span>
-            </Button>
+            {canClaim ? (
+              <Button
+                variant="accent"
+                size="sm"
+                id="claim-usdc"
+                onClick={() => void claim()}
+                disabled={isClaiming}
+                isLoading={isClaiming}
+                className="text-xs font-bold gap-1.5"
+              >
+                <Droplets className="h-3.5 w-3.5" />
+                <span>{isClaiming ? t.faucet.claiming : t.faucet.getTestUsdc}</span>
+              </Button>
+            ) : (
+              <div className="relative inline-flex flex-col">
+                <button
+                  type="button"
+                  id="claim-usdc"
+                  disabled
+                  aria-disabled="true"
+                  aria-label={`${t.faucet.nextClaimIn} ${formatCooldown(remainingSeconds)}`}
+                  title={`${t.faucet.claimAgainAt} ${nextClaimAt > 0 ? new Date(nextClaimAt * 1000).toLocaleTimeString() : ""}`}
+                  className="mono-label tabular-mono inline-flex items-center gap-1.5 border border-line bg-surface px-3 py-1.5 text-xs text-muted cursor-not-allowed select-none transition-colors"
+                >
+                  <Clock className="h-3.5 w-3.5 shrink-0 text-muted" />
+                  <span className="font-bold">{t.faucet.nextClaimIn.toUpperCase()}</span>
+                  <span className="font-bold text-foreground tabular-nums">{formatCooldown(remainingSeconds)}</span>
+                </button>
+                <div
+                  className="h-0.5 w-full bg-line overflow-hidden mt-0.5 rounded-full"
+                  aria-hidden="true"
+                >
+                  <div
+                    className="h-full bg-primary/70 transition-all duration-1000"
+                    style={{
+                      width: `${cooldownDuration > 0 ? Math.min(100, Math.max(0, ((cooldownDuration - remainingSeconds) / cooldownDuration) * 100)) : 0}%`,
+                    }}
+                  />
+                </div>
+                <span className="sr-only" aria-live="polite">
+                  {remainingMinutes > 0 ? `${remainingMinutes} minutes remaining until next claim` : ""}
+                </span>
+              </div>
+            )}
             <a
               href="https://faucet.avax.network/"
               target="_blank"

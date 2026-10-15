@@ -206,16 +206,6 @@ button:not(:disabled):hover,
   }
 }
 
-@keyframes splash-overlay {
-  0%,
-  90% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
 @keyframes splash-grid-fade {
   0% {
     opacity: 0;
@@ -284,7 +274,11 @@ button:not(:disabled):hover,
 
 .splash-intro {
   opacity: 1;
-  animation: splash-overlay 3s ease forwards;
+  display: none;
+}
+
+html.splash-active .splash-intro {
+  display: flex;
 }
 
 .splash-grid {
@@ -370,6 +364,25 @@ html.splash-active #app-content {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .splash-intro {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .splash-grid,
+  .splash-logo-wrap,
+  .splash-progress,
+  .splash-tagline {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+
+  .splash-progress {
+    transform: scaleX(1);
+  }
+
+
   .qf-bar,
   .qf-curve {
     animation: none !important;
@@ -431,24 +444,6 @@ html.splash-active #app-content {
 
 /* Accessibility: respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  .splash-intro {
-    animation: none !important;
-    opacity: 1;
-  }
-
-  .splash-grid,
-  .splash-logo-wrap,
-  .splash-progress,
-  .splash-tagline {
-    animation: none !important;
-    opacity: 1;
-    transform: none;
-  }
-
-  .splash-progress {
-    transform: scaleX(1);
-  }
-
   *,
   ::before,
   ::after {

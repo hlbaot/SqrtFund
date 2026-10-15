@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useAccount, useReadContracts, useWriteContract, usePublicClient } from "wagmi";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { verificationStatus } from "@/lib/verification";
 import { parseAbiItem, type Address } from "viem";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
@@ -9,7 +11,7 @@ import { useLocale } from "@/lib/context/locale";
 import { useTxFlow } from "@/hooks/useTxFlow";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 
-export type VerificationStatus = "none" | "pending" | "approved" | "rejected";
+export type { VerificationStatus } from "@/lib/verification";
 
 export function useVerificationRequest() {
   const { address, isConnected, chainId } = useAccount();
@@ -20,7 +22,7 @@ export function useVerificationRequest() {
   const beginFlow = useTxFlow();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [rejectedAddress, setRejectedAddress] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const isTargetChain = chainId === TARGET_CHAIN_ID;
   const enabled = Boolean(roundAddress && address && isConnected && isTargetChain);
@@ -49,77 +51,24 @@ export function useVerificationRequest() {
 
   const isWhitelisted = Boolean(data?.[0]?.result);
   const isRequested = Boolean(data?.[1]?.result);
-  const isLocallyRejected = Boolean(
-    address &&
-      rejectedAddress === address.toLowerCase() &&
-      !isWhitelisted &&
-      !isRequested
-  );
-
-  // Check if wallet was previously rejected
-  useEffect(() => {
-    let isMounted = true;
-    if (!address || !roundAddress || !publicClient || !enabled || isWhitelisted || isRequested) {
-      return;
-    }
-
-    async function checkRejection() {
-      // Check session storage first
-      try {
-        const stored = window.sessionStorage.getItem(`rejected_${address?.toLowerCase()}`);
-        if (stored === "true") {
-          if (isMounted) setRejectedAddress(address!.toLowerCase());
-          return;
-        }
-      } catch {
-        // Storage access may be restricted
-      }
-
-      // Query past WhitelistUpdated logs for this address
-      if (!publicClient) return;
-      try {
-        const logs = await publicClient.getLogs({
-          address: roundAddress,
-          event: parseAbiItem("event WhitelistUpdated(address indexed account, bool status)"),
-          args: { account: address as Address },
-          fromBlock: 0n,
-        });
-
-        if (logs.length > 0 && isMounted) {
-          const lastLog = logs[logs.length - 1];
-          const wasRejected = lastLog.args.status === false;
-          if (wasRejected) {
-            setRejectedAddress(address!.toLowerCase());
-            try {
-              window.sessionStorage.setItem(`rejected_${address?.toLowerCase()}`, "true");
-            } catch {
-              // Ignore
-            }
-          }
-        }
-      } catch {
-        // Event scan is optional
-      }
-    }
-
-    void checkRejection();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [address, roundAddress, publicClient, enabled, isWhitelisted, isRequested]);
-
-  let status: VerificationStatus = "none";
-  if (isWhitelisted) {
-    status = "approved";
-  } else if (isRequested) {
-    status = "pending";
-  } else if (isLocallyRejected) {
-    status = "rejected";
-  }
+  const { data: latestDecision } = useQuery({
+    queryKey: ["verification-decision", TARGET_CHAIN_ID, roundAddress, address],
+    enabled: Boolean(enabled && !isWhitelisted && !isRequested),
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const logs = await publicClient!.getLogs({
+        address: roundAddress!,
+        event: parseAbiItem("event WhitelistUpdated(address indexed account, bool status)"),
+        args: { account: address! }, fromBlock: 0n, toBlock: "latest",
+      });
+      return logs.at(-1)?.args.status ?? null;
+    },
+  });
+  const status = verificationStatus(isWhitelisted, isRequested, latestDecision ?? undefined);
 
   const submit = useCallback(async () => {
-    if (!address || !roundAddress || !publicClient) return false;
+    if (!enabled || !address || !roundAddress || !publicClient || isRequested || isWhitelisted || isSubmitting) return false;
 
     const toastId = "verify-request";
     const flow = beginFlow("verify-request");
@@ -127,12 +76,12 @@ export function useVerificationRequest() {
 
     try {
       // Check if queue has reached 500 limit
-      const requestersData = await publicClient.readContract({
+      const requestersData = await flow.wait(() => publicClient.readContract({
         address: roundAddress,
         abi: qfRoundAbi,
         functionName: "getRequesters",
         args: [0n, 1n],
-      });
+      }));
 
       const totalQueue = Number(requestersData[1]);
       if (totalQueue >= 500) {
@@ -180,14 +129,6 @@ export function useVerificationRequest() {
         throw new Error("Verification request transaction reverted.");
       }
 
-      // Reset rejected flag if any
-      try {
-        window.sessionStorage.removeItem(`rejected_${address.toLowerCase()}`);
-      } catch {
-        // Ignore
-      }
-      setRejectedAddress(null);
-
       flow.toast.success(
         toastId,
         t.verification.requestSent,
@@ -197,7 +138,7 @@ export function useVerificationRequest() {
         hash
       );
 
-      await refetch();
+      await flow.wait(() => Promise.all([refetch(), queryClient.invalidateQueries()]));
       return true;
     } catch (err: unknown) {
       if (flow.cancelled) return false;
@@ -214,7 +155,7 @@ export function useVerificationRequest() {
         setIsSubmitting(false);
       }
     }
-  }, [address, roundAddress, publicClient, beginFlow, t, locale, writeContractAsync, refetch]);
+  }, [address, roundAddress, publicClient, beginFlow, t, locale, writeContractAsync, refetch, enabled, isRequested, isWhitelisted, isSubmitting, queryClient]);
 
   return {
     status,
