@@ -28,9 +28,9 @@ export function Footer() {
         </div>
 
         <div className="mono-label flex items-center gap-3 text-muted">
-          <span>Quadratic Funding</span>
+          <span>{t.footer.model}</span>
           <span>/</span>
-          <span>Avalanche Fuji</span>
+          <span>{t.common.testnetBadge}</span>
         </div>
       </Container>
     </footer>

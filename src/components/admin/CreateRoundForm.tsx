@@ -73,8 +73,8 @@ export function CreateRoundForm() {
     if (!isConnected || !factoryAddress || !publicClient) {
       flow.toast.error(
         toastId,
-        locale === "vi" ? "Factory chưa sẵn sàng" : "Factory not ready",
-        locale === "vi" ? "Vui lòng kết nối ví sở hữu factory." : "Please connect the factory owner wallet."
+        t.toasts.factoryNotReadyTitle,
+        t.toasts.factoryNotReadyDesc
       );
       return;
     }
@@ -107,8 +107,8 @@ export function CreateRoundForm() {
     if (!startDateTime || !endDateTime) {
       flow.toast.error(
         toastId,
-        locale === "vi" ? "Lịch trình không hợp lệ" : "Invalid schedule",
-        locale === "vi" ? "Vui lòng nhập ngày bắt đầu và kết thúc." : "Please enter start and end dates."
+        t.toasts.invalidScheduleTitle,
+        t.toasts.invalidScheduleDesc
       );
       return;
     }
@@ -119,8 +119,8 @@ export function CreateRoundForm() {
     if (endTimestamp <= startTimestamp) {
       flow.toast.error(
         toastId,
-        locale === "vi" ? "Lịch trình không hợp lệ" : "Invalid schedule",
-        locale === "vi" ? "Thời gian kết thúc phải sau thời gian bắt đầu." : "End time must be after start time."
+        t.toasts.invalidScheduleTitle,
+        t.toasts.invalidScheduleDesc
       );
       return;
     }
@@ -133,8 +133,8 @@ export function CreateRoundForm() {
     try {
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang tạo round QF..." : "Creating QF Round...",
-        locale === "vi" ? "Vui lòng xác nhận trong ví của bạn." : "Please confirm in your wallet."
+        t.toasts.creatingRoundTitle,
+        t.toasts.confirmInWallet
       );
 
       const hash = await flow.wait(() => writeContractAsync({
@@ -155,10 +155,8 @@ export function CreateRoundForm() {
 
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang xác nhận triển khai..." : "Confirming round deployment...",
-        locale === "vi"
-          ? "Đang triển khai hợp đồng QFRound trên Avalanche Fuji."
-          : "Deploying QFRound smart contract on Avalanche Fuji.",
+        t.toasts.deployingRoundTitle,
+        t.toasts.deployingRoundDesc,
         hash
       );
 
@@ -169,8 +167,8 @@ export function CreateRoundForm() {
 
       flow.toast.success(
         toastId,
-        locale === "vi" ? "Tạo round thành công!" : "Round deployed successfully!",
-        locale === "vi" ? "Hợp đồng QFRound mới đã hoạt động trên Fuji." : "New QFRound contract is live on Fuji.",
+        t.toasts.roundCreatedTitle,
+        t.toasts.roundCreatedDesc,
         hash
       );
 
@@ -182,7 +180,7 @@ export function CreateRoundForm() {
       flow.error(
         toastId,
         err,
-        locale === "vi" ? "Tạo round thất bại" : "Failed to create round",
+        t.toasts.createRoundFailed,
         locale
       );
     } finally {
@@ -200,7 +198,7 @@ export function CreateRoundForm() {
           {t.admin.createRoundTitle}
         </h3>
         <p className="text-xs text-muted">
-          Deploy a new QFRound contract via the RoundFactory on Avalanche Fuji.
+          {t.admin.deployRoundDesc}
         </p>
       </div>
 
@@ -256,26 +254,26 @@ export function CreateRoundForm() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
-            label={`Start Date & Time${tzLabel ? ` (${tzLabel})` : ""}`}
+            label={`${t.admin.startDateLabel}${tzLabel ? ` (${tzLabel})` : ""}`}
             type="datetime-local"
             value={startDateTime}
             onChange={(e) => setStartDateTime(e.target.value)}
-            helperText="Local time (auto-converted to on-chain Unix timestamp)"
+            helperText={t.admin.deployScheduleHelper}
             required
           />
           <Input
-            label={`End Date & Time${tzLabel ? ` (${tzLabel})` : ""}`}
+            label={`${t.admin.endDateLabel}${tzLabel ? ` (${tzLabel})` : ""}`}
             type="datetime-local"
             value={endDateTime}
             onChange={(e) => setEndDateTime(e.target.value)}
-            helperText="Local time (round closing time)"
+            helperText={t.admin.deployClosingHelper}
             required
           />
         </div>
 
         <div className="grid grid-cols-3 gap-3">
           <Input
-            label="Min Donation"
+            label={t.admin.minDonationLabel}
             type="number"
             min="1"
             value={minDonationUsdc}
@@ -284,7 +282,7 @@ export function CreateRoundForm() {
             required
           />
           <Input
-            label="Max Donation"
+            label={t.admin.maxDonationLabel}
             type="number"
             min="1"
             value={maxDonationUsdc}
@@ -293,7 +291,7 @@ export function CreateRoundForm() {
             required
           />
           <Input
-            label="Match Cap"
+            label={t.admin.matchCapLabel}
             type="number"
             min="1"
             max="100"
@@ -313,7 +311,7 @@ export function CreateRoundForm() {
             isLoading={isSubmitting}
             className="text-xs font-bold py-2.5"
           >
-            {isSubmitting ? "Deploying on Fuji..." : t.admin.createRoundBtn}
+            {isSubmitting ? t.admin.deployingOnFuji : t.admin.createRoundBtn}
           </Button>
         </div>
       </form>

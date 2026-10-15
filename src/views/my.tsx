@@ -120,10 +120,10 @@ export function MyView() {
             <User className="h-7 w-7" />
           </div>
           <h1 className="text-xl font-bold text-foreground tracking-tight">
-            Wallet Connection Required
+            {t.common.walletRequired}
           </h1>
           <p className="text-sm text-muted">
-            Connect your wallet to view your quadratic donations, manage your projects, or claim grant allocations.
+            {t.common.walletRequiredDesc}
           </p>
         </div>
       </Container>
@@ -169,20 +169,20 @@ export function MyView() {
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
-                  Wallet Activity
+                  {t.common.walletActivity}
                 </h1>
                 {isStudent ? (
                   <Badge variant="accent" className="gap-1 font-semibold text-[11px]">
                     <ShieldCheck className="h-3.5 w-3.5" />
-                    <span>Verified Student</span>
+                    <span>{t.common.verifiedStudent}</span>
                   </Badge>
                 ) : hasRequested ? (
                   <Badge variant="warning" className="text-[11px]">
-                    Verification Pending
+                    {t.common.verificationPending}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="text-[11px]">
-                    Unverified
+                    {t.common.unverified}
                   </Badge>
                 )}
               </div>
@@ -234,7 +234,7 @@ export function MyView() {
                   />
                 </div>
                 <span className="sr-only" aria-live="polite">
-                  {remainingMinutes > 0 ? `${remainingMinutes} minutes remaining until next claim` : ""}
+                  {remainingMinutes > 0 ? t.common.minutesRemaining.replace("{count}", String(remainingMinutes)) : ""}
                 </span>
               </div>
             )}
@@ -271,7 +271,7 @@ export function MyView() {
           {/* Tab 1: My Donations */}
           <TabsContent value="donations">
             {isDonationsLoading ? (
-              <div className="py-8 text-center text-xs text-muted">Loading your on-chain donation history...</div>
+              <div className="py-8 text-center text-xs text-muted">{t.common.loadingDonations}</div>
             ) : myDonations.length === 0 ? (
               <EmptyState
                 title={t.myActivity.donationsEmptyTitle}
@@ -287,7 +287,7 @@ export function MyView() {
                     {t.myActivity.tabDonations}
                   </h2>
                   <span className="font-mono text-xs text-muted">
-                    {myDonations.length} projects supported
+                    {t.common.projectsSupported.replace("{count}", String(myDonations.length))}
                   </span>
                 </div>
 
@@ -296,8 +296,8 @@ export function MyView() {
                     <TableRow>
                       <TableHead>{t.myActivity.colProject}</TableHead>
                       <TableHead>{t.myActivity.colAmount}</TableHead>
-                      <TableHead>Project Matching Total</TableHead>
-                      <TableHead className="text-right">Project Details</TableHead>
+                      <TableHead>{t.common.projectMatchingTotal}</TableHead>
+                      <TableHead className="text-right">{t.common.projectDetails}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -319,7 +319,7 @@ export function MyView() {
                             onClick={() => router.push(`/round/${roundAddress}/project/${item.project.id}`)}
                             className="h-7 text-xs font-semibold text-primary"
                           >
-                            View
+                            {t.common.view}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -347,7 +347,7 @@ export function MyView() {
                     {t.myActivity.tabProjects}
                   </h2>
                   <span className="font-mono text-xs text-muted">
-                    {myProjects.length} registered
+                    {t.common.registered.replace("{count}", String(myProjects.length))}
                   </span>
                 </div>
 
@@ -377,9 +377,9 @@ export function MyView() {
                             {proj.description}
                           </p>
                           <div className="flex items-center gap-4 text-xs font-mono text-muted pt-1">
-                            <span>{proj.supporterCount} supporters</span>
+                            <span>{t.common.supporters_count.replace("{count}", String(proj.supporterCount))}</span>
                             <span>•</span>
-                            <span>Raised: {formatUsdc(proj.totalDonated)}</span>
+                            <span>{t.common.raised.replace("{amount}", formatUsdc(proj.totalDonated))}</span>
                           </div>
                         </div>
 

@@ -30,8 +30,8 @@ export function DepositPoolForm() {
     if (!isConnected || !address || !roundAddress || !token || !publicClient) {
       flow.toast.error(
         depositId,
-        locale === "vi" ? "Ví chưa sẵn sàng" : "Wallet not ready",
-        locale === "vi" ? "Vui lòng kết nối ví admin." : "Please connect the admin wallet."
+        t.toasts.walletNotReady,
+        t.toasts.walletNotReadyDesc
       );
       return;
     }
@@ -40,8 +40,8 @@ export function DepositPoolForm() {
     if (isNaN(num) || num <= 0) {
       flow.toast.error(
         depositId,
-        locale === "vi" ? "Số lượng không hợp lệ" : "Invalid amount",
-        locale === "vi" ? "Vui lòng nhập số lượng hợp lệ." : "Please enter a valid amount."
+        t.toasts.invalidAmountTitle,
+        t.toasts.invalidAmountDesc
       );
       return;
     }
@@ -61,10 +61,8 @@ export function DepositPoolForm() {
       if (allowance < amountBigInt) {
         flow.toast.pending(
           approveId,
-          locale === "vi" ? "Bước 1/2: Đang phê duyệt USDC..." : "Step 1/2: Approving USDC...",
-          locale === "vi"
-            ? "Vui lòng xác nhận phê duyệt token trong ví."
-            : "Please confirm token allowance in your wallet."
+          t.toasts.depositApproveStep,
+          t.toasts.depositApproveDesc
         );
 
         let appHash: `0x${string}`;
@@ -80,7 +78,7 @@ export function DepositPoolForm() {
           flow.error(
             approveId,
             err,
-            locale === "vi" ? "Phê duyệt thất bại" : "Approval failed",
+            t.toasts.depositApprovalFailed,
             locale
           );
           throw err;
@@ -88,10 +86,8 @@ export function DepositPoolForm() {
 
         flow.toast.pending(
           approveId,
-          locale === "vi" ? "Bước 1/2: Đang xác nhận phê duyệt..." : "Step 1/2: Confirming approval...",
-          locale === "vi"
-            ? "Đang chờ xác nhận khối trên Avalanche Fuji."
-            : "Waiting for block confirmation on Avalanche Fuji.",
+          t.toasts.depositConfirmApproval,
+          t.toasts.depositConfirmApprovalDesc,
           appHash
         );
 
@@ -102,8 +98,8 @@ export function DepositPoolForm() {
           }
           flow.toast.success(
             approveId,
-            locale === "vi" ? "Bước 1/2: Đã phê duyệt USDC" : "Step 1/2: USDC Approved",
-            locale === "vi" ? "Đã cấp quyền chi tiêu token thành công." : "Token allowance confirmed.",
+            t.toasts.depositApproved,
+            t.toasts.depositApprovedDesc,
             appHash
           );
         } catch (err) {
@@ -111,7 +107,7 @@ export function DepositPoolForm() {
           flow.error(
             approveId,
             err,
-            locale === "vi" ? "Phê duyệt thất bại" : "Approval confirmation failed",
+            t.toasts.depositApprovalFailed,
             locale
           );
           throw err;
@@ -121,8 +117,8 @@ export function DepositPoolForm() {
       // 2. Deposit pool
       flow.toast.pending(
         depositId,
-        locale === "vi" ? "Bước 2/2: Đang nạp vào pool..." : "Step 2/2: Depositing pool...",
-        locale === "vi" ? "Vui lòng xác nhận giao dịch nạp pool." : "Please confirm pool deposit transaction."
+        t.toasts.depositStep,
+        t.toasts.depositStepDesc
       );
 
       let depHash: `0x${string}`;
@@ -138,7 +134,7 @@ export function DepositPoolForm() {
         flow.error(
           depositId,
           err,
-          locale === "vi" ? "Nạp pool thất bại" : "Deposit failed",
+          t.toasts.depositFailed,
           locale
         );
         throw err;
@@ -146,10 +142,8 @@ export function DepositPoolForm() {
 
       flow.toast.pending(
         depositId,
-        locale === "vi" ? "Bước 2/2: Đang xác nhận nạp pool..." : "Step 2/2: Confirming pool deposit...",
-        locale === "vi"
-          ? "Đang chờ xác nhận khối trên Avalanche Fuji."
-          : "Waiting for block confirmation on Avalanche Fuji.",
+        t.toasts.depositConfirm,
+        t.toasts.depositConfirmDesc,
         depHash
       );
 
@@ -161,10 +155,8 @@ export function DepositPoolForm() {
 
         flow.toast.success(
           depositId,
-          locale === "vi" ? "Đã nạp pool thành công!" : "Pool deposit confirmed!",
-          locale === "vi"
-            ? `Đã thêm thành công ${amount} USDC vào quỹ đối ứng.`
-            : `Successfully added ${amount} USDC to the sponsor matching pool.`,
+          t.toasts.depositSuccess,
+          t.toasts.depositSuccessDesc.replace("{amount}", amount),
           depHash
         );
       } catch (err) {
@@ -172,7 +164,7 @@ export function DepositPoolForm() {
         flow.error(
           depositId,
           err,
-          locale === "vi" ? "Xác nhận nạp pool thất bại" : "Deposit confirmation failed",
+          t.toasts.depositFailed,
           locale
         );
         throw err;
@@ -182,7 +174,7 @@ export function DepositPoolForm() {
       refetch();
     } catch (err) {
       if (flow.cancelled) return false;
-      flow.error(depositId, err, locale === "vi" ? "Nạp pool thất bại" : "Deposit failed", locale);
+      flow.error(depositId, err, t.toasts.depositFailed, locale);
     } finally {
       flow.finish();
       if (!flow.cancelled) {
@@ -197,7 +189,7 @@ export function DepositPoolForm() {
         {t.admin.depositPoolTitle}
       </h3>
       <p className="text-xs text-muted">
-        Deposit sponsor matching funds into the Fuji round contract before finalization.
+        {t.admin.depositPoolDesc}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -220,7 +212,7 @@ export function DepositPoolForm() {
           isLoading={isPending}
           className="text-xs font-bold py-2.5"
         >
-          {finalized ? "Round already finalized" : isPending ? "Processing on Fuji..." : t.admin.depositBtn}
+          {finalized ? t.admin.roundAlreadyFinalized : isPending ? t.admin.processingOnFuji : t.admin.depositBtn}
         </Button>
       </form>
     </div>

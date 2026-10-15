@@ -80,11 +80,11 @@ export function WhitelistTable() {
       flow.toast.pending(
         toastId,
         status
-          ? locale === "vi" ? "Đang duyệt sinh viên..." : "Approving student..."
-          : locale === "vi" ? "Đang từ chối sinh viên..." : "Rejecting student...",
-        locale === "vi"
-          ? `Đang cập nhật trạng thái whitelist cho ${shortAddress(account)}.`
-          : `Updating whitelist status for ${shortAddress(account)}.`
+          ? t.toasts.approvingStudentTitle
+          : t.toasts.rejectingStudentTitle,
+        status
+          ? t.toasts.updatingWhitelist.replace("{address}", shortAddress(account))
+          : t.toasts.rejectingStudentDesc.replace("{address}", shortAddress(account))
       );
 
       const hash = await flow.wait(() =>
@@ -98,8 +98,8 @@ export function WhitelistTable() {
 
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang xác nhận trên chuỗi..." : "Confirming on chain...",
-        locale === "vi" ? "Đang chờ xác nhận khối trên Avalanche Fuji." : "Waiting for block confirmation on Avalanche Fuji.",
+        t.toasts.confirmingApprovalTitle,
+        t.toasts.confirmingOnChain,
         hash
       );
 
@@ -111,11 +111,11 @@ export function WhitelistTable() {
       flow.toast.success(
         toastId,
         status
-          ? locale === "vi" ? "Đã duyệt sinh viên!" : "Student Approved!"
-          : locale === "vi" ? "Đã từ chối sinh viên" : "Student Rejected",
-        locale === "vi"
-          ? `${shortAddress(account)} đã được ${status ? "thêm vào whitelist" : "xoá khỏi hàng chờ"}.`
-          : `${shortAddress(account)} has been ${status ? "whitelisted" : "removed from queue"}.`,
+          ? t.toasts.studentApprovedTitle
+          : t.toasts.studentRejectedTitle,
+        status
+          ? t.toasts.studentApprovedDesc.replace("{address}", shortAddress(account))
+          : t.toasts.studentRejectedDesc.replace("{address}", shortAddress(account)),
         hash
       );
 
@@ -132,7 +132,7 @@ export function WhitelistTable() {
       flow.error(
         toastId,
         err,
-        locale === "vi" ? "Cập nhật danh sách thất bại" : "Whitelist update failed",
+        t.toasts.whitelistFailed,
         locale
       );
       return false;
@@ -157,8 +157,8 @@ export function WhitelistTable() {
     try {
       flow.toast.pending(
         toastId,
-        locale === "vi" ? `Đang duyệt ${accounts.length} sinh viên...` : `Approving ${accounts.length} students...`,
-        locale === "vi" ? "Đang chuẩn bị giao dịch gom nhiều địa chỉ." : "Preparing batch approval transaction."
+        t.toasts.batchApprovingTitle.replace("{count}", String(accounts.length)),
+        t.toasts.batchApprovingDesc
       );
 
       const hash = await flow.wait(() =>
@@ -172,8 +172,8 @@ export function WhitelistTable() {
 
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang xác nhận trên chuỗi..." : "Confirming on chain...",
-        locale === "vi" ? "Đang chờ xác nhận khối trên Avalanche Fuji." : "Waiting for block confirmation on Avalanche Fuji.",
+        t.toasts.confirmingApprovalTitle,
+        t.toasts.confirmingOnChain,
         hash
       );
 
@@ -184,10 +184,8 @@ export function WhitelistTable() {
 
       flow.toast.success(
         toastId,
-        locale === "vi" ? "Duyệt hàng loạt thành công!" : "Batch Approval Successful!",
-        locale === "vi"
-          ? `Đã duyệt thành công ${accounts.length} sinh viên.`
-          : `Successfully approved ${accounts.length} students.`,
+        t.toasts.batchApprovedTitle,
+        t.toasts.batchApprovedDesc.replace("{count}", String(accounts.length)),
         hash
       );
 
@@ -198,7 +196,7 @@ export function WhitelistTable() {
       flow.error(
         toastId,
         err,
-        locale === "vi" ? "Duyệt hàng loạt thất bại" : "Batch approval failed",
+        t.toasts.batchApprovalFailed,
         locale
       );
     } finally {
@@ -217,8 +215,8 @@ export function WhitelistTable() {
     if (!isAddress(trimmed)) {
       txToast.error(
         manualToastId,
-        locale === "vi" ? "Địa chỉ không hợp lệ" : "Invalid address",
-        locale === "vi" ? "Vui lòng nhập địa chỉ 0x hợp lệ." : "Please enter a valid 0x address."
+        t.toasts.invalidAddressTitle,
+        t.toasts.invalidAddressDesc
       );
       return;
     }

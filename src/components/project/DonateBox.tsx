@@ -14,6 +14,7 @@ import { useRole } from "@/hooks/useRole";
 import { useDonate } from "@/hooks/useDonate";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatUsdc } from "@/lib/format";
+import { fmt } from "@/lib/copy";
 import { simulateDonationImpact } from "@/lib/qf";
 import { Stepper, StepItem } from "@/components/tx/Stepper";
 import { TxStatusDisplay } from "@/components/tx/TxStatusToast";
@@ -95,7 +96,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
       return;
     }
     if (num > remainingAllowanceUsdc) {
-      setError(`Amount exceeds your remaining limit of ${remainingAllowanceUsdc} USDC for this project.`);
+      setError(fmt(t.donateBox.exceedsLimit, { remaining: remainingAllowanceUsdc }));
       return;
     }
     setError("");
@@ -161,8 +162,8 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
     try {
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang gửi yêu cầu xác minh..." : "Requesting verification...",
-        locale === "vi" ? "Vui lòng xác nhận trong ví của bạn." : "Please confirm in your wallet."
+        t.toasts.requestVerifyTitle,
+        t.toasts.requestVerifyDesc
       );
 
       const hash = await flow.wait(() => writeContractAsync({
@@ -173,8 +174,8 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
 
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang xác nhận yêu cầu..." : "Confirming request...",
-        locale === "vi" ? "Đang thêm ví của bạn vào hàng chờ xác minh." : "Adding your wallet to the verification queue.",
+        t.toasts.requestVerifyConfirm,
+        t.toasts.requestVerifyConfirmDesc,
         hash
       );
 
@@ -185,8 +186,8 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
 
       flow.toast.success(
         toastId,
-        locale === "vi" ? "Đã gửi yêu cầu xác minh!" : "Verification requested!",
-        locale === "vi" ? "Yêu cầu của bạn đang chờ quản trị viên xem xét." : "Your request is now pending admin review.",
+        t.toasts.requestVerifySuccess,
+        t.toasts.requestVerifySuccessDesc,
         hash
       );
     } catch (err: unknown) {
@@ -194,7 +195,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
       flow.error(
         toastId,
         err,
-        locale === "vi" ? "Yêu cầu xác minh thất bại" : "Request failed",
+        t.toasts.requestVerifyFailed,
         locale
       );
     } finally {
@@ -209,8 +210,8 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
   const steps: StepItem[] = [
     {
       id: 1,
-      label: "Approve token",
-      description: "Allowance",
+      label: t.donateBox.stepApproveTitle,
+      description: t.donateBox.stepApproveSub,
       state:
         donationStep === "donating" || donationStep === "success"
           ? "completed"
@@ -220,7 +221,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
     },
     {
       id: 2,
-      label: "Donate",
+      label: t.donateBox.stepDonateTitle,
       description: `${amount} USDC`,
       state: donationStep === "success" ? "completed" : donationStep === "donating" ? "current" : "upcoming",
     },
@@ -269,9 +270,9 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
       {/* Owner self-donation guard */}
       {isOwner && (
         <div className="my-4 border border-line-strong bg-surface-2 p-3 text-xs text-muted">
-          <p className="font-semibold text-foreground">Project Owner Wallet</p>
+          <p className="font-semibold text-foreground">{t.donateBox.ownerTitle}</p>
           <p className="mt-1 leading-relaxed">
-            Quadratic funding rules prevent project owners from donating to their own project.
+            {t.donateBox.ownerDesc}
           </p>
         </div>
       )}
@@ -282,13 +283,13 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
           <div className="flex items-center gap-1.5 font-semibold text-foreground">
             <ShieldCheck className="h-4 w-4 text-primary" />
             <span>
-              {hasRequested ? "Waiting for admin approval" : t.donateBox.notVerifiedTitle}
+              {hasRequested ? t.donateBox.waitingApprovalTitle : t.donateBox.notVerifiedTitle}
             </span>
           </div>
           <p className="leading-relaxed">
             {hasRequested
-              ? "Your wallet verification request has been submitted. The admin will review and approve your address shortly."
-              : "Only whitelisted student wallets can donate. Click below to request verification from the round admin."}
+              ? t.donateBox.waitingApprovalDesc
+              : t.donateBox.notVerifiedDesc}
           </p>
           {!hasRequested && (
             <Button
@@ -299,7 +300,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
               isLoading={isRequestingVerification}
               className="text-xs font-bold"
             >
-              Request verification
+              {t.donateBox.getVerifiedCta}
             </Button>
           )}
         </div>
@@ -308,9 +309,9 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
       {/* Max allowance reached alert */}
       {isConnected && isMaxAllowanceReached && !isRoundClosed && (
         <div className="my-4 border border-money/40 bg-money/10 p-3 text-xs text-money">
-          <p className="font-bold">Maximum Donation Limit Reached</p>
+          <p className="font-bold">{t.donateBox.maxReachedTitle}</p>
           <p className="mt-1 text-muted">
-            You have already donated the maximum allowed 5 USDC to this project across all contributions. Thank you for your support!
+            {fmt(t.donateBox.maxReachedDesc, { max: maxDonationUsdc })}
           </p>
         </div>
       )}
@@ -324,13 +325,13 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
               <div className="flex items-center gap-3 font-mono text-[11px] text-muted">
                 {isConnected && (
                   <span>
-                    Balance:{" "}
+                    {t.donateBox.balance}:{" "}
                     <strong className={usdcBalanceUsdc < 1 ? "text-primary" : "text-money"}>
                       {usdcBalanceUsdc.toFixed(0)} USDC
                     </strong>
                   </span>
                 )}
-                <span>Remaining: {remainingAllowanceUsdc} USDC</span>
+                <span>{t.donateBox.remaining}: {remainingAllowanceUsdc} USDC</span>
               </div>
             </div>
 
@@ -388,11 +389,12 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
               <span>{t.donateBox.impactPreview}</span>
             </div>
             <p className="mt-1 leading-relaxed text-foreground">
-              {t.donateBox.impactText
-                .replace("{amount}", amount.toString())
-                .replace("{current}", formatUsdc(project.estimatedMatching))
-                .replace("{next}", formatUsdc(impact.nextMatching))
-                .replace("{diff}", formatUsdc(impact.increase))}
+              {fmt(t.donateBox.impactText, {
+                amount: amount.toString(),
+                current: formatUsdc(project.estimatedMatching),
+                next: formatUsdc(impact.nextMatching),
+                diff: formatUsdc(impact.increase),
+              })}
             </p>
           </div>
 
@@ -420,18 +422,19 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
               <AlertCircle className="h-4 w-4 shrink-0 text-primary mt-0.5" />
               <div className="leading-snug space-y-1">
                 <p className="font-semibold text-primary">
-                  {locale === "vi" ? "Số dư USDC không đủ" : "Insufficient USDC Balance"}
+                  {t.donateBox.insufficientBalanceTitle}
                 </p>
                 <p className="text-muted">
-                  {locale === "vi"
-                    ? `Ví của bạn hiện có ${usdcBalanceUsdc.toFixed(0)} USDC, không đủ để quyên góp ${amount} USDC.`
-                    : `Your wallet currently has ${usdcBalanceUsdc.toFixed(0)} USDC, but ${amount} USDC is required.`}
+                  {fmt(t.donateBox.insufficientBalanceDesc, {
+                    balance: usdcBalanceUsdc.toFixed(0),
+                    amount: amount,
+                  })}
                 </p>
                 <Link
                   href="/my"
                   className="inline-flex items-center gap-1 font-bold text-primary underline hover:opacity-80 pt-0.5"
                 >
-                  {locale === "vi" ? "Nhận 100 USDC từ Faucet tại My Dashboard" : "Claim 100 USDC from Faucet in My Dashboard"} &rarr;
+                  {t.donateBox.claimFaucetLink} &rarr;
                 </Link>
               </div>
             </div>
@@ -450,21 +453,19 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
               </Button>
             ) : isOwner ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
-                Self-donation not allowed
+                {t.donateBox.ownerBtn}
               </Button>
             ) : !isStudent ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
-                {hasRequested ? "Waiting for admin approval" : "Verification required"}
+                {hasRequested ? t.donateBox.waitingApprovalTitle : t.donateBox.verificationRequired}
               </Button>
             ) : isMaxAllowanceReached ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
-                Max 5 USDC limit reached
+                {fmt(t.donateBox.maxReachedBtn, { max: maxDonationUsdc })}
               </Button>
             ) : hasInsufficientBalance ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-60">
-                {locale === "vi"
-                  ? `Số dư USDC không đủ (${usdcBalanceUsdc.toFixed(0)} USDC)`
-                  : `Insufficient USDC Balance (${usdcBalanceUsdc.toFixed(0)} USDC)`}
+                {fmt(t.donateBox.insufficientBalanceBtn, { balance: usdcBalanceUsdc.toFixed(0) })}
               </Button>
             ) : (
               <Button
@@ -476,10 +477,10 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
                 className="py-3 text-sm font-bold"
               >
                 {donationStep === "approving"
-                  ? "Approving USDC (Step 1/2)..."
+                  ? t.donateBox.approvingStep
                   : donationStep === "donating"
-                    ? "Confirming Donation (Step 2/2)..."
-                    : `Donate ${amount} USDC`}
+                    ? t.donateBox.confirmingDonation
+                    : fmt(t.donateBox.donateBtn, { amount })}
               </Button>
             )}
           </div>
@@ -495,7 +496,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
               {t.donateBox.txSuccess}
             </h4>
             <p className="mt-1 text-xs text-foreground">
-              Matching pool estimate increased by +{formatUsdc(impact.increase)}!
+              {fmt(t.donateBox.matchingIncrease, { amount: formatUsdc(impact.increase) })}
             </p>
           </div>
           {activeTxHash && <TxStatusDisplay status="success" txHash={activeTxHash} />}
@@ -505,7 +506,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
             fullWidth
             onClick={resetDonate}
           >
-            Donate again
+            {t.donateBox.donateAgain}
           </Button>
         </div>
       )}

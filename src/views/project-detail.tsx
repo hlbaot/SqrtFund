@@ -16,6 +16,7 @@ import { ErrorState } from "@/components/common/ErrorState";
 import { Badge } from "@/components/ui/Badge";
 import { Container } from "@/components/layout/Container";
 import { formatUsdc, shortAddress } from "@/lib/format";
+import { fmt } from "@/lib/copy";
 import {
   ArrowLeft,
   ExternalLink,
@@ -55,8 +56,8 @@ export function ProjectDetailView() {
     return (
       <Container className="py-12">
         <ErrorState
-          title="Project could not be found"
-          reason={`Project ID "${projectId}" not found or failed to load on-chain metadata.`}
+          title={t.projectDetail.projectNotFound}
+          reason={fmt(t.projectDetail.projectNotFoundReason, { id: projectId })}
           onRetry={() => refetch()}
         />
       </Container>
@@ -69,6 +70,8 @@ export function ProjectDetailView() {
     environment: Leaf,
     arts: Music,
   }[project.category] || Sparkles;
+
+  const categoryLabel = t.categories[project.category as keyof typeof t.categories] ?? project.category;
 
   return (
     <Container className="py-8 sm:py-10 space-y-8 pb-24 lg:pb-8">
@@ -97,12 +100,12 @@ export function ProjectDetailView() {
               <div className="flex items-center gap-2">
                 {project.rank && (
                   <Badge variant="primary" className="font-mono font-bold text-xs">
-                    Rank #{project.rank}
+                    {fmt(t.projectDetail.rankBadge, { rank: project.rank })}
                   </Badge>
                 )}
                 <span className="flex items-center gap-1.5 text-xs text-muted">
                   <CategoryIcon className="h-3.5 w-3.5 text-muted" />
-                  <span className="capitalize">{project.category}</span>
+                  <span>{categoryLabel}</span>
                 </span>
               </div>
 
@@ -141,7 +144,7 @@ export function ProjectDetailView() {
 
               <div className="col-span-2 sm:col-span-1">
                 <span className="mono-label block text-muted">
-                  Owner
+                  {t.projectDetail.ownerShort}
                 </span>
                 <span className="font-mono text-xs text-foreground truncate block">
                   {shortAddress(project.ownerAddress, 5)}
@@ -162,7 +165,9 @@ export function ProjectDetailView() {
             </h2>
             <SupporterMarks count={project.supporterCount} maxMarks={72} scale={3} />
             <p className="text-xs text-muted leading-relaxed">
-              In quadratic funding, <strong>number of student contributors</strong> scales funding exponentially more than donation size. Every verified student adds a distinct mark that increases matching allocation.
+              {t.projectDetail.qfLessonPre}
+              <strong>{t.projectDetail.qfLessonBold}</strong>
+              {t.projectDetail.qfLessonPost}
             </p>
           </div>
 
@@ -174,7 +179,7 @@ export function ProjectDetailView() {
             data-aos-duration="600"
           >
             <h2 className="text-base font-bold text-foreground">
-              About the Initiative
+              {t.projectDetail.aboutTitle}
             </h2>
             <p className="text-xs sm:text-sm text-muted leading-relaxed whitespace-pre-line">
               {project.description}
@@ -188,7 +193,7 @@ export function ProjectDetailView() {
                   rel="noopener noreferrer"
                   className="mono-label inline-flex items-center gap-1.5 border border-line bg-surface-2 px-3 py-2 text-xs text-muted hover:border-primary hover:text-foreground"
                 >
-                  <span>Visit Project Website / Community</span>
+                  <span>{t.projectDetail.visitWebsite}</span>
                   <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
@@ -223,7 +228,7 @@ export function ProjectDetailView() {
             onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
             className="flex items-center gap-1.5 border border-primary bg-primary px-4 py-2 text-xs font-bold text-foreground"
           >
-            <span>{mobileDrawerOpen ? "Close" : t.donateBox.title}</span>
+            <span>{mobileDrawerOpen ? t.projectDetail.closeDrawer : t.donateBox.title}</span>
             {mobileDrawerOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
         </div>

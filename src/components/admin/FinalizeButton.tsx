@@ -32,8 +32,8 @@ export function FinalizeButton() {
     try {
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang chốt round..." : "Finalizing round...",
-        locale === "vi" ? "Vui lòng xác nhận trong ví của bạn." : "Please confirm in your wallet."
+        t.toasts.finalizeTitle,
+        t.toasts.finalizeDesc
       );
 
       const hash = await flow.wait(() => writeContractAsync({
@@ -44,8 +44,8 @@ export function FinalizeButton() {
 
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang tính toán phân bổ quỹ..." : "Computing quadratic payouts...",
-        locale === "vi" ? "Đang chờ xác nhận khối trên blockchain." : "Waiting for blockchain confirmation.",
+        t.toasts.computingPayoutsTitle,
+        t.toasts.computingPayoutsDesc,
         hash
       );
 
@@ -56,10 +56,8 @@ export function FinalizeButton() {
 
       flow.toast.success(
         toastId,
-        locale === "vi" ? "Chốt round thành công!" : "Round finalized successfully!",
-        locale === "vi"
-          ? "Đã tính toán phân bổ và mở khoá chi trả cho các dự án được duyệt."
-          : "Allocations computed and payouts unlocked for approved projects.",
+        t.toasts.finalizeSuccess,
+        t.toasts.finalizeSuccessDesc,
         hash
       );
 
@@ -69,7 +67,7 @@ export function FinalizeButton() {
       flow.error(
         toastId,
         err,
-        locale === "vi" ? "Chốt round thất bại" : "Finalize failed",
+        t.toasts.finalizeFailed,
         locale
       );
     } finally {
@@ -102,12 +100,12 @@ export function FinalizeButton() {
           onClick={handleFinalize}
           className="text-xs font-bold"
         >
-          {isPending ? "Finalizing on Fuji..." : t.admin.finalizeButton}
+          {isPending ? t.admin.finalizingOnFuji : t.admin.finalizeButton}
         </Button>
       </div>
 
       <p className="text-[11px] text-muted max-w-xs leading-tight">
-        Grace period: Only admin can finalize for the first 24h after end time; afterwards anyone can finalize.
+        {t.admin.gracePeriodNotice}
       </p>
 
       {showTooltip && !canFinalize && (
@@ -117,10 +115,10 @@ export function FinalizeButton() {
         >
           <div className="flex items-center gap-1.5 text-amber-300 font-semibold mb-1">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            <span>Action locked</span>
+            <span>{t.admin.actionLocked}</span>
           </div>
           <span>
-            Finalization is only allowed after the round end time has passed. During the 24-hour grace period, only the admin can trigger it.
+            {t.admin.finalizeGraceTooltip}
           </span>
         </div>
       )}

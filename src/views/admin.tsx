@@ -65,8 +65,8 @@ export function AdminView() {
     try {
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang duyệt dự án..." : "Approving project...",
-        locale === "vi" ? `Đang duyệt ${projectName} tham gia round.` : `Approving ${projectName} to participate in round.`
+        t.toasts.approvingProjectTitle,
+        t.toasts.approvingProjectDesc.replace("{name}", projectName)
       );
 
       const hash = await flow.wait(() => writeContractAsync({
@@ -78,8 +78,8 @@ export function AdminView() {
 
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang xác nhận duyệt..." : "Confirming approval...",
-        locale === "vi" ? "Đang chờ xác nhận khối trên Avalanche Fuji." : "Waiting for block confirmation on Avalanche Fuji.",
+        t.toasts.confirmingApprovalTitle,
+        t.toasts.confirmingApprovalDesc,
         hash
       );
 
@@ -90,10 +90,8 @@ export function AdminView() {
 
       flow.toast.success(
         toastId,
-        locale === "vi" ? "Dự án đã được duyệt!" : "Project approved!",
-        locale === "vi"
-          ? `${projectName} đã hoạt động và sẵn sàng nhận ủng hộ từ sinh viên.`
-          : `${projectName} is now active and ready to receive student donations.`,
+        t.toasts.projectApprovedTitle,
+        t.toasts.projectApprovedDesc.replace("{name}", projectName),
         hash
       );
 
@@ -104,7 +102,7 @@ export function AdminView() {
       flow.error(
         toastId,
         err,
-        locale === "vi" ? "Duyệt dự án thất bại" : "Project approval failed",
+        t.toasts.approvalFailed,
         locale
       );
     } finally {
@@ -125,8 +123,8 @@ export function AdminView() {
     try {
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang rút pool thừa..." : "Withdrawing leftover pool...",
-        locale === "vi" ? "Vui lòng xác nhận trong ví của bạn." : "Please confirm in your wallet."
+        t.toasts.withdrawTitle,
+        t.toasts.confirmInWallet
       );
 
       const hash = await flow.wait(() => writeContractAsync({
@@ -137,8 +135,8 @@ export function AdminView() {
 
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang xác nhận rút..." : "Confirming withdrawal...",
-        locale === "vi" ? "Đang chờ xác nhận khối trên Avalanche Fuji." : "Waiting for block confirmation on Avalanche Fuji.",
+        t.toasts.withdrawConfirm,
+        t.toasts.confirmingOnChain,
         hash
       );
 
@@ -149,10 +147,8 @@ export function AdminView() {
 
       flow.toast.success(
         toastId,
-        locale === "vi" ? "Đã rút tiền thừa!" : "Leftover withdrawn!",
-        locale === "vi"
-          ? "Tiền thưởng quỹ đối ứng chưa phân bổ đã chuyển về ví admin."
-          : "Unallocated matching pool funds transferred to admin address.",
+        t.toasts.withdrawSuccess,
+        t.toasts.withdrawSuccessDesc,
         hash
       );
 
@@ -162,7 +158,7 @@ export function AdminView() {
       flow.error(
         toastId,
         err,
-        locale === "vi" ? "Rút tiền thất bại" : "Withdraw failed",
+        t.toasts.withdrawFailed,
         locale
       );
     } finally {
@@ -201,10 +197,10 @@ export function AdminView() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
               {t.admin.title}
             </h1>
-            <Badge variant="primary">Round Admin</Badge>
+            <Badge variant="primary">{t.admin.badgeAdmin}</Badge>
           </div>
           <p className="mt-1 text-xs sm:text-sm text-muted">
-            Manage rounds, fund matching pools, verify students, and finalize allocations.
+            {t.admin.adminSubtitle}
           </p>
         </div>
 
@@ -228,7 +224,7 @@ export function AdminView() {
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="accent">Finalized</Badge>
+              <Badge variant="accent">{t.admin.roundFinalizedBadge}</Badge>
               {leftover > 0n && !leftoverWithdrawn && (
                 <Button
                   size="sm"
@@ -239,11 +235,11 @@ export function AdminView() {
                   className="text-xs font-bold"
                 >
                   <ArrowDownLeft className="h-3.5 w-3.5 mr-1" />
-                  Withdraw Leftover ({formatUsdc(leftoverUsdc)})
+                  {t.admin.withdrawLeftoverBtn} ({formatUsdc(leftoverUsdc)})
                 </Button>
               )}
               {leftoverWithdrawn && (
-                <Badge variant="outline">Leftover Withdrawn</Badge>
+                <Badge variant="outline">{t.admin.leftoverWithdrawnBadge}</Badge>
               )}
             </div>
           </div>
@@ -251,11 +247,11 @@ export function AdminView() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Project</TableHead>
-                <TableHead>Supporters</TableHead>
-                <TableHead>Direct Donations</TableHead>
-                <TableHead>Matching Payout</TableHead>
-                <TableHead className="text-right">Total Disbursed</TableHead>
+                <TableHead>{t.admin.colProject}</TableHead>
+                <TableHead>{t.admin.colSupporters}</TableHead>
+                <TableHead>{t.admin.colDirectDonations}</TableHead>
+                <TableHead>{t.admin.colMatchingPayout}</TableHead>
+                <TableHead className="text-right">{t.admin.colTotalDisbursed}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -297,13 +293,13 @@ export function AdminView() {
             {t.admin.projectsQueueTitle}
           </h2>
           <span className="font-mono text-xs text-muted">
-            {pendingProjects.length} pending
+            {t.admin.pendingProjectsCount.replace("{count}", String(pendingProjects.length))}
           </span>
         </div>
 
         {pendingProjects.length === 0 ? (
           <div className="border border-line bg-bg p-6 text-center text-xs text-muted">
-            No pending project proposals currently waiting for review.
+            {t.admin.noPendingProjects}
           </div>
         ) : (
           <div className="divide-y divide-line">
@@ -319,13 +315,13 @@ export function AdminView() {
                       <h3 className="font-semibold text-foreground text-sm">
                         {proj.name}
                       </h3>
-                      <Badge variant="warning">Pending review</Badge>
+                      <Badge variant="warning">{t.admin.pendingReviewBadge}</Badge>
                     </div>
                     <p className="text-xs text-muted max-w-lg">
                       {proj.description}
                     </p>
                     <p className="text-[11px] font-mono text-muted">
-                      Owner: {proj.ownerAddress} | Link: {proj.contactUrl}
+                      {t.admin.ownerLabel}: {proj.ownerAddress} | {t.admin.linkLabel}: {proj.contactUrl}
                     </p>
                   </div>
 
@@ -339,7 +335,7 @@ export function AdminView() {
                       className="h-8 text-xs font-bold"
                     >
                       <Check className="h-3.5 w-3.5 mr-1" />
-                      Approve
+                      {t.admin.approveBtn}
                     </Button>
                   </div>
                 </div>

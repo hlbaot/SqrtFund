@@ -7,6 +7,7 @@ import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
 import { useLocale } from "@/lib/context/locale";
+import { fmt } from "@/lib/copy";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ProjectCard } from "@/components/project/ProjectCard";
@@ -42,19 +43,19 @@ export function ProjectForm() {
     const imgBytes = new TextEncoder().encode(imageUrl.trim()).length;
 
     if (!name.trim()) errs.name = t.register.validationNameRequired;
-    else if (nameBytes > 60) errs.name = "Project name cannot exceed 60 bytes.";
+    else if (nameBytes > 60) errs.name = t.register.nameTooLong;
 
     if (!description.trim()) errs.description = t.register.validationDescRequired;
-    else if (descBytes > 280) errs.description = "Project description cannot exceed 280 bytes.";
+    else if (descBytes > 280) errs.description = t.register.descTooLong;
 
     if (!contactUrl.trim() || !contactUrl.startsWith("http")) {
       errs.contactUrl = t.register.validationContactRequired;
     } else if (contactBytes > 200) {
-      errs.contactUrl = "Link URL cannot exceed 200 bytes.";
+      errs.contactUrl = t.register.contactTooLong;
     }
 
     if (imageUrl.trim() && imgBytes > 200) {
-      errs.imageUrl = "Image URL cannot exceed 200 bytes.";
+      errs.imageUrl = t.register.imageTooLong;
     }
 
     setErrors(errs);
@@ -71,8 +72,8 @@ export function ProjectForm() {
     if (!isConnected || !address) {
       flow.toast.error(
         toastId,
-        locale === "vi" ? "Chưa kết nối ví" : "Wallet not connected",
-        locale === "vi" ? "Vui lòng kết nối ví để đăng ký dự án." : "Please connect your wallet to register a project."
+        t.toasts.walletNotConnected,
+        t.toasts.walletNotConnectedDesc
       );
       return;
     }
@@ -80,8 +81,8 @@ export function ProjectForm() {
     if (!roundAddress || !publicClient) {
       flow.toast.error(
         toastId,
-        locale === "vi" ? "Round không hoạt động" : "Round not active",
-        locale === "vi" ? "Không tìm thấy round QF đang hoạt động." : "No active quadratic funding round found."
+        t.toasts.roundNotActive,
+        t.toasts.roundNotActiveDesc
       );
       return;
     }
@@ -90,8 +91,8 @@ export function ProjectForm() {
     try {
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang đăng ký dự án..." : "Registering project...",
-        locale === "vi" ? "Vui lòng xác nhận giao dịch trong ví của bạn." : "Please confirm the transaction in your wallet."
+        t.toasts.registerTitle,
+        t.toasts.registerDesc
       );
 
       const hash = await flow.wait(() => writeContractAsync({
@@ -103,8 +104,8 @@ export function ProjectForm() {
 
       flow.toast.pending(
         toastId,
-        locale === "vi" ? "Đang xác nhận đăng ký..." : "Confirming registration...",
-        locale === "vi" ? "Đang chờ xác nhận khối trên Avalanche Fuji." : "Waiting for block confirmation on Avalanche Fuji.",
+        t.toasts.registerConfirm,
+        t.toasts.registerConfirmDesc,
         hash
       );
 
@@ -116,8 +117,8 @@ export function ProjectForm() {
       setIsSubmitted(true);
       flow.toast.success(
         toastId,
-        locale === "vi" ? "Đã đăng ký dự án!" : "Project registered!",
-        locale === "vi" ? "Dự án của bạn đã được gửi và đang chờ admin duyệt." : "Your project was submitted and is pending admin approval.",
+        t.toasts.registerSuccess,
+        t.toasts.registerSuccessDesc,
         hash
       );
     } catch (err: unknown) {
@@ -125,7 +126,7 @@ export function ProjectForm() {
       flow.error(
         toastId,
         err,
-        locale === "vi" ? "Đăng ký thất bại" : "Registration failed",
+        t.toasts.registerFailed,
         locale
       );
     } finally {
@@ -168,7 +169,7 @@ export function ProjectForm() {
           {t.register.submittedDesc}
         </p>
         <p className="mono-label text-xs text-muted">
-          Status: <strong className="text-primary">Pending admin approval</strong>
+          {t.common.statusPendingAdmin}
         </p>
         <div className="pt-4 flex justify-center gap-3">
           <Link href="/my">
@@ -184,7 +185,7 @@ export function ProjectForm() {
               setImageUrl("");
             }}
           >
-            Submit another
+            {t.common.submitAnother}
           </Button>
         </div>
       </div>
@@ -208,12 +209,12 @@ export function ProjectForm() {
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
             <div>
               <span className="font-bold block text-amber-300 mb-0.5">
-                Verification Required to Register Projects
+                {t.register.verificationRequired}
               </span>
               <span>
                 {hasRequested
-                  ? "Your wallet has requested student verification and is currently pending admin approval. Only verified student wallets can register projects."
-                  : "Only admin-verified student wallets can register projects. Please request verification from a project page or contact the round administrator to get whitelisted."}
+                  ? t.register.verificationPendingMsg
+                  : t.register.verificationNotRequestedMsg}
               </span>
             </div>
           </div>
@@ -241,10 +242,10 @@ export function ProjectForm() {
               onChange={(e) => setCategory(e.target.value as ProjectCategory)}
               className="w-full border border-line-strong bg-bg px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             >
-              <option value="technology">Technology & Engineering</option>
-              <option value="education">Education & Workshops</option>
-              <option value="environment">Sustainability & Campus Green</option>
-              <option value="arts">Arts, Sound & Creative</option>
+              <option value="technology">{t.categories.technology}</option>
+              <option value="education">{t.categories.education}</option>
+              <option value="environment">{t.categories.environment}</option>
+              <option value="arts">{t.categories.arts}</option>
             </select>
           </div>
 
@@ -273,7 +274,7 @@ export function ProjectForm() {
               </p>
             )}
             <p className="text-[11px] text-muted text-right">
-              {description.length}/280 chars
+              {fmt(t.register.charsCount, { count: description.length })}
             </p>
           </div>
 
@@ -291,7 +292,6 @@ export function ProjectForm() {
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
             error={errors.imageUrl}
-            helperText="Link to project logo or screenshot (https://...)"
           />
 
           <div className="pt-2">
@@ -304,9 +304,9 @@ export function ProjectForm() {
               className="py-3 font-bold"
             >
               {!isStudent
-                ? "Student Verification Required"
+                ? t.register.studentVerificationRequired
                 : isSubmitting
-                  ? "Registering on Fuji..."
+                  ? t.register.registeringOnFuji
                   : t.register.submitButton}
             </Button>
           </div>
@@ -323,7 +323,7 @@ export function ProjectForm() {
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">
             {t.register.previewTitle}
           </h3>
-          <span className="text-xs text-money font-medium">Real-time update</span>
+          <span className="text-xs text-money font-medium">{t.common.realTimeUpdate}</span>
         </div>
         <ProjectCard project={previewProject} />
       </div>

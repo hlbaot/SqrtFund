@@ -253,7 +253,7 @@ export function ConnectWalletButton() {
                   <NotificationBadge count={counts.student} />
                 ) : (
                   <span className="tabular-mono text-[10px] text-muted border border-line px-1.5 py-0.5 rounded">
-                    IN {formatCooldown(remainingSeconds)}
+                    {t.faucet.nextClaimIn.toUpperCase()} {formatCooldown(remainingSeconds)}
                   </span>
                 )}
               </Link>
