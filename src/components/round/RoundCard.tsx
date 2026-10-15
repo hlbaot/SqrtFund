@@ -9,6 +9,7 @@ import { CountdownTimer } from "./CountdownTimer";
 import { Badge } from "@/components/ui/Badge";
 import { Frame } from "@/components/ui/Frame";
 import { ArrowRight, Check, Copy } from "lucide-react";
+import { Stat, StatGroup } from "@/components/common/Stat";
 
 export interface RoundCardProps {
   round: Round;
@@ -48,7 +49,7 @@ export function RoundCard({ round, className = "", adminAddress, roundIndex }: R
     <Frame className={`p-6 ${className}`} interactive>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
         <div className="flex flex-wrap items-center gap-2.5">
-          <Badge variant={effectiveStatus === "open" ? "primary" : "secondary"}>
+          <Badge variant={effectiveStatus === "open" ? "primary" : effectiveStatus === "finalized" ? "accent" : "secondary"}>
             {effectiveStatus === "open"
               ? t.roundCard.statusOpen
               : effectiveStatus === "closed"
@@ -91,39 +92,51 @@ export function RoundCard({ round, className = "", adminAddress, roundIndex }: R
         )}
       </div>
 
-      {/* Round stats & CTA banner: inline stats with right-aligned CTA on desktop, stacked on mobile */}
-      <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="grid flex-1 grid-cols-3 gap-2 border border-line bg-bg p-3.5 sm:gap-4">
-          <div>
-            <span className="mono-label block text-xs text-muted">{t.roundCard.poolLabel}</span>
-            <span className="tabular-mono text-base font-black text-money sm:text-lg">
-              {formatUsdc(round.matchingPool)}
-            </span>
-          </div>
-
-          <div>
-            <span className="mono-label block text-xs text-muted">{t.roundCard.raisedLabel}</span>
-            <span className="tabular-mono text-base font-bold text-foreground sm:text-lg">
-              {formatUsdc(round.totalDonated)}
-            </span>
-          </div>
-
-          <div>
-            <span className="mono-label block text-xs text-muted">{t.roundCard.supportersLabel}</span>
-            <span className="tabular-mono text-base font-bold text-primary sm:text-lg">
-              {formatNumber(round.totalSupporters)}
-            </span>
-          </div>
+      {/* Matching Pool: single hero metric on the card */}
+      <div className="mt-4">
+        <p className="role-label text-muted">{t.roundCard.poolLabel}</p>
+        <div className="mt-1 flex items-baseline gap-1.5 text-money">
+          <span
+            className="value-lg text-money"
+            title={formatUsdc(round.matchingPool)}
+          >
+            {formatUsdc(round.matchingPool, { includeSymbol: false, compact: true })}
+          </span>
+          <span className="role-unit">USDC</span>
         </div>
-
-        <Link
-          href={`/round/${round.id}`}
-          className="mono-label inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 border border-primary bg-primary/10 px-6 py-2.5 text-primary transition-colors hover:bg-primary hover:text-foreground focus:outline-none lg:w-auto"
-        >
-          <span>{t.roundCard.viewRound}</span>
-          <ArrowRight className="h-4 w-4" />
-        </Link>
       </div>
+
+      {/* Stats group: Supporters first (primary tone), Projects, Raised */}
+      <StatGroup columns={3} className="my-4">
+        <Stat
+          label={t.roundCard.supportersLabel}
+          value={formatNumber(round.totalSupporters)}
+          tone="primary"
+          title={formatNumber(round.totalSupporters)}
+        />
+        <Stat
+          label={t.competition?.projects || "Projects"}
+          value={formatNumber(round.projectCount)}
+          tone="default"
+          title={formatNumber(round.projectCount)}
+        />
+        <Stat
+          label={t.roundCard.raisedLabel}
+          value={formatUsdc(round.totalDonated, { includeSymbol: false, compact: true })}
+          unit="USDC"
+          tone="default"
+          title={formatUsdc(round.totalDonated)}
+        />
+      </StatGroup>
+
+      {/* CTA pinned to bottom */}
+      <Link
+        href={`/round/${round.id}`}
+        className="mono-label inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 border border-primary bg-primary/10 px-6 py-2.5 text-primary transition-colors hover:bg-primary hover:text-foreground focus:outline-none"
+      >
+        <span>{t.roundCard.viewRound}</span>
+        <ArrowRight className="h-4 w-4" />
+      </Link>
     </Frame>
   );
 }

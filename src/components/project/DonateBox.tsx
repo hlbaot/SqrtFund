@@ -13,7 +13,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
 import { useDonate } from "@/hooks/useDonate";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatUsdc } from "@/lib/format";
+import { formatUsdcFixed } from "@/lib/format";
 import { fmt } from "@/lib/copy";
 import { simulateDonationImpact } from "@/lib/qf";
 import { Stepper, StepItem } from "@/components/tx/Stepper";
@@ -322,16 +322,16 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-semibold text-foreground">
               <label htmlFor="donation-amount">{t.donateBox.amountLabel}</label>
-              <div className="flex items-center gap-3 font-mono text-[11px] text-muted">
+              <div className="flex items-center gap-3 font-mono text-xs text-muted">
                 {isConnected && (
                   <span>
                     {t.donateBox.balance}:{" "}
                     <strong className={usdcBalanceUsdc < 1 ? "text-primary" : "text-money"}>
-                      {usdcBalanceUsdc.toFixed(0)} USDC
+                      {formatUsdcFixed(usdcBalanceUsdc)}
                     </strong>
                   </span>
                 )}
-                <span>{t.donateBox.remaining}: {remainingAllowanceUsdc} USDC</span>
+                <span>{t.donateBox.remaining}: {formatUsdcFixed(remainingAllowanceUsdc)}</span>
               </div>
             </div>
 
@@ -391,15 +391,15 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
             <p className="mt-1 leading-relaxed text-foreground">
               {fmt(t.donateBox.impactText, {
                 amount: amount.toString(),
-                current: formatUsdc(project.estimatedMatching),
-                next: formatUsdc(impact.nextMatching),
-                diff: formatUsdc(impact.increase),
+                current: formatUsdcFixed(project.estimatedMatching),
+                next: formatUsdcFixed(impact.nextMatching),
+                diff: formatUsdcFixed(impact.increase),
               })}
             </p>
           </div>
 
           {/* Honest copy about 2 sequential confirmations */}
-          <p className="text-[11px] text-muted leading-tight">
+          <p className="text-xs text-muted leading-relaxed">
             {t.donateBox.approvalNotice}
           </p>
 
@@ -426,7 +426,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
                 </p>
                 <p className="text-muted">
                   {fmt(t.donateBox.insufficientBalanceDesc, {
-                    balance: usdcBalanceUsdc.toFixed(0),
+                    balance: formatUsdcFixed(usdcBalanceUsdc),
                     amount: amount,
                   })}
                 </p>
@@ -465,7 +465,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
               </Button>
             ) : hasInsufficientBalance ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-60">
-                {fmt(t.donateBox.insufficientBalanceBtn, { balance: usdcBalanceUsdc.toFixed(0) })}
+                {fmt(t.donateBox.insufficientBalanceBtn, { balance: formatUsdcFixed(usdcBalanceUsdc) })}
               </Button>
             ) : (
               <Button
@@ -496,7 +496,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
               {t.donateBox.txSuccess}
             </h4>
             <p className="mt-1 text-xs text-foreground">
-              {fmt(t.donateBox.matchingIncrease, { amount: formatUsdc(impact.increase) })}
+              {fmt(t.donateBox.matchingIncrease, { amount: formatUsdcFixed(impact.increase) })}
             </p>
           </div>
           {activeTxHash && <TxStatusDisplay status="success" txHash={activeTxHash} />}

@@ -47,10 +47,10 @@ export function SplashIntro() {
         </div>
 
         <div className="splash-tagline mt-8 space-y-3">
-          <p className="mono-label text-[clamp(0.68rem,2.2vw,0.82rem)] text-foreground">
+          <p className="role-label text-xs sm:text-sm text-foreground">
             {splashCopy.tagline}
           </p>
-          <p className="mono-label text-[clamp(0.62rem,2vw,0.75rem)] text-primary">
+          <p className="role-label text-xs text-primary">
             {splashCopy.eventLabel}
           </p>
         </div>

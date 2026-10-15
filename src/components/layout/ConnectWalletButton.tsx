@@ -10,7 +10,7 @@ import { Wallet, LogOut, ChevronDown, Check, Copy, Loader2, Pencil, AlertCircle 
 import { AvatarPickerDialog } from "./AvatarPickerDialog";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAvatar } from "@/hooks/useAvatar";
-import { shortAddress, formatCooldown } from "@/lib/format";
+import { shortAddress, formatCooldown, formatUsdcFixed } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
 import { useNotificationCounts } from "@/hooks/useNotificationCounts";
@@ -127,6 +127,15 @@ export function ConnectWalletButton() {
     } catch { if (mounted.current) txToast.error("wallet-copy", t.wallet.copyFailed); }
   };
 
+  const handleDisconnect = async () => {
+    setDropdownOpen(false);
+    try {
+      await logoutWallet(disconnectAsync, queryClient);
+    } catch (err) {
+      console.error("Disconnect failed:", err);
+    }
+  };
+
   if (!isConnected || !address) {
     return (
       <div className="flex min-h-10 min-w-[170px] items-center justify-end transition-opacity duration-200 ease-in-out">
@@ -149,7 +158,7 @@ export function ConnectWalletButton() {
         className="mono-label relative flex max-w-full min-h-10 items-center gap-2 rounded-sm border border-line-strong bg-surface px-3 text-foreground hover:bg-surface-2">
         <Avatar address={address} size={24} avatarId={avatar} />
         <span className={`h-2 w-2 shrink-0 rounded-full ${isFuji ? "bg-money" : "bg-amber-400"}`} aria-hidden="true" />
-        <span className="min-w-0 truncate whitespace-nowrap text-[10px] border border-line px-1.5 py-0.5">{isFuji ? t.common.testnetBadge : t.wallet.switchNetwork}</span>
+        <span className="min-w-0 truncate whitespace-nowrap text-xs border border-line px-1.5 py-0.5">{isFuji ? t.common.testnetBadge : t.wallet.switchNetwork}</span>
         <span>{shortAddress(address, 4)}</span>
         <ChevronDown className={`h-3.5 w-3.5 text-muted transition-transform ${dropdownOpen ? "rotate-180" : ""}`} aria-hidden="true" />
         {counts.total > 0 && <span aria-label={t.wallet.notifications} className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-bg" />}
@@ -169,7 +178,7 @@ export function ConnectWalletButton() {
               </span>
             </button>
             <div className="min-w-0 space-y-1">
-              <p className="mono-label text-muted text-[10px]">{t.common.testnetBadge}</p>
+              <p className="role-label text-muted">{t.common.testnetBadge}</p>
               {isReady ? <Badge variant={role === "admin" ? "warning" : role === "student" ? "accent" : role === "owner" ? "owner" : "default"}>{t.wallet[role]}</Badge> : <Skeleton className="h-6 w-32" />}
             </div>
           </div>
@@ -179,14 +188,14 @@ export function ConnectWalletButton() {
             {copied ? <Check className="h-3.5 w-3.5 text-money" /> : <Copy className="h-3.5 w-3.5" />}
           </button>
           {(avax || usdc !== undefined) && <div className="mb-3 space-y-2 border-y border-line py-3 font-mono" aria-label={t.wallet.balance}>
-            {avax && <p className="flex justify-between"><span className="text-muted">AVAX</span><span>{Number(formatUnits(avax.value, avax.decimals)).toFixed(4)}</span></p>}
-            {usdc !== undefined && <p className="flex justify-between"><span className="text-muted">USDC</span><span>{Number(formatUnits(usdc, 6)).toFixed(2)}</span></p>}
+            {avax && <p className="flex justify-between"><span className="text-muted">AVAX</span><span className="tabular-nums">{Number(formatUnits(avax.value, avax.decimals)).toFixed(4)}</span></p>}
+            {usdc !== undefined && <p className="flex justify-between"><span className="text-muted">USDC</span><span className="tabular-nums">{formatUsdcFixed(Number(formatUnits(usdc, 6)))}</span></p>}
           </div>}
 
           {/* Student Verification section for non-admin, non-student wallets */}
           {isReady && role !== "admin" && role !== "student" && verifyStatus !== "approved" && (
             <div className="mb-3 space-y-2 border-b border-line pb-3">
-              <span className="mono-label text-[10px] text-muted uppercase tracking-wider block">
+              <span className="role-label text-muted block">
                 {t.verification.title}
               </span>
 
@@ -211,7 +220,7 @@ export function ConnectWalletButton() {
               {verifyStatus === "pending" && (
                 <div className="flex items-center gap-2 border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-400">
                   <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                  <span className="mono-label text-[11px] font-bold uppercase">{t.verification.pendingChip}</span>
+                  <span className="role-label font-bold">{t.verification.pendingChip}</span>
                 </div>
               )}
 
@@ -219,7 +228,7 @@ export function ConnectWalletButton() {
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs text-primary">
                     <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                    <span className="mono-label text-[11px] font-bold uppercase">{t.verification.rejectedChip}</span>
+                    <span className="role-label font-bold">{t.verification.rejectedChip}</span>
                   </div>
                   <Button
                     variant="secondary"
@@ -252,14 +261,14 @@ export function ConnectWalletButton() {
                 {canClaim ? (
                   <NotificationBadge count={counts.student} />
                 ) : (
-                  <span className="tabular-mono text-[10px] text-muted border border-line px-1.5 py-0.5 rounded">
+                  <span className="tabular-mono text-xs text-muted border border-line px-1.5 py-0.5 rounded">
                     {t.faucet.nextClaimIn.toUpperCase()} {formatCooldown(remainingSeconds)}
                   </span>
                 )}
               </Link>
             )}
           </div>
-          <button type="button" onClick={() => { setDropdownOpen(false); void logoutWallet(disconnectAsync, queryClient).catch(() => { }); }} className="mono-label mt-3 flex w-full items-center gap-2 border-t border-line px-2 pt-4 pb-1 text-primary hover:bg-primary/10">
+          <button type="button" onClick={handleDisconnect} className="mono-label mt-3 flex w-full items-center gap-2 border-t border-line px-2 pt-4 pb-1 text-primary hover:bg-primary/10">
             <LogOut className="h-3.5 w-3.5" />{t.nav.disconnect}
           </button>
         </div>, document.body
@@ -275,7 +284,7 @@ export function ConnectWalletButton() {
           <div className="space-y-4 pt-2">
             <div className="border border-line bg-surface p-3 space-y-1">
               <Avatar address={address} size={48} avatarId={avatar} />
-              <span className="mono-label text-[10px] text-muted block uppercase">
+              <span className="role-label text-muted block">
                 {t.verification.addressToVerify}
               </span>
               <p className="font-mono text-xs break-all text-foreground select-all">

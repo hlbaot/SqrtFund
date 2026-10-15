@@ -1,3 +1,5 @@
+"use client";
+
 import { AdminView } from "@/views/admin";
 
 export default function AdminPage() {

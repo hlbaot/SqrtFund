@@ -273,7 +273,7 @@ export function ProjectForm() {
                 {errors.description}
               </p>
             )}
-            <p className="text-[11px] text-muted text-right">
+            <p className="text-xs text-muted text-right">
               {fmt(t.register.charsCount, { count: description.length })}
             </p>
           </div>
@@ -320,7 +320,7 @@ export function ProjectForm() {
         data-aos-duration="600"
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">
+          <h3 className="role-label text-muted">
             {t.register.previewTitle}
           </h3>
           <span className="text-xs text-money font-medium">{t.common.realTimeUpdate}</span>

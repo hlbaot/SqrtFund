@@ -55,7 +55,7 @@ export function Stepper({ steps, className = "" }: StepperProps) {
                     {step.label}
                   </span>
                   {step.description && (
-                    <span className="text-[10px] text-muted">
+                    <span className="text-xs text-muted">
                       {step.description}
                     </span>
                   )}

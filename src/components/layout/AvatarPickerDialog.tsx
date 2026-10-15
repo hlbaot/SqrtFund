@@ -51,7 +51,7 @@ export function AvatarPickerDialog({ address, onClose }: { address: string; onCl
                 aria-label={option.name} aria-checked={chosen} tabIndex={chosen ? 0 : -1} data-autofocus={chosen ? "true" : undefined}
                 title={option.name} onClick={() => setSelected(option.id)} onKeyDown={event => selectWithKeyboard(event, index)}
                 className="relative flex aspect-square w-full items-center justify-center rounded-sm p-2 focus-visible:outline-offset-2">
-                {option.id === "auto" ? <span className="mono-label text-[10px] text-muted">{t.avatar.auto}</span> : <Avatar address={address} size={48} avatarId={option.id} />}
+                {option.id === "auto" ? <span className="role-label text-muted">{t.avatar.auto}</span> : <Avatar address={address} size={48} avatarId={option.id} />}
                 {chosen && <Check className="absolute right-1 top-1 h-3.5 w-3.5 text-money" aria-hidden="true" />}
               </button>
             </GradientBorder>

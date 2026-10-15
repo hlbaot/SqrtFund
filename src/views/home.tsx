@@ -482,35 +482,18 @@ export function HomeView() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:gap-6">
+              {/* 1. Supporters (First in order) */}
               <Frame
                 className="p-6"
                 data-aos="fade-up"
                 data-aos-delay="0"
                 data-aos-duration="600"
               >
-                <div className="mono-label flex items-center gap-2 text-money">
-                  <Coins className="h-4 w-4" />
-                  <span>{t.hero.statPool}</span>
-                </div>
-                <div className="tabular-mono mt-3 text-3xl font-black text-money lg:text-4xl">
-                  {formatUsdc(poolUsdc)}
-                </div>
-                {t.homeIntro.poolNote && (
-                  <p className="mt-1 text-xs text-muted">{t.homeIntro.poolNote}</p>
-                )}
-              </Frame>
-
-              <Frame
-                className="p-6"
-                data-aos="fade-up"
-                data-aos-delay="100"
-                data-aos-duration="600"
-              >
-                <div className="mono-label flex items-center gap-2 text-primary">
+                <div className="role-label flex items-center gap-2 text-primary">
                   <Users className="h-4 w-4" />
                   <span>{t.hero.statSupporters}</span>
                 </div>
-                <div className="tabular-mono mt-3 text-3xl font-black text-foreground lg:text-4xl">
+                <div className="tabular-mono mt-3 text-3xl font-bold text-foreground lg:text-4xl">
                   {formatNumber(totalSupporters)}
                 </div>
                 {t.homeIntro.supportersNote && (
@@ -518,17 +501,40 @@ export function HomeView() {
                 )}
               </Frame>
 
+              {/* 2. Matching pool */}
+              <Frame
+                className="p-6"
+                data-aos="fade-up"
+                data-aos-delay="100"
+                data-aos-duration="600"
+              >
+                <div className="role-label flex items-center gap-2 text-money">
+                  <Coins className="h-4 w-4" />
+                  <span>{t.hero.statPool}</span>
+                </div>
+                <div
+                  title={formatUsdc(poolUsdc)}
+                  className="tabular-mono mt-3 text-3xl font-bold text-money lg:text-4xl truncate"
+                >
+                  {formatUsdc(poolUsdc, { compact: true })}
+                </div>
+                {t.homeIntro.poolNote && (
+                  <p className="mt-1 text-xs text-muted">{t.homeIntro.poolNote}</p>
+                )}
+              </Frame>
+
+              {/* 3. Projects */}
               <Frame
                 className="p-6"
                 data-aos="fade-up"
                 data-aos-delay="200"
                 data-aos-duration="600"
               >
-                <div className="mono-label flex items-center gap-2 text-muted">
+                <div className="role-label flex items-center gap-2 text-muted">
                   <Rocket className="h-4 w-4" />
                   <span>{t.hero.statProjects}</span>
                 </div>
-                <div className="tabular-mono mt-3 text-3xl font-black text-foreground lg:text-4xl">
+                <div className="tabular-mono mt-3 text-3xl font-bold text-foreground lg:text-4xl">
                   {formatNumber(approvedProjects.length)}
                 </div>
                 {t.homeIntro.projectsNote && (

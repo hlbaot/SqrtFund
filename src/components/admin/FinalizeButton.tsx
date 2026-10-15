@@ -104,7 +104,7 @@ export function FinalizeButton() {
         </Button>
       </div>
 
-      <p className="text-[11px] text-muted max-w-xs leading-tight">
+      <p className="text-xs text-muted max-w-xs leading-relaxed">
         {t.admin.gracePeriodNotice}
       </p>
 

@@ -329,10 +329,10 @@ export function WhitelistTable() {
                     className="h-4 w-4 rounded border-line bg-bg text-primary focus:ring-primary accent-primary cursor-pointer"
                   />
                 </TableHead>
-                <TableHead>{t.admin.colAddress}</TableHead>
-                <TableHead>{t.verification.time}</TableHead>
-                <TableHead>{t.admin.colStatus}</TableHead>
-                <TableHead className="text-right">{t.admin.colActions}</TableHead>
+                <TableHead className="role-label">{t.admin.colAddress}</TableHead>
+                <TableHead className="role-label">{t.verification.time}</TableHead>
+                <TableHead className="role-label">{t.admin.colStatus}</TableHead>
+                <TableHead className="text-right role-label">{t.admin.colActions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

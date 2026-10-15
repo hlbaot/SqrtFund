@@ -6,16 +6,242 @@ export function shortAddress(addr: string, chars = 4): string {
   return `${addr.slice(0, chars + 2)}...${addr.slice(-chars)}`;
 }
 
-export function formatUsdc(amount: number | bigint, options: { includeSymbol?: boolean; decimals?: number } = {}): string {
-  const { includeSymbol = true, decimals = 0 } = options;
-  const num = typeof amount === "bigint" ? Number(amount) / 1_000_000 : amount;
-  
-  const formatted = new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(num);
+export const USDC_DECIMALS = 6;
 
-  return includeSymbol ? `${formatted} USDC` : formatted;
+export type UsdcValidationKey =
+  | "empty"
+  | "invalid_format"
+  | "too_many_decimals"
+  | "zero"
+  | "negative"
+  | "exceeds_balance";
+
+export interface ParseUsdcSuccess {
+  success: true;
+  amount: bigint;
+  formatted: string;
+}
+
+export interface ParseUsdcError {
+  success: false;
+  errorKey: UsdcValidationKey;
+  amount?: undefined;
+}
+
+export type ParseUsdcResult = ParseUsdcSuccess | ParseUsdcError;
+
+/**
+ * Validates and parses a USDC input string into a 6-decimal BigInt.
+ * Never uses `Number` to prevent precision loss.
+ */
+export function parseUsdc(value: string, balance?: bigint): ParseUsdcResult {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { success: false, errorKey: "empty" };
+  }
+
+  if (trimmed.startsWith("-")) {
+    return { success: false, errorKey: "negative" };
+  }
+
+  // Reject non-numeric input and multiple decimal points
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+    return { success: false, errorKey: "invalid_format" };
+  }
+
+  const parts = trimmed.split(".");
+  if (parts[1] && parts[1].length > 6) {
+    return { success: false, errorKey: "too_many_decimals" };
+  }
+
+  const wholeStr = parts[0] || "0";
+  const fracStr = (parts[1] || "").padEnd(6, "0").slice(0, 6);
+
+  let amount: bigint;
+  try {
+    amount = BigInt(wholeStr) * 1_000_000n + BigInt(fracStr);
+  } catch {
+    return { success: false, errorKey: "invalid_format" };
+  }
+
+  if (amount <= 0n) {
+    return { success: false, errorKey: "zero" };
+  }
+
+  if (balance !== undefined && amount > balance) {
+    return { success: false, errorKey: "exceeds_balance" };
+  }
+
+  return { success: true, amount, formatted: trimmed };
+}
+
+export function formatUsdc(
+  amount: number | bigint | string | undefined | null,
+  options: { includeSymbol?: boolean; decimals?: number; compact?: boolean } = {}
+): string {
+  const { includeSymbol = true, decimals, compact = false } = options;
+
+  if (amount === undefined || amount === null) {
+    const zeroStr = decimals !== undefined ? (0).toFixed(decimals) : "0";
+    return includeSymbol ? `${zeroStr} USDC` : zeroStr;
+  }
+
+  let rawStr = "";
+  let isNegative = false;
+
+  if (typeof amount === "bigint") {
+    isNegative = amount < 0n;
+    const abs = isNegative ? -amount : amount;
+    const whole = abs / 1_000_000n;
+    const frac = abs % 1_000_000n;
+    if (frac === 0n && decimals === undefined) {
+      rawStr = whole.toString();
+    } else {
+      const fracPadded = frac.toString().padStart(6, "0");
+      rawStr = `${whole.toString()}.${fracPadded}`;
+    }
+  } else if (typeof amount === "number") {
+    if (isNaN(amount)) return includeSymbol ? (decimals !== undefined ? `${(0).toFixed(decimals)} USDC` : "0 USDC") : (decimals !== undefined ? (0).toFixed(decimals) : "0");
+    isNegative = amount < 0;
+    const abs = Math.abs(amount);
+    if (decimals !== undefined) {
+      rawStr = abs.toFixed(decimals);
+    } else {
+      rawStr = abs.toString();
+    }
+  } else {
+    const trimmed = amount.trim();
+    if (!trimmed) return includeSymbol ? (decimals !== undefined ? `${(0).toFixed(decimals)} USDC` : "0 USDC") : (decimals !== undefined ? (0).toFixed(decimals) : "0");
+    isNegative = trimmed.startsWith("-");
+    rawStr = isNegative ? trimmed.slice(1) : trimmed;
+  }
+
+  // Split whole and fractional components
+  const [wholePart = "0", fracPart = ""] = rawStr.split(".");
+  let formattedWhole: string;
+  try {
+    formattedWhole = BigInt(wholePart).toLocaleString("en-US");
+  } catch {
+    formattedWhole = wholePart;
+  }
+
+  if (compact) {
+    try {
+      const wholeBig = BigInt(wholePart);
+      if (wholeBig >= 1_000_000n) {
+        const compactVal = (Number(wholeBig) / 1_000_000).toLocaleString("en-US", {
+          maximumFractionDigits: 2,
+        });
+        return `${isNegative ? "-" : ""}${compactVal}M${includeSymbol ? " USDC" : ""}`;
+      } else if (wholeBig >= 10_000n) {
+        const compactVal = (Number(wholeBig) / 1_000).toLocaleString("en-US", {
+          maximumFractionDigits: 1,
+        });
+        return `${isNegative ? "-" : ""}${compactVal}K${includeSymbol ? " USDC" : ""}`;
+      }
+    } catch {
+      // fallback to regular format
+    }
+  }
+
+  let finalNumberStr = formattedWhole;
+  if (decimals !== undefined) {
+    const paddedFrac = fracPart.padEnd(decimals, "0").slice(0, decimals);
+    finalNumberStr = decimals > 0 ? `${formattedWhole}.${paddedFrac}` : formattedWhole;
+  } else if (fracPart.length > 0) {
+    const trimmedFrac = fracPart.slice(0, 6).replace(/0+$/, "");
+    finalNumberStr = trimmedFrac.length > 0 ? `${formattedWhole}.${trimmedFrac}` : formattedWhole;
+  }
+
+  const result = `${isNegative ? "-" : ""}${finalNumberStr}`;
+  return includeSymbol ? `${result} USDC` : result;
+}
+
+/**
+ * Format an integer count with thousand separators (e.g. 1,234)
+ */
+export function formatCount(num: number | bigint | undefined | null): string {
+  if (num === undefined || num === null) return "0";
+  const n = typeof num === "bigint" ? num : BigInt(Math.floor(num || 0));
+  return n.toLocaleString("en-US");
+}
+
+/**
+ * Format USDC with fixed 2 decimal places and thousand separators.
+ * Zero is always formatted as "0.00" (or "0.00 USDC").
+ */
+export function formatUsdcFixed(
+  amount: number | bigint | string | undefined | null,
+  options: { includeSymbol?: boolean; compact?: boolean } = {}
+): string {
+  if (amount === undefined || amount === null || amount === 0 || amount === 0n || amount === "0") {
+    return options.includeSymbol !== false ? "0.00 USDC" : "0.00";
+  }
+  return formatUsdc(amount, { decimals: 2, ...options });
+}
+
+/**
+ * Format USDC with full precision (up to 6 decimals, trailing zeroes trimmed).
+ * For tooltips, title attributes, and transaction confirmation details.
+ */
+export function formatUsdcFull(
+  amount: number | bigint | string | undefined | null,
+  options: { includeSymbol?: boolean } = {}
+): string {
+  if (amount === undefined || amount === null || amount === 0 || amount === 0n || amount === "0") {
+    return options.includeSymbol !== false ? "0.00 USDC" : "0.00";
+  }
+  return formatUsdc(amount, { decimals: undefined, ...options });
+}
+
+/**
+ * Formats a date strictly as "DD/MM/YYYY HH:mm GMT+7" in Asia/Ho_Chi_Minh timezone.
+ * Consistent across all locales without month words like "thg 10" or "Oct".
+ */
+export function formatDateTimeGmt7(date: string | Date | number): string {
+  if (!date && date !== 0) return "";
+  let d: Date;
+  if (typeof date === "number") {
+    d = date < 10_000_000_000 ? new Date(date * 1000) : new Date(date);
+  } else if (typeof date === "string") {
+    if (/^\d+$/.test(date)) {
+      const num = Number(date);
+      d = num < 10_000_000_000 ? new Date(num * 1000) : new Date(num);
+    } else {
+      d = new Date(date);
+    }
+  } else {
+    d = date;
+  }
+
+  if (isNaN(d.getTime())) return "";
+
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(d);
+  let day = "00";
+  let month = "00";
+  let year = "0000";
+  let hour = "00";
+  let minute = "00";
+
+  for (const part of parts) {
+    if (part.type === "day") day = part.value;
+    else if (part.type === "month") month = part.value;
+    else if (part.type === "year") year = part.value;
+    else if (part.type === "hour") hour = part.value;
+    else if (part.type === "minute") minute = part.value;
+  }
+
+  return `${day}/${month}/${year} ${hour}:${minute} GMT+7`;
 }
 
 export function formatNumber(num: number): string {

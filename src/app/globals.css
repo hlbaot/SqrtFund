@@ -138,12 +138,64 @@ button:not(:disabled):hover,
   text-wrap: balance;
 }
 
-.mono-label {
+.mono-label,
+.role-label,
+.stat-label {
   font-family: var(--font-mono);
   font-size: 0.75rem;
+  line-height: 1rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.role-body {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 400;
+  color: var(--foreground);
+}
+
+.role-caption {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.role-value-md,
+.value-md,
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.role-value-lg,
+.value-lg {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.role-unit,
+.unit {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--muted);
+  vertical-align: baseline;
 }
 
 .tabular-mono {
@@ -497,3 +549,52 @@ body,
 .avatar-choice[data-auto="true"][data-selected="false"] {
   border-style: dashed;
 }
+
+/* Rounds and leaderboard: token-based, quiet motion and bounded numeric layouts. */
+.competition-focus:focus-visible,
+.competition-action:focus-visible,
+.competition-scroll:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.competition-action {
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, var(--bg));
+  color: var(--text);
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 0.7rem;
+  transition: background 160ms ease;
+}
+.competition-action:hover { background: color-mix(in srgb, var(--primary) 22%, var(--bg)); }
+.competition-segment button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); box-shadow: inset 0 -2px var(--primary); }
+.competition-segment button[aria-pressed="false"] { color: var(--muted); }
+.competition-number { min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.competition-row td { border-bottom: 1px solid var(--line); }
+.competition-row:hover,
+.competition-row:focus-within { background: var(--surface-2); }
+.competition-row:focus-within { outline: 1px solid var(--primary); outline-offset: -1px; }
+.competition-row td:first-child::before,
+.competition-row td:last-child::after { content: ""; position: absolute; width: 8px; height: 8px; pointer-events: none; opacity: 0; transition: opacity 160ms ease, transform 160ms ease; }
+.competition-row td:first-child::before { left: 0; top: 0; border-top: 1px solid var(--primary); border-left: 1px solid var(--primary); transform: translate(3px, 3px); }
+.competition-row td:last-child::after { right: 0; bottom: 0; border-right: 1px solid var(--primary); border-bottom: 1px solid var(--primary); transform: translate(-3px, -3px); }
+.competition-row:hover td:first-child::before,
+.competition-row:hover td:last-child::after,
+.competition-row:focus-within td:first-child::before,
+.competition-row:focus-within td:last-child::after { opacity: 1; transform: translate(0, 0); }
+.competition-scroll { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) var(--scroll-track); }
+.competition-scroll::-webkit-scrollbar { display: block; width: 5px; height: 5px; }
+.competition-scroll::-webkit-scrollbar-thumb { background: var(--scroll-thumb); }
+.competition-scroll::-webkit-scrollbar-track { background: var(--scroll-track); }
+@keyframes competition-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes competition-fade { from { opacity: 0; } to { opacity: 1; } }
+.competition-bar { transform-origin: left; animation: competition-grow 300ms ease-out both; }
+.competition-rank { animation: competition-fade 180ms ease-out; }
+.competition-skeleton { animation: competition-fade 300ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .competition-bar, .competition-rank, .competition-skeleton { animation: none; }
+  .competition-row *, .competition-action { transition: none; }
+}
+
+.competition-page [data-zero="true"] .competition-number { color: var(--muted); }

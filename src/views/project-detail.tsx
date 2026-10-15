@@ -15,7 +15,8 @@ import { ProjectDetailSkeleton } from "@/components/common/PageSkeletons";
 import { ErrorState } from "@/components/common/ErrorState";
 import { Badge } from "@/components/ui/Badge";
 import { Container } from "@/components/layout/Container";
-import { formatUsdc, shortAddress } from "@/lib/format";
+import { formatUsdc, formatUsdcFixed, shortAddress } from "@/lib/format";
+import { Stat, StatGroup } from "@/components/common/Stat";
 import { fmt } from "@/lib/copy";
 import {
   ArrowLeft,
@@ -123,34 +124,28 @@ export function ProjectDetailView() {
             </p>
 
             {/* Quick Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 border-t border-line pt-4">
-              <div>
-                <span className="mono-label block text-muted">
-                  {t.projectCard.directDonations}
-                </span>
-                <span className="tabular-mono text-lg font-bold text-foreground">
-                  {formatUsdc(project.totalDonated)}
-                </span>
-              </div>
-
-              <div>
-                <span className="mono-label block text-money">
-                  {t.projectCard.matchingEstimated}
-                </span>
-                <span className="tabular-mono text-lg font-extrabold text-money">
-                  {formatUsdc(project.estimatedMatching)}
-                </span>
-              </div>
-
-              <div className="col-span-2 sm:col-span-1">
-                <span className="mono-label block text-muted">
-                  {t.projectDetail.ownerShort}
-                </span>
-                <span className="font-mono text-xs text-foreground truncate block">
-                  {shortAddress(project.ownerAddress, 5)}
-                </span>
-              </div>
-            </div>
+            <StatGroup columns={3} className="my-4">
+              <Stat
+                label={t.projectCard.directDonations}
+                value={formatUsdcFixed(project.totalDonated, { includeSymbol: false })}
+                unit="USDC"
+                tone="default"
+                title={formatUsdc(project.totalDonated)}
+              />
+              <Stat
+                label={t.projectCard.matchingEstimated}
+                value={formatUsdcFixed(project.estimatedMatching, { includeSymbol: false })}
+                unit="USDC"
+                tone="money"
+                title={formatUsdc(project.estimatedMatching)}
+              />
+              <Stat
+                label={t.projectDetail.ownerShort}
+                value={shortAddress(project.ownerAddress, 5)}
+                tone="default"
+                title={project.ownerAddress}
+              />
+            </StatGroup>
           </div>
 
           {/* Supporter Marks Breakdown */}
@@ -215,11 +210,11 @@ export function ProjectDetailView() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-line-strong bg-surface p-4 shadow-2xl">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <span className="mono-label block text-[10px] text-muted">
+            <span className="role-label block text-muted">
               {t.projectCard.matchingEstimated}
             </span>
-            <span className="font-mono text-base font-black text-money">
-              {formatUsdc(project.estimatedMatching)}
+            <span className="role-value-md text-money block">
+              {formatUsdcFixed(project.estimatedMatching)}
             </span>
           </div>
 

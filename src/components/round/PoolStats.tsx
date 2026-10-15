@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { formatUsdc, formatNumber } from "@/lib/format";
+import { formatUsdc, formatCount } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
 import { Coins, Users, FolderKanban, Award } from "lucide-react";
 import { Frame } from "@/components/ui/Frame";
@@ -25,8 +25,18 @@ export function PoolStats({
 
   const stats = [
     {
+      label: t.roundCard.supportersLabel,
+      value: formatCount(totalSupporters),
+      fullValue: formatCount(totalSupporters),
+      icon: Users,
+      accent: "text-primary",
+      bg: "bg-primary/10",
+      border: "border-primary/20",
+    },
+    {
       label: t.roundCard.poolLabel,
-      value: formatUsdc(matchingPool),
+      value: formatUsdc(matchingPool, { compact: true }),
+      fullValue: formatUsdc(matchingPool),
       icon: Coins,
       accent: "text-money",
       bg: "bg-money/10",
@@ -34,23 +44,17 @@ export function PoolStats({
     },
     {
       label: t.roundCard.raisedLabel,
-      value: formatUsdc(totalDonated),
+      value: formatUsdc(totalDonated, { compact: true }),
+      fullValue: formatUsdc(totalDonated),
       icon: Award,
       accent: "text-foreground",
       bg: "bg-surface-2",
       border: "border-line-strong",
     },
     {
-      label: t.roundCard.supportersLabel,
-      value: `${formatNumber(totalSupporters)}`,
-      icon: Users,
-      accent: "text-primary",
-      bg: "bg-primary/10",
-      border: "border-primary/20",
-    },
-    {
-      label: "Active projects",
-      value: formatNumber(projectCount),
+      label: t.roundCard.projectsLabel,
+      value: formatCount(projectCount),
+      fullValue: formatCount(projectCount),
       icon: FolderKanban,
       accent: "text-muted",
       bg: "bg-surface-2",
@@ -65,14 +69,17 @@ export function PoolStats({
         return (
           <Frame
             key={i}
-            className={`${stat.border} ${stat.bg} p-4 transition-all hover:border-line-strong`}
+            className={`${stat.border} ${stat.bg} p-4 transition-all hover:border-line-strong overflow-hidden`}
             interactive
           >
             <div className="flex items-center gap-1.5 text-xs text-muted">
-              <Icon className={`h-4 w-4 ${stat.accent}`} />
-              <span className="mono-label truncate">{stat.label}</span>
+              <Icon className={`h-4 w-4 shrink-0 ${stat.accent}`} />
+              <span className="role-label truncate">{stat.label}</span>
             </div>
-            <div className={`mt-2 tabular-mono text-xl sm:text-2xl font-black ${stat.accent}`}>
+            <div
+              title={stat.fullValue}
+              className={`mt-2 value-md truncate block ${stat.accent}`}
+            >
               {stat.value}
             </div>
           </Frame>

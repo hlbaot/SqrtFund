@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
@@ -32,6 +33,7 @@ export function Navbar() {
 
   const navLinks = [
     { href: "/", label: t.nav.home },
+    { href: "/round", label: t.nav.round },
     { href: "/register", label: t.nav.register },
     { href: "/my", label: t.nav.my },
     ...(isConnected && isReady && role === "admin" ? [{ href: "/admin", label: t.nav.admin }] : []),
@@ -44,8 +46,8 @@ export function Navbar() {
         <div className="border-b border-line bg-surface">
           <Container className="flex min-h-9 items-center justify-between gap-3">
             <div className="mono-label flex min-w-0 items-center gap-2 text-muted text-xs">
-              <ArrowRight className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden="true" />
-              <span className="truncate">
+              <ArrowRight className={`h-3.5 w-3.5 shrink-0 ${status === "finalized" ? "text-money" : "text-primary"}`} aria-hidden="true" />
+              <span className={`truncate ${status === "finalized" ? "text-money" : status === "open" ? "text-primary" : "text-muted"}`}>
                 {status === "finalized"
                   ? t.nav.announcementFinalized
                   : status === "closed"
@@ -67,19 +69,21 @@ export function Navbar() {
       <Container className="flex min-h-16 items-center justify-between gap-4">
         <Link
           href="/"
-          className="flex items-center shrink-0 focus:outline-none"
+          className="flex min-h-[44px] min-w-[44px] items-center shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs"
           aria-label={t.nav.homeAria}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/brand/sqrt-fund-logo.png"
-            alt="√Fund"
-            className="h-10 w-auto object-contain"
+            alt="SqrtFund"
+            width={58}
+            height={40}
+            priority
+            className="h-8 w-auto object-contain lg:h-10"
           />
         </Link>
 
         <nav
-          className="hidden items-center gap-1 text-sm font-medium lg:flex"
+          className="hidden items-center gap-1 text-sm font-medium xl:flex"
           aria-label={t.nav.primaryNavigation}
         >
           {navLinks.map(link => (
@@ -89,12 +93,12 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="hidden items-center gap-3 xl:flex">
           <LanguageToggle />
           <ConnectWalletButton />
         </div>
 
-        <div className="flex items-center gap-2 lg:hidden">
+        <div className="flex items-center gap-2 xl:hidden">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -108,7 +112,7 @@ export function Navbar() {
       </Container>
 
       {mobileMenuOpen && (
-        <div className="border-b border-line bg-bg lg:hidden">
+        <div className="border-b border-line bg-bg xl:hidden">
           <Container className="py-4 space-y-4">
             <nav className="flex flex-col space-y-1.5" aria-label={t.nav.mobileNavigation}>
               {navLinks.map(link => (

@@ -3,9 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import type { Project } from "@/types";
-import { formatUsdc } from "@/lib/format";
+import { formatUsdc, formatUsdcFixed } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
 import { SupporterMarks } from "./SupporterMarks";
+import { Stat, StatGroup } from "@/components/common/Stat";
 import { Badge } from "@/components/ui/Badge";
 import { Frame } from "@/components/ui/Frame";
 import { GradientBorder } from "@/components/ui/GradientBorder";
@@ -89,24 +90,23 @@ export function ProjectCard({ project, roundId = "1" }: ProjectCardProps) {
         <SupporterMarks count={project.supporterCount} />
       </div>
 
-      {/* 3. USDC Donated & 4. Estimated Matching (Green, Large) */}
-      <div className="space-y-2 border-t border-line pt-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted">{t.projectCard.directDonations}</span>
-          <span className="tabular-mono font-medium text-foreground">
-            {formatUsdc(project.totalDonated)}
-          </span>
-        </div>
-
-        <div className="flex items-baseline justify-between border border-money/30 bg-money/10 px-3 py-2">
-          <span className="mono-label text-money">
-            {t.projectCard.matchingEstimated}
-          </span>
-          <span className="tabular-mono text-lg font-extrabold text-money">
-            {formatUsdc(project.estimatedMatching)}
-          </span>
-        </div>
-      </div>
+      {/* 3. USDC Donated & 4. Estimated Matching */}
+      <StatGroup columns={2} className="my-3">
+        <Stat
+          label={t.projectCard.directDonations}
+          value={formatUsdcFixed(project.totalDonated, { includeSymbol: false })}
+          unit="USDC"
+          tone="default"
+          title={formatUsdc(project.totalDonated)}
+        />
+        <Stat
+          label={t.projectCard.matchingEstimated}
+          value={formatUsdcFixed(project.estimatedMatching, { includeSymbol: false })}
+          unit="USDC"
+          tone="money"
+          title={formatUsdc(project.estimatedMatching)}
+        />
+      </StatGroup>
 
       {/* Primary Action */}
       <div className="mt-4 pt-1">

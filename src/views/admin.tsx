@@ -13,9 +13,10 @@ import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
-import { formatUsdc, formatNumber } from "@/lib/format";
+import { formatUsdcFixed, formatCount } from "@/lib/format";
 import { CreateRoundForm } from "@/components/admin/CreateRoundForm";
 import { DepositPoolForm } from "@/components/admin/DepositPoolForm";
+import { MintTestUsdcForm } from "@/components/admin/MintTestUsdcForm";
 import { WhitelistTable } from "@/components/admin/WhitelistTable";
 import { FinalizeButton } from "@/components/admin/FinalizeButton";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
@@ -235,7 +236,7 @@ export function AdminView() {
                   className="text-xs font-bold"
                 >
                   <ArrowDownLeft className="h-3.5 w-3.5 mr-1" />
-                  {t.admin.withdrawLeftoverBtn} ({formatUsdc(leftoverUsdc)})
+                  {t.admin.withdrawLeftoverBtn} ({formatUsdcFixed(leftoverUsdc)})
                 </Button>
               )}
               {leftoverWithdrawn && (
@@ -247,11 +248,11 @@ export function AdminView() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t.admin.colProject}</TableHead>
-                <TableHead>{t.admin.colSupporters}</TableHead>
-                <TableHead>{t.admin.colDirectDonations}</TableHead>
-                <TableHead>{t.admin.colMatchingPayout}</TableHead>
-                <TableHead className="text-right">{t.admin.colTotalDisbursed}</TableHead>
+                <TableHead className="role-label">{t.admin.colProject}</TableHead>
+                <TableHead className="role-label">{t.admin.colSupporters}</TableHead>
+                <TableHead className="role-label">{t.admin.colDirectDonations}</TableHead>
+                <TableHead className="role-label">{t.admin.colMatchingPayout}</TableHead>
+                <TableHead className="text-right role-label">{t.admin.colTotalDisbursed}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -262,17 +263,17 @@ export function AdminView() {
                     <TableCell className="font-bold text-foreground">
                       {p.name}
                     </TableCell>
-                    <TableCell className="font-mono text-foreground">
-                      {formatNumber(p.supporterCount)}
+                    <TableCell className="font-mono text-foreground tabular-nums">
+                      {formatCount(p.supporterCount)}
                     </TableCell>
-                    <TableCell className="font-mono text-foreground">
-                      {formatUsdc(p.totalDonated)}
+                    <TableCell className="font-mono text-foreground tabular-nums">
+                      {formatUsdcFixed(p.totalDonated)}
                     </TableCell>
-                    <TableCell className="font-mono font-bold text-money">
-                      {formatUsdc(p.estimatedMatching)}
+                    <TableCell className="font-mono font-bold text-money tabular-nums">
+                      {formatUsdcFixed(p.estimatedMatching)}
                     </TableCell>
-                    <TableCell className="text-right font-mono font-black text-foreground">
-                      {formatUsdc(total)}
+                    <TableCell className="text-right font-mono font-black text-foreground tabular-nums">
+                      {formatUsdcFixed(total)}
                     </TableCell>
                   </TableRow>
                 );
@@ -320,7 +321,7 @@ export function AdminView() {
                     <p className="text-xs text-muted max-w-lg">
                       {proj.description}
                     </p>
-                    <p className="text-[11px] font-mono text-muted">
+                    <p className="text-xs font-mono text-muted">
                       {t.admin.ownerLabel}: {proj.ownerAddress} | {t.admin.linkLabel}: {proj.contactUrl}
                     </p>
                   </div>
@@ -354,6 +355,11 @@ export function AdminView() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-aos="fade-up" data-aos-duration="600">
         <CreateRoundForm />
         <DepositPoolForm />
+      </div>
+
+      {/* Mint Test USDC (visible if connected wallet is MockUSDC owner) */}
+      <div data-aos="fade-up" data-aos-duration="600">
+        <MintTestUsdcForm />
       </div>
     </Container>
   );

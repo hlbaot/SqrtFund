@@ -1096,4 +1096,96 @@ contract QFRoundTest is Test {
         assertApproxEqAbs(estimated[1], 17_700 * 10 ** 6, 50 * 10 ** 6);
         assertGt(estimated[0], estimated[1]);
     }
+
+    function test_MockUSDC_ownerMint_and_nonOwnerReverts() public {
+        assertEq(usdc.owner(), address(this));
+
+        // Owner can mint any amount with no cap
+        uint256 mintAmount = 250_000 * 10 ** 6;
+        usdc.mint(donor1, mintAmount);
+        assertEq(usdc.balanceOf(donor1), mintAmount);
+
+        // Non-owner reverts with OwnableUnauthorizedAccount
+        vm.prank(donor2);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", donor2));
+        usdc.mint(donor2, 100 * 10 ** 6);
+    }
+
+    function test_FullRound_100kUsdcPool() public {
+        uint256 p1 = _registerAndApproveProject(projectOwner1, "Project 1");
+        uint256 p2 = _registerAndApproveProject(projectOwner2, "Project 2");
+        address projectOwner3 = address(0x33);
+        uint256 p3 = _registerAndApproveProject(projectOwner3, "Project 3");
+
+        // Mint 100,000 USDC directly to admin using owner mint()
+        uint256 poolAmount = 100_000 * 10 ** 6;
+        usdc.mint(admin, poolAmount);
+        assertEq(usdc.balanceOf(admin), poolAmount);
+
+        // Admin deposits 100,000 USDC into matching pool
+        vm.prank(admin);
+        usdc.approve(address(round), poolAmount);
+        vm.prank(admin);
+        round.depositPool(poolAmount);
+        assertEq(round.pool(), poolAmount);
+
+        vm.warp(startTime + 1);
+
+        // 10 student donors donate to p1, p2, p3
+        for (uint160 i = 1; i <= 10; i++) {
+            address d = address(uint160(0x5000 + i));
+            _whitelistUser(d);
+            _fundAndApprove(d, 15 * 10 ** 6);
+
+            vm.prank(d);
+            round.donate(p1, 5 * 10 ** 6);
+
+            if (i <= 6) {
+                vm.prank(d);
+                round.donate(p2, 3 * 10 ** 6);
+            }
+            if (i <= 3) {
+                vm.prank(d);
+                round.donate(p3, 2 * 10 ** 6);
+            }
+        }
+
+        vm.warp(endTime + 1);
+        vm.prank(admin);
+        round.finalize();
+        assertTrue(round.finalized());
+
+        // Read payouts from previewMatching and ensure bounds
+        (, uint256[] memory payouts) = round.previewMatching();
+        assertEq(payouts.length, 3);
+
+        uint256 totalPayouts = payouts[0] + payouts[1] + payouts[2];
+        assertLe(totalPayouts, poolAmount, "Payouts must never exceed pool");
+        assertEq(round.leftover(), poolAmount - totalPayouts, "Leftover calculation must be exact");
+
+        // Project owners claim their allocations
+        uint256 p1BalBefore = usdc.balanceOf(projectOwner1);
+        vm.prank(projectOwner1);
+        round.claim(p1);
+        assertEq(usdc.balanceOf(projectOwner1) - p1BalBefore, 50 * 10 ** 6 + payouts[0]);
+
+        uint256 p2BalBefore = usdc.balanceOf(projectOwner2);
+        vm.prank(projectOwner2);
+        round.claim(p2);
+        assertEq(usdc.balanceOf(projectOwner2) - p2BalBefore, 18 * 10 ** 6 + payouts[1]);
+
+        uint256 p3BalBefore = usdc.balanceOf(projectOwner3);
+        vm.prank(projectOwner3);
+        round.claim(p3);
+        assertEq(usdc.balanceOf(projectOwner3) - p3BalBefore, 6 * 10 ** 6 + payouts[2]);
+
+        // Admin withdraws unused leftover funds
+        uint256 adminBalBefore = usdc.balanceOf(admin);
+        vm.prank(admin);
+        round.withdrawLeftover();
+        assertEq(usdc.balanceOf(admin) - adminBalBefore, round.leftover());
+
+        // Contract balance must be drained to dust (<= 3 wei for 3 projects)
+        assertLe(usdc.balanceOf(address(round)), 3, "Round contract balance must drain to dust");
+    }
 }

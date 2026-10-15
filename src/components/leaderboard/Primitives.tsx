@@ -1,0 +1,85 @@
+"use client";
+
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
+import { Check, Copy, Info } from "lucide-react";
+import { useLocale } from "@/lib/context/locale";
+import { displayNumber, type RoundPhase } from "./model";
+
+export function StatusChip({ phase }: { phase: RoundPhase }) {
+  const { t } = useLocale();
+  const color = phase === "open" ? "border-primary/40 bg-primary/10 text-primary"
+    : phase === "finalized" ? "border-money/40 bg-money/10 text-money"
+    : "border-line text-muted";
+  return <span role="status" aria-live="polite" className={`role-label inline-flex max-w-full items-center gap-2 border px-2 py-1 ${color}`}>
+    {phase === "finalized" ? <Check className="h-3 w-3 shrink-0" aria-hidden="true" /> : <span className={`h-1.5 w-1.5 shrink-0 ${phase === "open" ? "bg-primary" : "bg-muted"}`} aria-hidden="true" />}
+    {t.competition[phase]}
+  </span>;
+}
+
+export function CopyAddress({ address }: { address: string }) {
+  const { t } = useLocale();
+  const [message, setMessage] = useState("");
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => { clearTimeout(timer.current); }, []);
+  return <span className="inline-flex shrink-0 items-center">
+    <button type="button" className="competition-focus inline-flex h-8 w-8 items-center justify-center text-muted hover:bg-surface-2 hover:text-foreground" aria-label={t.competition.copyAddress} title={address} onClick={async event => {
+      event.stopPropagation();
+      try { await navigator.clipboard.writeText(address); setMessage(t.competition.copied); }
+      catch { setMessage(t.competition.copyError); }
+      clearTimeout(timer.current); timer.current = setTimeout(() => setMessage(""), 1800);
+    }}>{message === t.competition.copied ? <Check className="h-3.5 w-3.5 text-money" /> : <Copy className="h-3.5 w-3.5" />}</button>
+    <span className="sr-only" role="status">{message}</span>
+  </span>;
+}
+
+export function InfoTooltip({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ left: 16, top: 16 });
+  const trigger = useRef<HTMLButtonElement>(null);
+  const id = useId();
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => {
+      const rect = trigger.current?.getBoundingClientRect();
+      if (rect) setPosition({ left: Math.max(16, Math.min(rect.left, window.innerWidth - Math.min(288, window.innerWidth - 32) - 16)), top: Math.max(16, Math.min(rect.bottom + 8, window.innerHeight - 176)) });
+    };
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => { window.removeEventListener("scroll", reposition, true); window.removeEventListener("resize", reposition); };
+  }, [open]);
+  return <span className="relative z-10 inline-flex align-middle" onBlur={() => setOpen(false)}>
+    <button ref={trigger} type="button" className="competition-focus inline-flex h-8 w-8 shrink-0 items-center justify-center text-muted hover:text-foreground" aria-label={label} aria-expanded={open} aria-controls={id} aria-describedby={open ? id : undefined} onClick={event => {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setPosition({ left: Math.max(16, Math.min(rect.left, window.innerWidth - Math.min(288, window.innerWidth - 32) - 16)), top: Math.max(16, Math.min(rect.bottom + 8, window.innerHeight - 176)) });
+      setOpen(value => !value);
+    }} onKeyDown={event => { if (event.key === "Escape") setOpen(false); }}><Info className="h-3.5 w-3.5" aria-hidden="true" /></button>
+    {open && createPortal(<span id={id} role="tooltip" style={position} className="fixed z-[100] block w-[min(18rem,calc(100vw-2rem))] border border-line-strong bg-bg p-4 text-left font-sans text-xs font-normal normal-case leading-relaxed tracking-normal text-foreground shadow-xl">{children}</span>, document.body)}
+  </span>;
+}
+
+export function AnimatedNumber({ value, decimals = 6 }: { value: number; decimals?: number }) {
+  const { locale } = useLocale();
+  const node = useRef<HTMLSpanElement>(null);
+  const played = useRef(false);
+  useEffect(() => {
+    if (played.current || !node.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { played.current = true; return; }
+    const started = performance.now();
+    let frame: number;
+    const tick = (time: number) => {
+      const progress = Math.min(1, (time - started) / 300);
+      if (node.current) node.current.textContent = displayNumber(value * (1 - (1 - progress) ** 3), locale, progress === 1 ? decimals : 0);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+      else played.current = true;
+    };
+    frame = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(frame); };
+  }, [value, locale, decimals]);
+  return <span className="tabular-mono" title={displayNumber(value, locale, decimals)}><span className="sr-only">{displayNumber(value, locale, decimals)}</span><span aria-hidden="true" ref={node}>{displayNumber(value, locale, decimals)}</span></span>;
+}
+
+export function MetricBar({ value, max, money = false }: { value: number; max: number; money?: boolean }) {
+  if (value <= 0 || max <= 0) return null;
+  return <span className="mt-2 block h-1 w-full overflow-hidden bg-line" aria-hidden="true"><span className={`competition-bar block h-full ${money ? "bg-money" : "bg-primary"}`} style={{ width: `${Math.min(100, value / max * 100)}%` } as CSSProperties} /></span>;
+}

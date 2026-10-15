@@ -11,7 +11,7 @@ import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
 import { useClaim } from "@/hooks/useClaim";
-import { formatUsdc, formatCooldown } from "@/lib/format";
+import { formatUsdcFixed, formatCooldown } from "@/lib/format";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
@@ -172,16 +172,16 @@ export function MyView() {
                   {t.common.walletActivity}
                 </h1>
                 {isStudent ? (
-                  <Badge variant="accent" className="gap-1 font-semibold text-[11px]">
+                  <Badge variant="accent" className="gap-1 font-semibold text-xs">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     <span>{t.common.verifiedStudent}</span>
                   </Badge>
                 ) : hasRequested ? (
-                  <Badge variant="warning" className="text-[11px]">
+                  <Badge variant="warning" className="text-xs">
                     {t.common.verificationPending}
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-[11px]">
+                  <Badge variant="outline" className="text-xs">
                     {t.common.unverified}
                   </Badge>
                 )}
@@ -294,10 +294,10 @@ export function MyView() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{t.myActivity.colProject}</TableHead>
-                      <TableHead>{t.myActivity.colAmount}</TableHead>
-                      <TableHead>{t.common.projectMatchingTotal}</TableHead>
-                      <TableHead className="text-right">{t.common.projectDetails}</TableHead>
+                      <TableHead className="role-label">{t.myActivity.colProject}</TableHead>
+                      <TableHead className="role-label">{t.myActivity.colAmount}</TableHead>
+                      <TableHead className="role-label">{t.common.projectMatchingTotal}</TableHead>
+                      <TableHead className="text-right role-label">{t.common.projectDetails}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -306,11 +306,11 @@ export function MyView() {
                         <TableCell className="font-medium text-foreground">
                           {item.project.name}
                         </TableCell>
-                        <TableCell className="font-mono font-bold text-money">
-                          {formatUsdc(item.amountNum)}
+                        <TableCell className="font-mono font-bold text-money tabular-nums">
+                          {formatUsdcFixed(item.amountNum)}
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-muted">
-                          +{formatUsdc(item.project.estimatedMatching)}
+                        <TableCell className="font-mono text-xs text-muted tabular-nums">
+                          +{formatUsdcFixed(item.project.estimatedMatching)}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
@@ -379,18 +379,18 @@ export function MyView() {
                           <div className="flex items-center gap-4 text-xs font-mono text-muted pt-1">
                             <span>{t.common.supporters_count.replace("{count}", String(proj.supporterCount))}</span>
                             <span>•</span>
-                            <span>{t.common.raised.replace("{amount}", formatUsdc(proj.totalDonated))}</span>
+                            <span>{t.common.raised.replace("{amount}", formatUsdcFixed(proj.totalDonated))}</span>
                           </div>
                         </div>
 
                         {/* Financial payout & claim button */}
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <span className="block text-[11px] text-muted">
+                            <span className="block role-label text-muted">
                               {t.myActivity.estimatedPayout}
                             </span>
-                            <span className="font-mono text-lg font-black text-money">
-                              {formatUsdc(totalPayout)}
+                            <span className="role-value-md text-money block">
+                              {formatUsdcFixed(totalPayout)}
                             </span>
                           </div>
 
@@ -415,7 +415,7 @@ export function MyView() {
                                 </Button>
 
                                 {!finalized && (
-                                  <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block z-20 w-52 border border-line-strong bg-bg p-2 text-center text-[11px] text-muted">
+                                  <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block z-20 w-52 border border-line-strong bg-bg p-2 text-center text-xs text-muted">
                                     {t.myActivity.claimDisabledTooltip}
                                   </div>
                                 )}

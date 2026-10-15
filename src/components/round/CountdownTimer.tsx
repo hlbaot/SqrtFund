@@ -17,7 +17,8 @@ export function CountdownTimer({
   className = "",
   prominent = false,
 }: CountdownTimerProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const number = (value: number) => new Intl.NumberFormat(locale).format(value);
   const effectiveStatus = statusOverride;
 
   const [timeLeft, setTimeLeft] = useState<{
@@ -78,23 +79,23 @@ export function CountdownTimer({
     return (
       <div className={`tabular-mono flex items-center gap-2 ${className}`}>
         <div className="flex min-w-[54px] flex-col items-center border border-line bg-bg px-3 py-2 text-center">
-          <span className="text-xl font-black text-foreground">{timeLeft.days}</span>
-          <span className="mono-label text-[10px] text-muted">Days</span>
+          <span className="role-value-md text-foreground">{number(timeLeft.days)}</span>
+          <span className="role-label text-muted">{t.competition.days}</span>
         </div>
         <span className="text-lg font-bold text-muted">:</span>
         <div className="flex min-w-[54px] flex-col items-center border border-line bg-bg px-3 py-2 text-center">
-          <span className="text-xl font-black text-foreground">{timeLeft.hours}</span>
-          <span className="mono-label text-[10px] text-muted">Hours</span>
+          <span className="role-value-md text-foreground">{number(timeLeft.hours)}</span>
+          <span className="role-label text-muted">{t.competition.hours}</span>
         </div>
         <span className="text-lg font-bold text-muted">:</span>
         <div className="flex min-w-[54px] flex-col items-center border border-line bg-bg px-3 py-2 text-center">
-          <span className="text-xl font-black text-foreground">{timeLeft.minutes}</span>
-          <span className="mono-label text-[10px] text-muted">Mins</span>
+          <span className="role-value-md text-foreground">{number(timeLeft.minutes)}</span>
+          <span className="role-label text-muted">{t.competition.minutes}</span>
         </div>
         <span className="text-lg font-bold text-muted">:</span>
         <div className="flex min-w-[54px] flex-col items-center border border-line bg-bg px-3 py-2 text-center">
-          <span className="text-xl font-black text-primary">{timeLeft.seconds}</span>
-          <span className="mono-label text-[10px] text-muted">Secs</span>
+          <span className="role-value-md text-primary">{number(timeLeft.seconds)}</span>
+          <span className="role-label text-muted">{t.competition.seconds}</span>
         </div>
       </div>
     );
@@ -106,7 +107,7 @@ export function CountdownTimer({
     >
       <Clock className="h-3.5 w-3.5 text-primary" />
       <span>
-        {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m
+        {number(timeLeft.days)} {t.competition.days} · {number(timeLeft.hours)} {t.competition.hours} · {number(timeLeft.minutes)} {t.competition.minutes}
       </span>
     </div>
   );

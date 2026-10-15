@@ -101,7 +101,7 @@ Validates the BigInt implementation in `src/lib/qf.ts` against the identical tes
 
 ## Exact Deployment Steps (Avalanche Fuji)
 
-### Option A: Redeploy ONLY RoundFactory (Recommended - preserves MockUSDC)
+### Option A: Redeploy ONLY RoundFactory (preserves MockUSDC)
 ```bash
 cd contracts
 forge script script/DeployFactory.s.sol:DeployFactory --rpc-url fuji --account deployer --broadcast
@@ -110,7 +110,27 @@ pnpm abi
 ```
 Update `NEXT_PUBLIC_FACTORY_ADDRESS` in `.env.local` and Vercel with the newly deployed `roundFactory` address from `contracts/deployments/fuji.json`.
 
-### Option B: Full Fresh Deployment (MockUSDC + RoundFactory)
+### Option B: Deploy ONLY a new MockUSDC (with Owner Minting)
+When you need a new MockUSDC token with `mint(address, uint256)` capability (owner = deployer) to test large matching pool deposits without caps:
+```bash
+cd contracts
+forge script script/DeployMockUSDC.s.sol --rpc-url fuji --account deployer --broadcast
+cd ..
+```
+Then:
+1. Copy the new MockUSDC address logged in the terminal (also recorded as `newMockUsdc` in `contracts/deployments/fuji.json`).
+2. Update `NEXT_PUBLIC_USDC_ADDRESS` in `.env.local` with this new address.
+3. Synchronize ABIs:
+   ```bash
+   pnpm abi
+   ```
+4. Restart the development server:
+   ```bash
+   pnpm dev
+   ```
+5. Create a new round on `/admin` (the new round will bind to the new token; old rounds preserve the old token).
+
+### Option C: Full Fresh Deployment (MockUSDC + RoundFactory)
 1. **Import your deployer account into the Foundry keystore** (never commit or pass private keys directly):
    ```bash
    cast wallet import deployer --interactive
