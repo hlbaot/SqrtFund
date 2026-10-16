@@ -763,7 +763,7 @@ body,
   --lattice-ambient-y: 20%;
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   overflow: hidden;
   background: radial-gradient(circle 900px at 50% 25%, #0e0e18 0%, #0a0a12 55%, #050508 100%);
