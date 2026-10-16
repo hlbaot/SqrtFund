@@ -29,185 +29,8 @@ import {
   Rocket,
   Users,
 } from "lucide-react";
+import { WalletConstellation } from "@/components/home/WalletConstellation";
 
-function QuadraticVisual() {
-  const { t } = useLocale();
-
-  // 6 columns with mathematically computed quadratic growth values (y = 178 - 144 * sqrt(x/600))
-  // Baseline at y = 195. Height = 195 - y
-  const columns = [
-    { cx: 50, y: 136, height: 59 },
-    { cx: 150, y: 106, height: 89 },
-    { cx: 250, y: 85, height: 110 },
-    { cx: 350, y: 68, height: 127 },
-    { cx: 450, y: 53, height: 142 },
-    { cx: 550, y: 40, height: 155 },
-  ];
-
-  return (
-    <div
-      data-aos="fade-left"
-      data-aos-duration="800"
-      className="flex h-full w-full flex-col justify-center xl:pr-6 2xl:pr-8"
-    >
-      <Frame className="overflow-hidden p-5 sm:p-6" interactive>
-        {/* Header: SQRT SIGNAL / Subtitle / LIVE status badge */}
-        <div className="flex items-start justify-between gap-4 border-b border-line pb-4">
-          <div>
-            <MonoLabel className="text-primary">{t.homeIntro.visualLabel}</MonoLabel>
-            <p className="mt-1 text-xs text-muted sm:text-sm">
-              {t.homeIntro.visualDescription}
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5 border border-money/40 bg-money/10 px-2.5 py-1 text-xs font-semibold tabular-mono text-money">
-            <span className="h-1.5 w-1.5 rounded-full bg-money animate-pulse" />
-            <span className="mono-label">{t.homeIntro.visualStatus}</span>
-          </div>
-        </div>
-
-        {/* Single Unified Chart Area with 0 0 600 240 viewBox */}
-        <div className="relative mt-5 w-full aspect-[600/240] min-h-[170px] max-h-[250px] overflow-hidden border border-line bg-bg/80">
-          <svg
-            viewBox="0 0 600 240"
-            preserveAspectRatio="none"
-            className="w-full h-full block"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient id="qf-curve-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--money)" stopOpacity="0.22" />
-                <stop offset="85%" stopColor="var(--money)" stopOpacity="0.04" />
-                <stop offset="100%" stopColor="var(--money)" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-
-            {/* Subtle background coordinate grid */}
-            {[50, 95, 145, 195].map((y) => (
-              <line
-                key={`h-${y}`}
-                x1={0}
-                y1={y}
-                x2={600}
-                y2={y}
-                stroke="var(--line)"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-                opacity="0.5"
-              />
-            ))}
-            {[100, 200, 300, 400, 500].map((x) => (
-              <line
-                key={`v-${x}`}
-                x1={x}
-                y1={0}
-                x2={x}
-                y2={200}
-                stroke="var(--line)"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-                opacity="0.4"
-              />
-            ))}
-
-            {/* Shaded quadratic area under curve */}
-            <path
-              d="M 0 178 C 40 148 100 118 150 106 C 210 92 290 78 350 68 C 420 57 510 43 600 34 L 600 195 L 0 195 Z"
-              fill="url(#qf-curve-grad)"
-            />
-
-            {/* 6 Column Bars, vertical guidelines, baseline segments and centered red dots */}
-            {columns.map((col, idx) => (
-              <g key={col.cx}>
-                {/* Vertical guideline from dot up to curve */}
-                <line
-                  x1={col.cx}
-                  y1={col.y}
-                  x2={col.cx}
-                  y2={206}
-                  stroke="var(--money)"
-                  strokeWidth="1"
-                  strokeDasharray="2 3"
-                  opacity="0.3"
-                />
-
-                {/* Vertical column bar aligned with the curve top */}
-                <rect
-                  x={col.cx - 26}
-                  y={col.y}
-                  width={52}
-                  height={col.height}
-                  fill="var(--money)"
-                  fillOpacity="0.12"
-                  stroke="var(--money)"
-                  strokeOpacity="0.35"
-                  strokeWidth="1"
-                  className="qf-bar"
-                  style={{ animationDelay: `${idx * 120}ms` }}
-                />
-
-                {/* Baseline segment at y = 195 */}
-                <line
-                  x1={col.cx - 30}
-                  y1={195}
-                  x2={col.cx + 30}
-                  y2={195}
-                  stroke="var(--money)"
-                  strokeWidth="2.5"
-                  strokeLinecap="square"
-                />
-
-                {/* Centered red dot directly below baseline */}
-                <rect
-                  x={col.cx - 3}
-                  y={210}
-                  width={6}
-                  height={6}
-                  fill="var(--primary)"
-                />
-              </g>
-            ))}
-
-            {/* Red accent glow under main curve */}
-            <path
-              d="M 0 178 C 40 148 100 118 150 106 C 210 92 290 78 350 68 C 420 57 510 43 600 34"
-              fill="none"
-              stroke="var(--primary)"
-              strokeWidth="6"
-              strokeOpacity="0.14"
-            />
-
-            {/* Quadratic growth curve: starts at left edge (0, 178), ends at right edge (600, 34) */}
-            <path
-              d="M 0 178 C 40 148 100 118 150 106 C 210 92 290 78 350 68 C 420 57 510 43 600 34"
-              fill="none"
-              stroke="var(--money)"
-              strokeWidth="2.5"
-              strokeLinecap="square"
-              className="qf-curve"
-            />
-
-            {/* End point on curve */}
-            <circle cx={600} cy={34} r={3.5} fill="var(--money)" />
-          </svg>
-        </div>
-
-        {/* Bottom row: three equal boxes with clear labels */}
-        <div className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3 text-center">
-          {[t.homeIntro.visualOne, t.homeIntro.visualRoot, t.homeIntro.visualMatch].map((label) => (
-            <div
-              key={label}
-              className="flex min-h-[44px] items-center justify-center border border-line bg-surface/90 px-2 py-2"
-            >
-              <span className="mono-label text-xs font-bold tracking-wider text-muted whitespace-nowrap">
-                {label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </Frame>
-    </div>
-  );
-}
 
 export function HomeView() {
   const router = useRouter();
@@ -235,10 +58,18 @@ export function HomeView() {
   } = useProjects();
   const pageRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState("intro");
+  const [headerHeight, setHeaderHeight] = useState(64);
 
   useEffect(() => {
     const sectionIds = ["intro", "stats", "how-it-works", "current-round", "projects-list"];
     let frame: number | null = null;
+
+    const updateHeaderHeight = () => {
+      const header = document.querySelector("header");
+      if (header) {
+        setHeaderHeight(header.offsetHeight);
+      }
+    };
 
     const updateActiveSection = () => {
       frame = null;
@@ -266,6 +97,7 @@ export function HomeView() {
     };
 
     const scheduleUpdate = () => {
+      updateHeaderHeight();
       if (frame === null) frame = window.requestAnimationFrame(updateActiveSection);
     };
     const observer = new ResizeObserver(scheduleUpdate);
@@ -397,11 +229,10 @@ export function HomeView() {
                   target.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className={`group relative h-2.5 w-2.5 border transition-colors ${
-                activeSection === item.id
+              className={`group relative h-2.5 w-2.5 border transition-colors ${activeSection === item.id
                   ? "border-primary bg-primary"
                   : "border-line-strong bg-surface hover:border-primary"
-              }`}
+                }`}
               aria-current={activeSection === item.id ? "true" : undefined}
             >
               <span className="sr-only">{item.label}</span>
@@ -413,10 +244,73 @@ export function HomeView() {
         </div>
       </nav>
 
-      {/* 1. Hero Section: 2 columns from 1024px up, min-height: min(78svh, 720px), no step cards */}
-      <section id="intro" className="scroll-mt-20 border-b border-line">
-        <Container className="flex min-h-[min(78svh,720px)] flex-col justify-center py-[clamp(3rem,6vw,6rem)]">
-          <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16">
+      {/* 1. Hero Section: Takes 100% of the viewport height below header */}
+      <section
+        id="intro"
+        className="relative flex flex-col justify-center scroll-mt-20 overflow-hidden border-b border-line bg-[#07070c]"
+        style={{ minHeight: `calc(100dvh - ${headerHeight}px)` }}
+      >
+        {/* Layer 1: Subtle grid with radial mask fading at screen edges */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 opacity-[0.05]"
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, rgba(255, 255, 255, 0.7) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 1px, transparent 1px)
+            `,
+            backgroundSize: "40px 40px",
+            maskImage: "radial-gradient(ellipse 75% 65% at 50% 45%, black 20%, transparent 80%)",
+            WebkitMaskImage: "radial-gradient(ellipse 75% 65% at 50% 45%, black 20%, transparent 80%)",
+          }}
+        />
+
+        {/* Layer 2: Aurora glows (Top-left red/orange ~12%, Bottom-right green ~10%) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-28 -left-20 z-0 h-[480px] w-[540px] rounded-full bg-[#ef4444] opacity-[0.12] blur-[140px]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-28 -right-16 z-0 h-[520px] w-[560px] rounded-full bg-[#22c55e] opacity-[0.10] blur-[150px]"
+        />
+
+        {/* Layer 3: Noise / grain texture (opacity ~3.5%) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 opacity-[0.035] mix-blend-overlay"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          }}
+        />
+
+        {/* Layer 4: Subtle twinkling stars scattered across hero */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+          {[
+            { top: "18%", left: "12%", delay: "0s", size: "w-1 h-1" },
+            { top: "28%", left: "44%", delay: "1.8s", size: "w-1 h-1" },
+            { top: "14%", left: "82%", delay: "3.2s", size: "w-1.5 h-1.5" },
+            { top: "68%", left: "20%", delay: "2.4s", size: "w-1 h-1" },
+            { top: "78%", left: "74%", delay: "0.9s", size: "w-1 h-1" },
+            { top: "42%", left: "92%", delay: "4.1s", size: "w-1 h-1" },
+            { top: "84%", left: "38%", delay: "2.7s", size: "w-1 h-1" },
+          ].map((star, i) => (
+            <span
+              key={i}
+              style={{ top: star.top, left: star.left, animationDelay: star.delay }}
+              className={`absolute rounded-full bg-white opacity-25 animate-pulse ${star.size}`}
+            />
+          ))}
+        </div>
+
+        {/* Bottom fade to transition smoothly into the next section */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 inset-x-0 z-0 h-28 bg-gradient-to-t from-bg to-transparent"
+        />
+
+        <Container className="relative z-10 flex flex-1 w-full flex-col justify-center py-6 sm:py-8 lg:py-10">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-16">
             <div className="space-y-6" data-aos="fade-right" data-aos-duration="800">
               <MonoLabel className="text-primary">{t.homeIntro.eyebrow}</MonoLabel>
 
@@ -450,7 +344,7 @@ export function HomeView() {
               </div>
             </div>
 
-            <QuadraticVisual />
+            <WalletConstellation />
           </div>
         </Container>
       </section>
