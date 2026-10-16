@@ -78,11 +78,21 @@ export function ChainLatticeBackground({
       else circuit.pauseAnimations();
     };
     play(false);
-    motionOwners.set(element, { area: 0, play });
+    const isFixed = element.classList.contains("chain-lattice--site");
+    const initialArea = isFixed ? (typeof window !== "undefined" ? window.innerWidth * window.innerHeight : 1000000) : 0;
+    motionOwners.set(element, { area: initialArea, play });
+    if (isFixed) {
+      selectMotionOwner();
+    }
     const observer = new IntersectionObserver(([entry]) => {
       const owner = motionOwners.get(element);
-      if (owner) owner.area = entry.isIntersecting
-        ? entry.intersectionRect.width * entry.intersectionRect.height : 0;
+      if (owner) {
+        owner.area = isFixed
+          ? (typeof window !== "undefined" ? window.innerWidth * window.innerHeight : 1000000)
+          : entry.isIntersecting
+          ? entry.intersectionRect.width * entry.intersectionRect.height
+          : 0;
+      }
       selectMotionOwner();
     }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] });
     observer.observe(element);
@@ -145,10 +155,16 @@ export function ChainLatticeBackground({
 export function SiteChainLatticeBackground() {
   const pathname = usePathname();
   if (pathname === "/") return null;
-  const calm = /^\/(register|my|admin)(\/|$)/.test(pathname);
-  const dense = /^\/(round|rounds|dev)(\/|$)/.test(pathname);
-  // Stable per-route placement without listeners or render-time randomness.
+  // All subpages (/register, /my, /admin, /rounds, etc.) share the unified technical Avalanche Fuji background
   const seed = Array.from(pathname).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return <ChainLatticeBackground variant={calm ? "calm" : dense ? "dense" : "default"}
-    className="chain-lattice--site" style={{ "--lattice-ambient-x": `${seed % 2 ? 8 : 92}%`, "--lattice-ambient-y": `${16 + seed % 47}%` } as CSSProperties} />;
+  return (
+    <ChainLatticeBackground
+      variant="dense"
+      className="chain-lattice--site"
+      style={{
+        "--lattice-ambient-x": `${seed % 2 ? 10 : 90}%`,
+        "--lattice-ambient-y": `${18 + (seed % 35)}%`,
+      } as CSSProperties}
+    />
+  );
 }

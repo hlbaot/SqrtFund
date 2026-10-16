@@ -49,7 +49,7 @@ export default function RootLayout({
             <Suspense fallback={<header className="h-16 border-b border-line bg-background" />}>
               <Navbar />
             </Suspense>
-            <main className="flex w-full flex-1 flex-col">
+            <main className="relative z-10 flex w-full flex-1 flex-col">
               {children}
             </main>
             <Footer />

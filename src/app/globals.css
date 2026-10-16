@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #07070c;
+  --bg: #0a0a10;
   --surface: #0d0d14;
   --surface-2: #12121b;
   --line: #23232e;
@@ -79,7 +79,7 @@ html {
 }
 
 body {
-  background: #000;
+  background: #0a0a10;
   color: var(--foreground);
   font-family: var(--font-sans);
   margin: 0;
@@ -763,15 +763,21 @@ body,
   --lattice-ambient-y: 20%;
   position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  background: #000;
+  background: radial-gradient(circle 900px at 50% 25%, #0e0e18 0%, #0a0a12 55%, #050508 100%);
   contain: paint;
 }
 
 .chain-lattice--site {
   position: fixed;
+  z-index: 0;
+}
+
+.chain-lattice--site .chain-lattice__field {
+  mask-image: radial-gradient(ellipse 90% 95% at 50% 35%, #000 45%, rgb(0 0 0 / 0.5) 80%, transparent 100%);
+  mask-composite: normal;
 }
 
 #app-content:has([data-variant="broken"])>.chain-lattice--site {
@@ -809,8 +815,12 @@ body,
 .chain-lattice__ambient {
   position: absolute;
   inset: -160px;
-  background: radial-gradient(ellipse 400px 320px at var(--lattice-ambient-x) var(--lattice-ambient-y), rgb(232 65 66 / 0.045), transparent);
-  filter: blur(160px);
+  background:
+    radial-gradient(ellipse 600px 480px at var(--lattice-ambient-x, 8%) var(--lattice-ambient-y, 20%), rgb(232 65 66 / 0.12), transparent 70%),
+    radial-gradient(ellipse 520px 400px at calc(100% - var(--lattice-ambient-x, 8%)) calc(var(--lattice-ambient-y, 20%) + 35%), rgb(59 42 110 / 0.14), transparent 70%),
+    radial-gradient(ellipse 450px 320px at 50% 8%, rgb(255 106 61 / 0.07), transparent 65%);
+  filter: blur(120px);
+  pointer-events: none;
 }
 
 .chain-lattice__circuits {
@@ -906,15 +916,15 @@ body,
 }
 
 .chain-lattice[data-variant="calm"] .chain-lattice__field {
-  opacity: 0.5;
+  opacity: 0.8;
 }
 
 .chain-lattice[data-variant="calm"] .chain-lattice__ambient {
-  display: none;
+  opacity: 0.75;
 }
 
 .chain-lattice[data-variant="calm"] .chain-lattice__grain {
-  opacity: 0.0125;
+  opacity: 0.02;
 }
 
 .chain-lattice[data-variant="broken"] .chain-lattice__dots {
