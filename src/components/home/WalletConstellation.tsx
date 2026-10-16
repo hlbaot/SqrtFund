@@ -509,13 +509,13 @@ export function WalletConstellation() {
               strokeOpacity="0.4"
             />
 
-            {/* Stylized Square Root Symbol (√) */}
+            {/* Stylized Square Root Symbol (√) - Optically Centered in Circle */}
             <text
-              x="260"
-              y="256"
+              x="255"
+              y="259"
               textAnchor="middle"
               dominantBaseline="central"
-              className="font-mono text-[32px] font-black select-none pointer-events-none fill-foreground"
+              className="font-mono text-[34px] font-black select-none pointer-events-none fill-foreground"
               style={{
                 filter: "drop-shadow(0 0 10px rgba(232, 65, 66, 0.85))",
               }}
@@ -526,9 +526,9 @@ export function WalletConstellation() {
             {/* Small Monospace Label */}
             <text
               x="260"
-              y="282"
+              y="287"
               textAnchor="middle"
-              className="font-mono text-[8.5px] font-bold tracking-[0.22em] select-none pointer-events-none fill-primary"
+              className="font-mono text-[8px] font-bold tracking-[0.22em] select-none pointer-events-none fill-primary"
             >
               PROJECT
             </text>

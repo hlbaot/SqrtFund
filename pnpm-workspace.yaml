@@ -1,8 +1,10 @@
 allowBuilds:
   '@parcel/watcher': true
+  '@vgpu/adapter-node': false
   bufferutil: true
   esbuild: true
   keccak: true
   sharp: false
   unrs-resolver: false
   utf-8-validate: true
+  webgpu: false

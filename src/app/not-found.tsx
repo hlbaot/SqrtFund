@@ -7,6 +7,7 @@ import { useLocale } from "@/lib/context/locale";
 import { Button } from "@/components/ui/Button";
 import { GradientBorder } from "@/components/ui/GradientBorder";
 import FuzzyText from "@/components/ui/FuzzyText";
+import { ChainLatticeBackground } from "@/components/background/ChainLatticeBackground";
 
 export default function NotFound() {
   const router = useRouter();
@@ -15,20 +16,12 @@ export default function NotFound() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex min-h-screen w-full flex-col items-center justify-center overflow-y-auto px-4 py-12 text-center"
-      style={{
-        background:
-          "linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px), radial-gradient(circle at 50% -10%, rgba(232, 65, 66, 0.11), transparent 36rem), var(--background)",
-        backgroundSize: "42px 42px, 42px 42px, auto, auto",
-      }}
+      className="fixed inset-0 z-50 isolate flex min-h-screen w-full flex-col items-center justify-center overflow-y-auto bg-black px-4 py-12 text-center"
     >
+      <ChainLatticeBackground variant="broken" className="chain-lattice--not-found" />
       <div className="relative z-10 flex w-full max-w-2xl flex-col items-center justify-center">
-        {/* Large 404 display with FuzzyText canvas & background glow */}
+        {/* Large 404 display with the existing FuzzyText canvas */}
         <div className="relative flex items-center justify-center select-none min-h-[140px] sm:min-h-[200px]">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-48 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-[#e84142]/35 via-[#ff5a5b]/25 to-[#fb923c]/25 blur-3xl sm:h-64 sm:w-[420px]"
-          />
           <FuzzyText
             fontSize="clamp(108px, 18vw, 210px)"
             fontWeight={900}

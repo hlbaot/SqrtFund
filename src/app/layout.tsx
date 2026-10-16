@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { SplashIntro } from "@/components/layout/SplashIntro";
 import { VISIT_INTRO_BOOTSTRAP } from "@/lib/visitIntro";
 import { Footer } from "@/components/layout/Footer";
+import { SiteChainLatticeBackground } from "@/components/background/ChainLatticeBackground";
 import { Suspense } from "react";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -40,7 +41,10 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary selection:text-white">
         <SplashIntro />
-        <div id="app-content" className="flex min-h-screen flex-col">
+        <div id="app-content" className="relative isolate flex min-h-screen flex-col">
+          <Suspense fallback={null}>
+            <SiteChainLatticeBackground />
+          </Suspense>
           <Providers>
             <Suspense fallback={<header className="h-16 border-b border-line bg-background" />}>
               <Navbar />

@@ -79,12 +79,7 @@ html {
 }
 
 body {
-  background:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px),
-    radial-gradient(circle at 50% -10%, rgba(232, 65, 66, 0.11), transparent 36rem),
-    var(--background);
-  background-size: 42px 42px, 42px 42px, auto, auto;
+  background: #000;
   color: var(--foreground);
   font-family: var(--font-sans);
   margin: 0;
@@ -235,6 +230,27 @@ button:not(:disabled):hover,
   border: 1px solid transparent;
 }
 
+.gradient-border.bg-transparent,
+.gradient-border-transparent {
+  background: transparent !important;
+  border: none;
+  position: relative;
+}
+
+.gradient-border.bg-transparent::before,
+.gradient-border-transparent::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: var(--accent-gradient);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
 .terminal-caret::after {
   content: "";
   display: inline-block;
@@ -262,6 +278,7 @@ button:not(:disabled):hover,
   0% {
     opacity: 0;
   }
+
   20%,
   100% {
     opacity: 1;
@@ -269,11 +286,13 @@ button:not(:disabled):hover,
 }
 
 @keyframes splash-logo-in {
+
   0%,
   13% {
     opacity: 0;
     transform: scale(0.92);
   }
+
   53%,
   100% {
     opacity: 1;
@@ -282,10 +301,12 @@ button:not(:disabled):hover,
 }
 
 @keyframes splash-progress-fill {
+
   0%,
   13% {
     transform: scaleX(0);
   }
+
   53%,
   100% {
     transform: scaleX(1);
@@ -293,11 +314,13 @@ button:not(:disabled):hover,
 }
 
 @keyframes splash-tagline-in {
+
   0%,
   40% {
     opacity: 0;
     transform: translateY(8px);
   }
+
   73%,
   100% {
     opacity: 1;
@@ -306,10 +329,12 @@ button:not(:disabled):hover,
 }
 
 @keyframes qf-bar-pulse {
+
   0%,
   100% {
     opacity: 0.75;
   }
+
   50% {
     opacity: 1;
   }
@@ -319,6 +344,7 @@ button:not(:disabled):hover,
   from {
     stroke-dashoffset: 700;
   }
+
   to {
     stroke-dashoffset: 0;
   }
@@ -334,15 +360,16 @@ html.splash-active .splash-intro {
 }
 
 .splash-grid {
-  background:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: 42px 42px;
+  background-image:
+    radial-gradient(circle, rgb(255 255 255 / 0.16) 1.25px, transparent 1.5px),
+    radial-gradient(circle, rgb(255 255 255 / 0.08) 0.75px, transparent 1px);
+  background-size: 128px 128px, 32px 32px;
+  background-position: center -48px, center top;
   animation: splash-grid-fade 3s ease both;
 }
 
 .splash-glow {
-  background: radial-gradient(circle at 50% 42%, rgba(232, 65, 66, 0.22), transparent 24rem);
+  background: radial-gradient(circle at 50% 42%, rgba(232, 65, 66, 0.04), transparent 24rem);
 }
 
 .splash-logo-wrap {
@@ -496,6 +523,7 @@ html.splash-active #app-content {
 
 /* Accessibility: respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   ::before,
   ::after {
@@ -512,6 +540,7 @@ body,
 * {
   scrollbar-width: none;
 }
+
 ::-webkit-scrollbar {
   display: none;
   width: 0;
@@ -523,6 +552,7 @@ body,
   background: var(--bg);
   border-color: transparent;
 }
+
 .nav-border::before {
   content: "";
   position: absolute;
@@ -538,14 +568,21 @@ body,
   opacity: 0;
   transition: opacity 180ms ease;
 }
-.nav-border:hover { border-color: var(--line-strong); }
+
+.nav-border:hover {
+  border-color: var(--line-strong);
+}
+
 .nav-border.nav-selected::before,
-.nav-border:has(a:focus-visible)::before { opacity: 1; }
+.nav-border:has(a:focus-visible)::before {
+  opacity: 1;
+}
 
 .gradient-border.avatar-choice[data-selected="false"] {
   background: var(--bg);
   border-color: var(--line-strong);
 }
+
 .avatar-choice[data-auto="true"][data-selected="false"] {
   border-style: dashed;
 }
@@ -557,6 +594,7 @@ body,
   outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
+
 .competition-action {
   min-height: 44px;
   padding: 0.75rem 1rem;
@@ -567,34 +605,443 @@ body,
   font-size: 0.7rem;
   transition: background 160ms ease;
 }
-.competition-action:hover { background: color-mix(in srgb, var(--primary) 22%, var(--bg)); }
-.competition-segment button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); box-shadow: inset 0 -2px var(--primary); }
-.competition-segment button[aria-pressed="false"] { color: var(--muted); }
-.competition-number { min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.competition-row td { border-bottom: 1px solid var(--line); }
+
+.competition-action:hover {
+  background: color-mix(in srgb, var(--primary) 22%, var(--bg));
+}
+
+.competition-segment button[aria-pressed="true"] {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: inset 0 -2px var(--primary);
+}
+
+.competition-segment button[aria-pressed="false"] {
+  color: var(--muted);
+}
+
+.competition-number {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.competition-row td {
+  border-bottom: 1px solid var(--line);
+}
+
 .competition-row:hover,
-.competition-row:focus-within { background: var(--surface-2); }
-.competition-row:focus-within { outline: 1px solid var(--primary); outline-offset: -1px; }
+.competition-row:focus-within {
+  background: var(--surface-2);
+}
+
+.competition-row:focus-within {
+  outline: 1px solid var(--primary);
+  outline-offset: -1px;
+}
+
 .competition-row td:first-child::before,
-.competition-row td:last-child::after { content: ""; position: absolute; width: 8px; height: 8px; pointer-events: none; opacity: 0; transition: opacity 160ms ease, transform 160ms ease; }
-.competition-row td:first-child::before { left: 0; top: 0; border-top: 1px solid var(--primary); border-left: 1px solid var(--primary); transform: translate(3px, 3px); }
-.competition-row td:last-child::after { right: 0; bottom: 0; border-right: 1px solid var(--primary); border-bottom: 1px solid var(--primary); transform: translate(-3px, -3px); }
+.competition-row td:last-child::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.competition-row td:first-child::before {
+  left: 0;
+  top: 0;
+  border-top: 1px solid var(--primary);
+  border-left: 1px solid var(--primary);
+  transform: translate(3px, 3px);
+}
+
+.competition-row td:last-child::after {
+  right: 0;
+  bottom: 0;
+  border-right: 1px solid var(--primary);
+  border-bottom: 1px solid var(--primary);
+  transform: translate(-3px, -3px);
+}
+
 .competition-row:hover td:first-child::before,
 .competition-row:hover td:last-child::after,
 .competition-row:focus-within td:first-child::before,
-.competition-row:focus-within td:last-child::after { opacity: 1; transform: translate(0, 0); }
-.competition-scroll { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) var(--scroll-track); }
-.competition-scroll::-webkit-scrollbar { display: block; width: 5px; height: 5px; }
-.competition-scroll::-webkit-scrollbar-thumb { background: var(--scroll-thumb); }
-.competition-scroll::-webkit-scrollbar-track { background: var(--scroll-track); }
-@keyframes competition-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@keyframes competition-fade { from { opacity: 0; } to { opacity: 1; } }
-.competition-bar { transform-origin: left; animation: competition-grow 300ms ease-out both; }
-.competition-rank { animation: competition-fade 180ms ease-out; }
-.competition-skeleton { animation: competition-fade 300ms ease-out; }
-@media (prefers-reduced-motion: reduce) {
-  .competition-bar, .competition-rank, .competition-skeleton { animation: none; }
-  .competition-row *, .competition-action { transition: none; }
+.competition-row:focus-within td:last-child::after {
+  opacity: 1;
+  transform: translate(0, 0);
 }
 
-.competition-page [data-zero="true"] .competition-number { color: var(--muted); }
+.competition-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+}
+
+.competition-scroll::-webkit-scrollbar {
+  display: block;
+  width: 5px;
+  height: 5px;
+}
+
+.competition-scroll::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+}
+
+.competition-scroll::-webkit-scrollbar-track {
+  background: var(--scroll-track);
+}
+
+@keyframes competition-grow {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes competition-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.competition-bar {
+  transform-origin: left;
+  animation: competition-grow 300ms ease-out both;
+}
+
+.competition-rank {
+  animation: competition-fade 180ms ease-out;
+}
+
+.competition-skeleton {
+  animation: competition-fade 300ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .competition-bar,
+  .competition-rank,
+  .competition-skeleton {
+    animation: none;
+  }
+
+  .competition-row *,
+  .competition-action {
+    transition: none;
+  }
+}
+
+.competition-page [data-zero="true"] .competition-number {
+  color: var(--muted);
+}
+
+/* Chain Lattice: decorative layers stay behind content in isolated hosts. */
+.chain-lattice-host:not(.sticky) {
+  position: relative;
+}
+
+.chain-lattice-host {
+  isolation: isolate;
+  background-color: #000;
+}
+
+.chain-lattice {
+  --lattice-step: 32px;
+  --lattice-major-step: 128px;
+  --lattice-major-y: -48px;
+  --lattice-ambient-x: 8%;
+  --lattice-ambient-y: 20%;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background: #000;
+  contain: paint;
+}
+
+.chain-lattice--site {
+  position: fixed;
+}
+
+#app-content:has([data-variant="broken"])>.chain-lattice--site {
+  display: none;
+}
+
+.chain-lattice__field,
+.chain-lattice__dots,
+.chain-lattice__columns,
+.chain-lattice__grain {
+  position: absolute;
+  inset: 0;
+}
+
+.chain-lattice__field {
+  /* Fade at both section seams and screen edges; keep the middle quieter. */
+  mask-image: radial-gradient(ellipse 78% 90% at 50% 38%, #000 20%, transparent 100%),
+    linear-gradient(transparent, #000 48px, #000 70%, transparent);
+  mask-composite: intersect;
+}
+
+.chain-lattice__dots,
+.chain-lattice-hero-bridge {
+  background-image:
+    radial-gradient(circle, rgb(255 255 255 / 0.16) 1.25px, transparent 1.5px),
+    radial-gradient(circle, rgb(255 255 255 / 0.08) 0.75px, transparent 1px);
+  background-size: var(--lattice-major-step, 128px) var(--lattice-major-step, 128px), var(--lattice-step, 32px) var(--lattice-step, 32px);
+  background-position: center var(--lattice-major-y, -48px), center top;
+}
+
+.chain-lattice__dots {
+  mask-image: linear-gradient(90deg, #000, rgb(0 0 0 / 0.35) 32%, rgb(0 0 0 / 0.35) 68%, #000);
+}
+
+.chain-lattice__ambient {
+  position: absolute;
+  inset: -160px;
+  background: radial-gradient(ellipse 400px 320px at var(--lattice-ambient-x) var(--lattice-ambient-y), rgb(232 65 66 / 0.045), transparent);
+  filter: blur(160px);
+}
+
+.chain-lattice__circuits {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1536px;
+  height: 800px;
+  max-width: none;
+  transform: translateX(-50%);
+  overflow: visible;
+  /* Keep bright signals out of the main text column. */
+  mask-image: linear-gradient(90deg, #000, #000 24%, rgb(0 0 0 / 0.32) 37%, rgb(0 0 0 / 0.32) 63%, #000 76%, #000);
+}
+
+.chain-lattice__columns {
+  opacity: 0.04;
+  background-image: linear-gradient(90deg, #fff 1px, transparent 1px),
+    linear-gradient(90deg, #fff 1px, transparent 1px),
+    linear-gradient(90deg, #fff 1px, transparent 1px);
+  background-size: 283px 100%, 461px 100%, 727px 100%;
+  background-position: 29px 0, 113px 0, 191px 0;
+  mask-image: linear-gradient(90deg, #000, transparent 35%, transparent 65%, #000);
+}
+
+.chain-lattice__grain {
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23n)' d='M0 0h160v160H0z'/%3E%3C/svg%3E");
+}
+
+.chain-lattice__motion {
+  opacity: 0;
+}
+
+.chain-lattice[data-running="true"] .chain-lattice__motion {
+  opacity: 1;
+}
+
+.chain-lattice__ripple {
+  opacity: 0;
+  vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chain-confirm 16s linear -4s infinite paused;
+}
+
+.chain-lattice__ripple--second {
+  animation-duration: 20s;
+  animation-delay: -11s;
+  animation-name: chain-confirm-slow;
+}
+
+.chain-lattice[data-running="true"] .chain-lattice__ripple,
+.chain-lattice[data-running="true"] .chain-lattice__lost-node {
+  animation-play-state: running;
+}
+
+/* The ring begins at arrival, then expands once over 800ms. */
+@keyframes chain-confirm {
+  0% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+
+  5% {
+    opacity: 0;
+    transform: scale(3);
+  }
+
+  5.01%,
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes chain-confirm-slow {
+  0% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+
+  4% {
+    opacity: 0;
+    transform: scale(3);
+  }
+
+  4.01%,
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+.chain-lattice[data-variant="calm"] .chain-lattice__field {
+  opacity: 0.5;
+}
+
+.chain-lattice[data-variant="calm"] .chain-lattice__ambient {
+  display: none;
+}
+
+.chain-lattice[data-variant="calm"] .chain-lattice__grain {
+  opacity: 0.0125;
+}
+
+.chain-lattice[data-variant="broken"] .chain-lattice__dots {
+  mask-image: radial-gradient(ellipse 180px 110px at calc(50% - 128px) 272px, transparent 35%, #000 100%),
+    linear-gradient(90deg, #000, rgb(0 0 0 / 0.35) 32%, rgb(0 0 0 / 0.35) 68%, #000);
+  mask-composite: intersect;
+}
+
+.chain-lattice__lost-node {
+  opacity: 0.45;
+  animation: chain-lost 4s ease-in-out infinite paused;
+}
+
+@keyframes chain-lost {
+  50% {
+    opacity: 0.08;
+  }
+}
+
+.chain-lattice[data-variant="footer"] .chain-lattice__field {
+  opacity: 0.5;
+  mask-image: linear-gradient(#000, transparent 95%);
+}
+
+.chain-lattice[data-variant="footer"] .chain-lattice__ambient {
+  display: none;
+}
+
+.chain-lattice-host--stats .chain-lattice {
+  --lattice-ambient-x: 92%;
+  --lattice-ambient-y: 10%;
+}
+
+#how-it-works .chain-lattice {
+  --lattice-ambient-x: 12%;
+  --lattice-ambient-y: 70%;
+}
+
+#current-round .chain-lattice {
+  --lattice-ambient-x: 90%;
+  --lattice-ambient-y: 36%;
+}
+
+#projects-list .chain-lattice {
+  --lattice-ambient-x: 7%;
+  --lattice-ambient-y: 64%;
+}
+
+/* Timeline support uses horizontal traces, without the list's block columns. */
+.chain-lattice-host--stats .chain-lattice__columns,
+#how-it-works .chain-lattice__columns {
+  display: none;
+}
+
+.chain-lattice-host--stats .chain-lattice__circuits {
+  top: -160px;
+}
+
+.chain-lattice-hero-bridge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  z-index: 0;
+  pointer-events: none;
+  mask-image: linear-gradient(transparent, rgb(0 0 0 / 0.6));
+}
+
+@media (max-width: 767px) {
+
+  .chain-lattice,
+  .chain-lattice-hero-bridge {
+    --lattice-step: 28px;
+    --lattice-major-step: 112px;
+    --lattice-major-y: -42px;
+  }
+
+  .chain-lattice__circuits {
+    width: 768px;
+    transform: translateX(-50%) scale(0.875);
+    transform-origin: center top;
+  }
+
+  .chain-lattice__right {
+    transform: translateX(-768px);
+  }
+
+  .chain-lattice[data-variant="broken"] .chain-lattice__traces>path:last-child,
+  .chain-lattice__lost-node {
+    transform: translateX(-256px);
+  }
+
+  .chain-lattice[data-variant="broken"] .chain-lattice__dots {
+    mask-image: radial-gradient(ellipse 160px 96px at 50% 238px, transparent 35%, #000 100%),
+      linear-gradient(90deg, #000, rgb(0 0 0 / 0.35) 32%, rgb(0 0 0 / 0.35) 68%, #000);
+  }
+
+  .chain-lattice[data-variant="broken"] .chain-lattice__traces>g:first-child>path:nth-child(2) {
+    display: none;
+  }
+
+  .chain-lattice__desktop {
+    display: none;
+  }
+
+  .chain-lattice__field {
+    mask-image: linear-gradient(transparent, #000 40px, #000 65%, transparent);
+  }
+
+  .chain-lattice__circuits {
+    mask-image: linear-gradient(90deg, #000, rgb(0 0 0 / 0.32) 42%, rgb(0 0 0 / 0.32) 58%, #000);
+  }
+
+  .splash-grid {
+    background-size: 112px 112px, 28px 28px;
+    background-position: center -42px, center top;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chain-lattice__motion {
+    display: none;
+  }
+
+  .chain-lattice__ripple,
+  .chain-lattice__lost-node {
+    animation: none !important;
+  }
+}

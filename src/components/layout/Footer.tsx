@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useLocale } from "@/lib/context/locale";
 import { Badge } from "@/components/ui/Badge";
+import { ChainLatticeBackground } from "@/components/background/ChainLatticeBackground";
 
 import { Container } from "./Container";
 
@@ -12,7 +13,8 @@ export function Footer() {
   const { t } = useLocale();
 
   return (
-    <footer className="mt-auto border-t border-line bg-bg py-8 text-xs text-muted">
+    <footer className="chain-lattice-host mt-auto py-8 text-xs text-muted">
+      <ChainLatticeBackground variant="footer" />
       <Container className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <Link

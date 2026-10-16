@@ -53,8 +53,8 @@ export function RoundCard({ round, className = "", adminAddress, roundIndex }: R
             {effectiveStatus === "open"
               ? t.roundCard.statusOpen
               : effectiveStatus === "closed"
-              ? t.roundCard.statusClosed
-              : t.roundCard.statusFinalized}
+                ? t.roundCard.statusClosed
+                : t.roundCard.statusFinalized}
           </Badge>
 
           {adminAddress && (

@@ -22,14 +22,15 @@ import { Container } from "@/components/layout/Container";
 import type { Round } from "@/types";
 import {
   ArrowRight,
-  Calculator,
   Coins,
-  HandCoins,
-  PenLine,
   Rocket,
   Users,
 } from "lucide-react";
 import { WalletConstellation } from "@/components/home/WalletConstellation";
+import { HowItWorksTimeline } from "@/components/home/HowItWorksTimeline";
+import { NetworkStats } from "@/components/home/NetworkStats";
+import AeroShards from "@/components/ui/AeroShards";
+import { ChainLatticeBackground } from "@/components/background/ChainLatticeBackground";
 
 
 export function HomeView() {
@@ -59,6 +60,7 @@ export function HomeView() {
   const pageRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState("intro");
   const [headerHeight, setHeaderHeight] = useState(64);
+  const [hasAeroShardsError, setHasAeroShardsError] = useState(false);
 
   useEffect(() => {
     const sectionIds = ["intro", "stats", "how-it-works", "current-round", "projects-list"];
@@ -185,33 +187,12 @@ export function HomeView() {
     { id: "projects-list", label: t.homeIntro.sideProjects },
   ];
 
-  const steps = [
-    {
-      icon: PenLine,
-      step: "01",
-      title: t.homeIntro.step1Title,
-      description: t.homeIntro.step1Desc,
-      tone: "text-primary",
-    },
-    {
-      icon: HandCoins,
-      step: "02",
-      title: t.homeIntro.step2Title,
-      description: t.homeIntro.step2Desc,
-      tone: "text-money",
-    },
-    {
-      icon: Calculator,
-      step: "03",
-      title: t.homeIntro.step3Title,
-      description: t.homeIntro.step3Desc,
-      tone: "text-primary",
-    },
-  ];
+
 
   return (
     <div ref={pageRef} className="relative space-y-0">
       <AOSInit />
+
       {/* Side dot navigation: visible only from xl (1280px+) screens where safe right margins exist */}
       <nav
         aria-label={t.homeIntro.sectionNavLabel}
@@ -230,8 +211,8 @@ export function HomeView() {
                 }
               }}
               className={`group relative h-2.5 w-2.5 border transition-colors ${activeSection === item.id
-                  ? "border-primary bg-primary"
-                  : "border-line-strong bg-surface hover:border-primary"
+                ? "border-primary bg-primary"
+                : "border-line-strong bg-surface hover:border-primary"
                 }`}
               aria-current={activeSection === item.id ? "true" : undefined}
             >
@@ -247,23 +228,29 @@ export function HomeView() {
       {/* 1. Hero Section: Takes 100% of the viewport height below header */}
       <section
         id="intro"
-        className="relative flex flex-col justify-center scroll-mt-20 overflow-hidden border-b border-line bg-[#07070c]"
+        className="relative flex flex-col justify-center scroll-mt-20 overflow-hidden bg-[#07070c]"
         style={{ minHeight: `calc(100dvh - ${headerHeight}px)` }}
       >
-        {/* Layer 1: Subtle grid with radial mask fading at screen edges */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0 opacity-[0.05]"
-          style={{
-            backgroundImage: `
-              linear-gradient(to right, rgba(255, 255, 255, 0.7) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 1px, transparent 1px)
-            `,
-            backgroundSize: "40px 40px",
-            maskImage: "radial-gradient(ellipse 75% 65% at 50% 45%, black 20%, transparent 80%)",
-            WebkitMaskImage: "radial-gradient(ellipse 75% 65% at 50% 45%, black 20%, transparent 80%)",
-          }}
-        />
+        {/* AeroShards 3D Cyber Shards Background - ONLY in Hero */}
+        {!hasAeroShardsError && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-60"
+          >
+            <AeroShards
+              shardColor="#f43f5e"
+              accentColor="#ff2a6d"
+              backgroundColor="#07070c"
+              material="glass"
+              count={750}
+              speed={0.5}
+              glow={0.45}
+              grain={0.04}
+              placement="full"
+              onError={() => setHasAeroShardsError(true)}
+            />
+          </div>
+        )}
 
         {/* Layer 2: Aurora glows (Top-left red/orange ~12%, Bottom-right green ~10%) */}
         <div
@@ -306,17 +293,16 @@ export function HomeView() {
         {/* Bottom fade to transition smoothly into the next section */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 inset-x-0 z-0 h-28 bg-gradient-to-t from-bg to-transparent"
+          className="pointer-events-none absolute bottom-0 inset-x-0 z-0 h-28 bg-gradient-to-t from-black to-transparent"
         />
+        <div aria-hidden="true" className="chain-lattice-hero-bridge" />
 
         <Container className="relative z-10 flex flex-1 w-full flex-col justify-center py-6 sm:py-8 lg:py-10">
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-16">
             <div className="space-y-6" data-aos="fade-right" data-aos-duration="800">
-              <MonoLabel className="text-primary">{t.homeIntro.eyebrow}</MonoLabel>
-
               <h1 className="hero-headline font-bold text-foreground max-w-2xl">
                 {t.homeIntro.headlineStart}{" "}
-                <GradientBorder className="inline-block bg-surface px-3 py-1 align-baseline">
+                <GradientBorder className="inline-block bg-transparent px-3 py-1 align-baseline">
                   {t.homeIntro.headlineAccent}
                 </GradientBorder>
               </h1>
@@ -349,139 +335,25 @@ export function HomeView() {
         </Container>
       </section>
 
-      {/* 2. Stats strip: 3 stats in 1 row, full container width, big mono numbers, short captions */}
+      {/* 2. Stats strip: Unified Network Metrics Bar (Team1 / Avalanche style) */}
       <section
         id="stats"
         aria-label={t.homeIntro.statsAria}
-        className="scroll-mt-20 border-b border-line"
+        className="chain-lattice-host chain-lattice-host--stats scroll-mt-20"
       >
-        <Container className="py-[clamp(3rem,6vw,6rem)]">
-          {isLoading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <Skeleton className="h-32" />
-              <Skeleton className="h-32" />
-              <Skeleton className="h-32" />
-            </div>
-          ) : !roundAddress ? (
-            <div className="border border-line bg-surface p-6">
-              <MonoLabel className="text-primary">{t.homeIntro.noRoundTitle}</MonoLabel>
-              <p className="mt-2 max-w-xl text-sm text-muted">{t.homeIntro.noRoundDesc}</p>
-              <button
-                type="button"
-                onClick={() => router.push(isAdmin ? "/admin" : "/register")}
-                className="mono-label mt-4 inline-flex min-h-11 items-center border border-primary bg-primary/10 px-5 py-2 text-primary hover:bg-primary hover:text-foreground"
-              >
-                {isAdmin ? t.homeIntro.createRoundCta : t.homeIntro.registerFallbackCta}
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:gap-6">
-              {/* 1. Supporters (First in order) */}
-              <Frame
-                className="p-6"
-                data-aos="fade-up"
-                data-aos-delay="0"
-                data-aos-duration="600"
-              >
-                <div className="role-label flex items-center gap-2 text-primary">
-                  <Users className="h-4 w-4" />
-                  <span>{t.hero.statSupporters}</span>
-                </div>
-                <div className="tabular-mono mt-3 text-3xl font-bold text-foreground lg:text-4xl">
-                  {formatNumber(totalSupporters)}
-                </div>
-                {t.homeIntro.supportersNote && (
-                  <p className="mt-1 text-xs text-muted">{t.homeIntro.supportersNote}</p>
-                )}
-              </Frame>
-
-              {/* 2. Matching pool */}
-              <Frame
-                className="p-6"
-                data-aos="fade-up"
-                data-aos-delay="100"
-                data-aos-duration="600"
-              >
-                <div className="role-label flex items-center gap-2 text-money">
-                  <Coins className="h-4 w-4" />
-                  <span>{t.hero.statPool}</span>
-                </div>
-                <div
-                  title={formatUsdc(poolUsdc)}
-                  className="tabular-mono mt-3 text-3xl font-bold text-money lg:text-4xl truncate"
-                >
-                  {formatUsdc(poolUsdc, { compact: true })}
-                </div>
-                {t.homeIntro.poolNote && (
-                  <p className="mt-1 text-xs text-muted">{t.homeIntro.poolNote}</p>
-                )}
-              </Frame>
-
-              {/* 3. Projects */}
-              <Frame
-                className="p-6"
-                data-aos="fade-up"
-                data-aos-delay="200"
-                data-aos-duration="600"
-              >
-                <div className="role-label flex items-center gap-2 text-muted">
-                  <Rocket className="h-4 w-4" />
-                  <span>{t.hero.statProjects}</span>
-                </div>
-                <div className="tabular-mono mt-3 text-3xl font-bold text-foreground lg:text-4xl">
-                  {formatNumber(approvedProjects.length)}
-                </div>
-                {t.homeIntro.projectsNote && (
-                  <p className="mt-1 text-xs text-muted">{t.homeIntro.projectsNote}</p>
-                )}
-              </Frame>
-            </div>
-          )}
+        <ChainLatticeBackground variant="dense" />
+        <Container className="py-[clamp(2.5rem,5vw,4.5rem)]" data-aos="fade-up" data-aos-duration="600">
+          <NetworkStats />
         </Container>
       </section>
 
-      {/* 3. How it works: label + title only (no long subtitle), 3 equal columns */}
-      <section id="how-it-works" className="scroll-mt-20 border-b border-line">
-        <Container className="space-y-8 py-[clamp(3rem,6vw,6rem)]">
-          <div data-aos="fade-up" data-aos-duration="600">
-            <MonoLabel className="text-primary">{t.howItWorks.title}</MonoLabel>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              {t.howItWorks.title}
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {steps.map((step, idx) => {
-              const Icon = step.icon;
-              return (
-                <Frame
-                  key={step.step}
-                  className="p-6"
-                  interactive
-                  data-aos="fade-up"
-                  data-aos-delay={idx * 150}
-                  data-aos-duration="600"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className={`inline-flex border border-line-strong bg-bg p-2.5 ${step.tone}`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <span className={`mono-label ${step.tone}`}>
-                      {t.homeIntro.stepLabel} {step.step}
-                    </span>
-                  </div>
-                  <h3 className="mt-5 text-base font-bold text-foreground">{step.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-muted sm:text-sm">{step.description}</p>
-                </Frame>
-              );
-            })}
-          </div>
-        </Container>
-      </section>
+      {/* 3. How it works: Scroll-driven Blockchain Timeline */}
+      <HowItWorksTimeline />
 
       {/* 4. Current round: wide card with dynamic round title, admin copy button, inline stats, responsive CTA */}
       {hasError ? (
-        <section className="border-b border-line">
+        <section className="chain-lattice-host">
+          <ChainLatticeBackground variant="dense" />
           <Container className="py-[clamp(3rem,6vw,6rem)]" data-aos="fade-up">
             <ErrorState
               title={t.homeIntro.errorTitle}
@@ -495,7 +367,8 @@ export function HomeView() {
           </Container>
         </section>
       ) : activeRound ? (
-        <section id="current-round" className="scroll-mt-20 border-b border-line">
+        <section id="current-round" className="chain-lattice-host scroll-mt-20">
+          <ChainLatticeBackground variant="dense" />
           <Container className="space-y-6 py-[clamp(3rem,6vw,6rem)]" data-aos="fade-up" data-aos-duration="700">
             <div className="flex items-center justify-between">
               <div>
@@ -515,7 +388,8 @@ export function HomeView() {
       ) : null}
 
       {/* 5. Featured projects */}
-      <section id="projects-list" className="scroll-mt-20">
+      <section id="projects-list" className="chain-lattice-host scroll-mt-20">
+        <ChainLatticeBackground variant="dense" />
         <Container className="space-y-8 py-[clamp(3rem,6vw,6rem)]">
           <div
             className="flex flex-col justify-between gap-3 border-b border-line pb-4 sm:flex-row sm:items-end"
