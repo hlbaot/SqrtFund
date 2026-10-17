@@ -6,6 +6,8 @@ import { VISIT_INTRO_BOOTSTRAP } from "@/lib/visitIntro";
 import { Footer } from "@/components/layout/Footer";
 import { SiteChainLatticeBackground } from "@/components/background/ChainLatticeBackground";
 import { Suspense } from "react";
+import { cookies } from "next/headers";
+import type { Locale } from "@/lib/copy";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -28,14 +30,18 @@ export const metadata: Metadata = {
     "Democratic quadratic funding for student clubs and decentralized university initiatives on Avalanche Fuji testnet.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const rawLocale = cookieStore.get("sqrt-fund-locale")?.value;
+  const initialLocale: Locale = rawLocale === "vi" ? "vi" : "en";
+
   return (
     // The bootstrap intentionally sets the intro class before React hydrates.
-    <html suppressHydrationWarning lang="en" className={`${beVietnamPro.variable} ${jetBrainsMono.variable}`}>
+    <html suppressHydrationWarning lang={initialLocale} className={`${beVietnamPro.variable} ${jetBrainsMono.variable}`}>
       <head>
         <script id="visit-intro" dangerouslySetInnerHTML={{ __html: VISIT_INTRO_BOOTSTRAP }} />
       </head>
@@ -45,7 +51,7 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <SiteChainLatticeBackground />
           </Suspense>
-          <Providers>
+          <Providers initialLocale={initialLocale}>
             <Suspense fallback={<header className="h-16 border-b border-line bg-background" />}>
               <Navbar />
             </Suspense>

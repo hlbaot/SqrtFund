@@ -1,5 +1,7 @@
 # Lỗi /round và chuyển sang factory có StudentRegistry
 
+> **Giai đoạn 2:** Factory trong manifest trước đợt sửa này chưa có hủy/refund/donateMany. Cần [deploy lại Factory và tạo round mới](phase2-redeploy-fuji.md), giữ registry/token. Hướng dẫn deployment cũ bên dưới là lịch sử của Giai đoạn 1.
+
 ## A. Chẩn đoán trước khi sửa (17/10/2026)
 
 Không đọc/sửa `.env.local`, không dùng khóa, không deploy hay ghi chain. RPC kiểm tra: `https://api.avax-test.network/ext/bc/C/rpc`.

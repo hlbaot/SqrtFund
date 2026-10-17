@@ -14,6 +14,8 @@ contract QFRound is ReentrancyGuard {
 
     uint256 public constant SCALE = 1e12;
     uint256 public constant MAX_PROJECTS = 50;
+    uint256 public constant MAX_PROJECTS_PER_OWNER = 2;
+    mapping(address => uint256) public projectsOf;
     uint256 public constant FINALIZE_GRACE = 1 days;
 
     StudentRegistry public immutable studentRegistry;
@@ -32,6 +34,8 @@ contract QFRound is ReentrancyGuard {
 
     uint256 public pool;
     bool public finalized;
+    bool public isCancelled;
+    bool public cancelledPoolWithdrawn;
     uint256 public leftover;
     bool public leftoverWithdrawn;
     uint256 public projectCount;
@@ -73,6 +77,13 @@ contract QFRound is ReentrancyGuard {
     mapping(uint256 => uint256) public payoutOf;
 
     // Custom Errors
+    error RoundIsCancelled();
+    error RoundNotCancelled();
+    error NothingToRefund();
+    error CancelledPoolAlreadyWithdrawn();
+    error EmptyBatch();
+    error BatchTooLarge();
+    error BatchLengthMismatch();
     error ZeroAddress();
     error InvalidTimeRange();
     error InvalidDonationBounds();
@@ -90,6 +101,7 @@ contract QFRound is ReentrancyGuard {
     error ProjectAlreadyApproved();
     error ProjectNotFound();
     error MaxProjectsReached();
+    error OwnerProjectLimit();
     error SelfDonationNotAllowed();
     error DonationBelowMin();
     error DonationExceedsMax();
@@ -105,16 +117,25 @@ contract QFRound is ReentrancyGuard {
     error ZeroAmount();
 
     // Events
+    event RoundCancelled(address indexed admin);
+    event Refunded(address indexed donor, uint256 indexed projectId, uint256 amount);
+    event CancelledPoolWithdrawn(address indexed admin, uint256 amount);
     event ProjectRegistered(uint256 indexed id, address indexed owner, string name);
     event ProjectApproved(uint256 indexed id);
     event PoolDeposited(address indexed depositor, uint256 amount, uint256 totalPool);
     event Donated(address indexed donor, uint256 indexed projectId, uint256 amount, uint256 newTotal);
+    event PoolUnderfunded(uint256 pool, uint256 totalRaw);
     event Finalized(uint256 totalPayout, uint256 leftover);
     event Claimed(uint256 indexed projectId, address indexed owner, uint256 totalPayout);
     event LeftoverWithdrawn(address indexed admin, uint256 amount);
 
     modifier onlyAdmin() {
         if (msg.sender != admin) revert NotAdmin();
+        _;
+    }
+
+    modifier notCancelled() {
+        if (isCancelled) revert RoundIsCancelled();
         _;
     }
 
@@ -167,24 +188,26 @@ contract QFRound is ReentrancyGuard {
 
     /// @notice Globally verified student registers a project before round endTime (max 50 projects).
     function registerProject(
-        string calldata name,
+        string calldata projectName,
         string calldata description,
         string calldata imageUrl,
         string calldata link
-    ) external returns (uint256 projectId) {
+    ) external notCancelled returns (uint256 projectId) {
         if (!studentRegistry.isStudent(msg.sender)) revert NotStudent();
         if (block.timestamp >= endTime) revert RoundEnded();
-        if (bytes(name).length == 0 || bytes(name).length > 60) revert NameLengthInvalid();
+        if (bytes(projectName).length == 0 || bytes(projectName).length > 60) revert NameLengthInvalid();
         if (bytes(description).length == 0 || bytes(description).length > 280) revert DescriptionLengthInvalid();
         if (bytes(imageUrl).length > 200 || bytes(link).length > 200) revert UrlTooLong();
         if (projectCount >= MAX_PROJECTS) revert MaxProjectsReached();
 
+        if (projectsOf[msg.sender] >= MAX_PROJECTS_PER_OWNER) revert OwnerProjectLimit();
+        projectsOf[msg.sender]++;
         projectCount++;
         projectId = projectCount;
 
         _projects[projectId] = Project({
             owner: msg.sender,
-            name: name,
+            name: projectName,
             description: description,
             imageUrl: imageUrl,
             link: link,
@@ -195,11 +218,11 @@ contract QFRound is ReentrancyGuard {
             donorCount: 0
         });
 
-        emit ProjectRegistered(projectId, msg.sender, name);
+        emit ProjectRegistered(projectId, msg.sender, projectName);
     }
 
     /// @notice Admin approves project to participate in round and receive donations.
-    function approveProject(uint256 id) external onlyAdmin {
+    function approveProject(uint256 id) external onlyAdmin notCancelled {
         if (finalized) revert AlreadyFinalized();
         if (block.timestamp >= endTime) revert RoundEnded();
         if (id == 0 || id > projectCount) revert ProjectNotFound();
@@ -214,7 +237,7 @@ contract QFRound is ReentrancyGuard {
     // --- Sponsor Matching Pool ---
 
     /// @notice Admin deposits matching funds into the pool prior to round finalization.
-    function depositPool(uint256 amount) external nonReentrant onlyAdmin {
+    function depositPool(uint256 amount) external nonReentrant onlyAdmin notCancelled {
         if (finalized) revert AlreadyFinalized();
         if (amount == 0) revert ZeroAmount();
 
@@ -227,10 +250,37 @@ contract QFRound is ReentrancyGuard {
     // --- Student Donations ---
 
     /// @notice Globally verified student donates minDonation..maxDonation to an approved project.
-    function donate(uint256 projectId, uint256 amount) external nonReentrant {
+    function donate(uint256 projectId, uint256 amount) external nonReentrant notCancelled {
+        _requireDonationOpen();
+        _recordDonation(projectId, amount);
+        token.safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    /// @notice Atomically split this wallet's budget across projects; duplicate IDs accumulate.
+    function donateMany(uint256[] calldata projectIds, uint256[] calldata amounts) external nonReentrant notCancelled {
+        _requireDonationOpen();
+        _checkBatch(projectIds.length);
+        if (projectIds.length != amounts.length) revert BatchLengthMismatch();
+        uint256 total;
+        for (uint256 i; i < projectIds.length; ++i) {
+            _recordDonation(projectIds[i], amounts[i]);
+            total += amounts[i];
+        }
+        token.safeTransferFrom(msg.sender, address(this), total);
+    }
+
+    function _requireDonationOpen() internal view {
         if (block.timestamp < startTime || block.timestamp >= endTime) revert RoundNotActive();
         if (finalized) revert AlreadyFinalized();
         if (!studentRegistry.isStudent(msg.sender)) revert NotStudent();
+    }
+
+    function _checkBatch(uint256 length) internal pure {
+        if (length == 0) revert EmptyBatch();
+        if (length > MAX_PROJECTS) revert BatchTooLarge();
+    }
+
+    function _recordDonation(uint256 projectId, uint256 amount) internal {
         if (projectId == 0 || projectId > projectCount || !_projects[projectId].approved) revert ProjectNotApproved();
 
         Project storage proj = _projects[projectId];
@@ -257,7 +307,51 @@ contract QFRound is ReentrancyGuard {
 
         emit Donated(msg.sender, projectId, amount, newTotal);
 
-        token.safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    // --- Cancellation: no timeout-based withdrawal path ---
+
+    function cancelRound() external onlyAdmin {
+        if (finalized) revert AlreadyFinalized();
+        if (isCancelled) revert RoundIsCancelled();
+        isCancelled = true;
+        emit RoundCancelled(msg.sender);
+    }
+
+    function refund(uint256 projectId) external nonReentrant {
+        if (!isCancelled) revert RoundNotCancelled();
+        uint256 amount = _recordRefund(projectId);
+        token.safeTransfer(msg.sender, amount);
+    }
+
+    function refundMany(uint256[] calldata projectIds) external nonReentrant {
+        if (!isCancelled) revert RoundNotCancelled();
+        _checkBatch(projectIds.length);
+        uint256 total;
+        for (uint256 i; i < projectIds.length; ++i) total += _recordRefund(projectIds[i]);
+        token.safeTransfer(msg.sender, total);
+    }
+
+    function _recordRefund(uint256 projectId) internal returns (uint256 amount) {
+        if (projectId == 0 || projectId > projectCount) revert ProjectNotFound();
+        amount = donationOf[msg.sender][projectId];
+        if (amount == 0) revert NothingToRefund();
+        donationOf[msg.sender][projectId] = 0;
+        spentInRound[msg.sender] -= amount;
+        Project storage proj = _projects[projectId];
+        proj.totalDonated -= amount;
+        proj.sumSqrt -= Math.sqrt(amount * SCALE);
+        --proj.donorCount;
+        emit Refunded(msg.sender, projectId, amount);
+    }
+
+    function withdrawPoolIfCancelled() external nonReentrant onlyAdmin {
+        if (!isCancelled) revert RoundNotCancelled();
+        if (cancelledPoolWithdrawn) revert CancelledPoolAlreadyWithdrawn();
+        cancelledPoolWithdrawn = true;
+        uint256 amount = pool;
+        emit CancelledPoolWithdrawn(msg.sender, amount);
+        if (amount > 0) token.safeTransfer(admin, amount);
     }
 
     // --- Matching Math & Finalization ---
@@ -270,19 +364,19 @@ contract QFRound is ReentrancyGuard {
             uint256[] memory projectIds,
             uint256[] memory payouts,
             uint256 totalPayout,
-            uint256 remainingLeftover
+            uint256 remainingLeftover,
+            uint256 sumRaw
         )
     {
         uint256 n = approvedProjectIds.length;
         projectIds = approvedProjectIds;
         payouts = new uint256[](n);
 
-        if (n == 0 || pool == 0) {
-            return (projectIds, payouts, 0, pool);
+        if (isCancelled || n == 0) {
+            return (projectIds, payouts, 0, pool, 0);
         }
 
         uint256[] memory raw = new uint256[](n);
-        uint256 sumRaw = 0;
 
         for (uint256 i = 0; i < n; i++) {
             uint256 pId = approvedProjectIds[i];
@@ -326,11 +420,16 @@ contract QFRound is ReentrancyGuard {
 
     /// @notice Returns current estimated matching payout for each approved project using exact finalize math.
     function previewMatching() external view returns (uint256[] memory projectIds, uint256[] memory estimatedPayouts) {
-        (projectIds, estimatedPayouts, , ) = _computeMatching();
+        (projectIds, estimatedPayouts, , , ) = _computeMatching();
+    }
+
+    /// @notice Raw demand before proportional scaling and the per-project cap.
+    function matchingTotalRaw() external view returns (uint256 totalRaw) {
+        (, , , , totalRaw) = _computeMatching();
     }
 
     /// @notice Finalize the round after endTime. Only admin can finalize during FINALIZE_GRACE (1 day); after that anyone can.
-    function finalize() external nonReentrant {
+    function finalize() external nonReentrant notCancelled {
         if (block.timestamp < endTime) revert RoundNotEnded();
         if (finalized) revert AlreadyFinalized();
         if (block.timestamp < endTime + FINALIZE_GRACE && msg.sender != admin) {
@@ -339,7 +438,7 @@ contract QFRound is ReentrancyGuard {
 
         finalized = true;
 
-        (uint256[] memory pIds, uint256[] memory payouts, uint256 totalPayout, uint256 remainingLeftover) =
+        (uint256[] memory pIds, uint256[] memory payouts, uint256 totalPayout, uint256 remainingLeftover, uint256 sumRaw) =
             _computeMatching();
 
         for (uint256 i = 0; i < pIds.length; i++) {
@@ -348,11 +447,12 @@ contract QFRound is ReentrancyGuard {
 
         leftover = remainingLeftover;
 
+        if (sumRaw > pool) emit PoolUnderfunded(pool, sumRaw);
         emit Finalized(totalPayout, leftover);
     }
 
     /// @notice Project owner claims direct donations plus matching payout after finalize.
-    function claim(uint256 projectId) external nonReentrant {
+    function claim(uint256 projectId) external nonReentrant notCancelled {
         if (!finalized) revert NotFinalized();
         if (projectId == 0 || projectId > projectCount) revert ProjectNotFound();
 
@@ -392,7 +492,7 @@ contract QFRound is ReentrancyGuard {
         view
         returns (
             address owner,
-            string memory name,
+            string memory projectName,
             string memory description,
             string memory imageUrl,
             string memory link,

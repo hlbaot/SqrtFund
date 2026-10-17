@@ -37,7 +37,7 @@ export function ToastProvider({ children }: { children: React.ReactNode; }) {
     if (toast.type === "pending") {
       txToast.pending(id, toast.title, toast.description, toast.txHash);
     } else if (toast.type === "success") {
-      txToast.success(id, toast.title, toast.description, toast.txHash);
+      txToast.success(id, toast.title, toast.description, toast.txHash, undefined, toast.feeWei);
     } else if (toast.type === "error") {
       txToast.error(id, toast.title, toast.description);
     } else {

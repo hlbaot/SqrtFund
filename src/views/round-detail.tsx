@@ -1,4 +1,7 @@
 "use client";
+import { MatchingPoolWarning } from "@/components/project/MatchingPoolWarning";
+import { computeRawMatching } from "@/lib/qf";
+import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
 import { StudentVerifyBox } from "@/components/verify/StudentVerifyBox";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -53,8 +56,10 @@ export function RoundDetailView() {
   return <Container className="competition-page min-w-0 space-y-8 py-6 sm:py-8">
     {round.allRounds.map(id => <RoundChoiceData key={id} address={id} onData={onData} />)}
     {loading ? <><div role="status" aria-label={t.competition.loading} className="competition-skeleton h-[330px] border border-line bg-surface" /><LeaderboardSkeleton /></> : error ? <PresentationState state="error" onRetry={() => { round.refetch(); void refetch(); }} /> : !exists ? <PresentationState state="empty"><h1>{t.competition.notFound}</h1><p className="mt-2 text-sm text-muted">{t.competition.notFoundHint}</p><Link href="/rounds" className="competition-action mt-5 inline-flex">{t.competition.rounds}</Link></PresentationState> : <>
+      <RoundCancellationPanel roundAddress={round.roundAddress} />
       <StudentVerifyBox />
       <RoundHeader round={summary} choices={choices.length ? choices : [{ id: summary.id, number: summary.number, phase: summary.phase }]} onRoundChange={id => router.push(`/round/${id}`)} finalPayoutsAvailable={false} />
+      {!round.isCancelled && <MatchingPoolWarning totalRaw={approved.reduce((sum, p) => sum + computeRawMatching(p.sumSqrtRaw, p.totalDonatedRaw), 0n)} pool={round.pool} />}
       <Leaderboard projects={approved} roundId={summary.id} pool={summary.matchingPool} finalized={round.finalized} wallet={address} isAdmin={isReady && role === "admin"} onRetry={() => { round.refetch(); void refetch(); }} />
     </>}
   </Container>;

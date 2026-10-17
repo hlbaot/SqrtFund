@@ -3,7 +3,7 @@
 import { useTxFlow } from "@/hooks/useTxFlow";
 
 import type { Address } from "viem";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { mockUsdcAbi, qfRoundAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
@@ -27,7 +27,10 @@ export function useDonate(customRound?: Address) {
   const approveId = "donate-approve";
   const donateId = "donate-confirm";
 
-  const donate = async (projectId: bigint, amount: bigint) => {
+  const busy = useRef(false);
+  const execute = async (projectIds: bigint[], amounts: bigint[], batch: boolean) => {
+    if (busy.current) return false;
+    const amount = amounts.reduce((sum, value) => sum + value, 0n);
     const flow = beginFlow();
     if (!address || !roundAddress || !token || !publicClient) {
       flow.toast.error(
@@ -37,9 +40,10 @@ export function useDonate(customRound?: Address) {
           ? "Vui lòng kết nối ví trước khi thực hiện quyên góp."
           : "Please connect your wallet first."
       );
-      return false;
+      flow.finish(); return false;
     }
 
+    busy.current = true;
     setErrorMessage(null);
 
     try {
@@ -160,12 +164,9 @@ export function useDonate(customRound?: Address) {
 
       let donateHash: `0x${string}`;
       try {
-        donateHash = await flow.wait(() => writeContractAsync({
-          address: roundAddress,
-          abi: qfRoundAbi,
-          functionName: "donate",
-          args: [projectId, amount],
-        }));
+        donateHash = await flow.wait(() => batch
+          ? writeContractAsync({ address: roundAddress, abi: qfRoundAbi, functionName: "donateMany", args: [projectIds, amounts] })
+          : writeContractAsync({ address: roundAddress, abi: qfRoundAbi, functionName: "donate", args: [projectIds[0], amounts[0]] }));
       } catch (err) {
         if (flow.cancelled) return false;
         setStep("error");
@@ -234,6 +235,7 @@ export function useDonate(customRound?: Address) {
       );
       return false;
     } finally {
+      busy.current = false;
       flow.finish();
     }
   };
@@ -245,7 +247,8 @@ export function useDonate(customRound?: Address) {
   };
 
   return {
-    donate,
+    donate: (projectId: bigint, amount: bigint) => execute([projectId], [amount], false),
+    donateMany: (projectIds: bigint[], amounts: bigint[]) => execute(projectIds, amounts, true),
     reset,
     step,
     isPending: step === "approving" || step === "donating",

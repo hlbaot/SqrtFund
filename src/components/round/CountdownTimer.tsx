@@ -6,7 +6,7 @@ import { useLocale } from "@/lib/context/locale";
 
 export interface CountdownTimerProps {
   endTime: string | Date | number | bigint;
-  statusOverride?: "open" | "closed" | "finalized";
+  statusOverride?: "open" | "closed" | "finalized" | "cancelled";
   className?: string;
   prominent?: boolean;
 }

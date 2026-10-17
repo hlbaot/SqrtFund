@@ -42,7 +42,7 @@ export function computeMatchingBigInt(
   maxMatchBps: bigint = 3000n, // Default 30%
 ): ProjectMathResult[] {
   const n = projects.length;
-  if (n === 0 || pool === 0n) {
+  if (n === 0) {
     return projects.map((p) => ({ id: p.id, raw: 0n, payout: 0n }));
   }
 
@@ -97,6 +97,7 @@ export function simulateDonationImpact({
   currentPayout: bigint;
   newPayout: bigint;
   deltaPayout: bigint;
+  totalRaw: bigint;
 } {
   const currentResults = computeMatchingBigInt(allProjects, pool, maxMatchBps);
   const currentItem = currentResults.find((p) => String(p.id) === String(projectId));
@@ -140,5 +141,30 @@ export function simulateDonationImpact({
     currentPayout,
     newPayout,
     deltaPayout,
+    totalRaw: newResults.reduce((sum, project) => sum + project.raw, 0n),
   };
+}
+
+/** Apply all allocations before recomputing the shared pool's matching distribution. */
+export function simulateDonationBatch(projects: ProjectMathInput[], donorTotals: Record<string, bigint>, allocations: { id: string; amount: bigint }[], pool: bigint, maxMatchBps: bigint) {
+  const next = projects.map(project => ({ ...project }));
+  const totals = { ...donorTotals };
+  for (const { id, amount } of allocations) {
+    if (amount < 0n) throw new Error("Negative allocation");
+    const project = next.find(p => String(p.id) === id);
+    if (!project) throw new Error("Unknown project");
+    const old = totals[id] ?? 0n;
+    project.sumSqrt += sqrtBigInt((old + amount) * SCALE) - sqrtBigInt(old * SCALE);
+    project.totalDonated += amount;
+    totals[id] = old + amount;
+  }
+  return computeMatchingBigInt(next, pool, maxMatchBps);
+}
+
+/** Percent of raw matching demand covered by the pool, floored to 2 decimals. */
+export function matchingCoverage(totalRaw: bigint, pool: bigint) {
+  if (totalRaw < 0n || pool < 0n) throw new Error("Negative matching inputs");
+  const underfunded = totalRaw > pool;
+  const bps = totalRaw === 0n || !underfunded ? 10000n : pool * 10000n / totalRaw;
+  return { underfunded, percent: `${bps / 100n}.${(bps % 100n).toString().padStart(2, "0")}` };
 }

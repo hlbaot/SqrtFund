@@ -1,0 +1,17 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { beforeEach, expect, it, vi } from "vitest";
+import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
+import { copy } from "@/lib/copy";
+const state = vi.hoisted(() => ({ cancelled: true, phase2: true, finalized: false, poolReturned: false, wallet: "0x1111111111111111111111111111111111111111", amounts: [2_000_000n, 3_000_000n] }));
+vi.mock("@/hooks/useRound", () => ({ useRound: () => ({ isLoading: false, supportsPhase2: state.phase2, isCancelled: state.cancelled, finalized: state.finalized, cancelledPoolWithdrawn: state.poolReturned, pool: 10_000_000n, projectCount: 2n, admin: "0x1111111111111111111111111111111111111111", roundAddress: "0x2222222222222222222222222222222222222222" }) }));
+vi.mock("wagmi", () => ({ useAccount: () => ({ address: state.wallet, isConnected: true, chainId: 43113 }), usePublicClient: () => ({}), useWriteContract: () => ({}), useReadContracts: () => ({ data: state.amounts.map(result => ({ status: "success", result })) }) }));
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}) }));
+vi.mock("@/hooks/useTxFlow", () => ({ useTxFlow: () => vi.fn() }));
+vi.mock("@/lib/context/locale", async () => { const { copy } = await import("@/lib/copy"); return { useLocale: () => ({ locale: "vi", t: copy.vi }) }; });
+beforeEach(() => Object.assign(state, { cancelled: true, phase2: true, finalized: false, poolReturned: false, wallet: "0x1111111111111111111111111111111111111111", amounts: [2_000_000n, 3_000_000n] }));
+const render = () => renderToStaticMarkup(createElement(RoundCancellationPanel, { adminControls: true }));
+it("cancelled round shows the full refundable principal and admin pool action", () => { const html = render(); expect(html).toContain(copy.vi.phase2.cancelled); expect(html).toContain("5 USDC"); expect(html).toContain(copy.vi.phase2.withdrawPool); });
+it("a donor has refund access without admin pool controls", () => { state.wallet = "0x3333333333333333333333333333333333333333"; const html = render(); expect(html).toContain(copy.vi.phase2.refund); expect(html).not.toContain(copy.vi.phase2.withdrawPool); });
+it("a fully refunded wallet and returned pool do not show withdrawal actions", () => { state.amounts = [0n, 0n]; state.poolReturned = true; const html = render(); expect(html).toContain(copy.vi.phase2.noRefund); expect(html).toContain(copy.vi.phase2.poolReturned); expect(html).not.toContain("<button"); });
+it("finalized rounds cannot show cancellation and Phase 1 shows upgrade guidance", () => { state.cancelled = false; state.finalized = true; expect(render()).toBe(""); state.phase2 = false; expect(render()).toContain(copy.vi.phase2.phase2Required); });

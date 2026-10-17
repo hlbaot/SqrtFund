@@ -89,6 +89,19 @@ export const qfRoundAbi = [
   },
   {
     "type": "function",
+    "name": "MAX_PROJECTS_PER_OWNER",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "SCALE",
     "inputs": [],
     "outputs": [
@@ -147,6 +160,26 @@ export const qfRoundAbi = [
   },
   {
     "type": "function",
+    "name": "cancelRound",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "cancelledPoolWithdrawn",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "claim",
     "inputs": [
       {
@@ -184,6 +217,24 @@ export const qfRoundAbi = [
         "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "donateMany",
+    "inputs": [
+      {
+        "name": "projectIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "amounts",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
       }
     ],
     "outputs": [],
@@ -263,7 +314,7 @@ export const qfRoundAbi = [
         "internalType": "address"
       },
       {
-        "name": "name",
+        "name": "projectName",
         "type": "string",
         "internalType": "string"
       },
@@ -398,6 +449,19 @@ export const qfRoundAbi = [
   },
   {
     "type": "function",
+    "name": "isCancelled",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "isWhitelisted",
     "inputs": [
       {
@@ -437,6 +501,19 @@ export const qfRoundAbi = [
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "matchingTotalRaw",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "totalRaw",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -584,10 +661,55 @@ export const qfRoundAbi = [
   },
   {
     "type": "function",
+    "name": "projectsOf",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "refund",
+    "inputs": [
+      {
+        "name": "projectId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "refundMany",
+    "inputs": [
+      {
+        "name": "projectIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "registerProject",
     "inputs": [
       {
-        "name": "name",
+        "name": "projectName",
         "type": "string",
         "internalType": "string"
       },
@@ -699,6 +821,32 @@ export const qfRoundAbi = [
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "withdrawPoolIfCancelled",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "CancelledPoolWithdrawn",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -821,6 +969,25 @@ export const qfRoundAbi = [
   },
   {
     "type": "event",
+    "name": "PoolUnderfunded",
+    "inputs": [
+      {
+        "name": "pool",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalRaw",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "ProjectApproved",
     "inputs": [
       {
@@ -858,6 +1025,44 @@ export const qfRoundAbi = [
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "Refunded",
+    "inputs": [
+      {
+        "name": "donor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "projectId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RoundCancelled",
+    "inputs": [
+      {
+        "name": "admin",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "AlreadyClaimed",
     "inputs": []
@@ -865,6 +1070,21 @@ export const qfRoundAbi = [
   {
     "type": "error",
     "name": "AlreadyFinalized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BatchLengthMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BatchTooLarge",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CancelledPoolAlreadyWithdrawn",
     "inputs": []
   },
   {
@@ -880,6 +1100,11 @@ export const qfRoundAbi = [
   {
     "type": "error",
     "name": "DonationExceedsMax",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EmptyBatch",
     "inputs": []
   },
   {
@@ -944,7 +1169,17 @@ export const qfRoundAbi = [
   },
   {
     "type": "error",
+    "name": "NothingToRefund",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "OrganizerTooLong",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OwnerProjectLimit",
     "inputs": []
   },
   {
@@ -979,12 +1214,22 @@ export const qfRoundAbi = [
   },
   {
     "type": "error",
+    "name": "RoundIsCancelled",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "RoundNameInvalid",
     "inputs": []
   },
   {
     "type": "error",
     "name": "RoundNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RoundNotCancelled",
     "inputs": []
   },
   {

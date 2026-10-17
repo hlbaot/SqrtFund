@@ -6,6 +6,7 @@ export const fmt = (s: string, p: Record<string, string | number> = {}): string 
 
 const enData = {
     competition: {
+      cancelled: "Cancelled",
       legacyRound: "Legacy round",
       roundReadError: "Unable to read this round ({address})",
       versionMismatch: "The contract is incompatible with this version. Choose a round from the updated factory.",
@@ -139,6 +140,17 @@ const enData = {
       "notifications": "Notifications",
       "balance": "Balance",
       "profile": "Wallet profile",
+    },
+    phase2: {
+      cancelled: "Round cancelled", cancelledHint: "Donations are closed. Donors can recover their contributions at any time.",
+      refund: "Refund contributions", refundTotal: "Available refund", noRefund: "No contributions to refund for this wallet.",
+      cancelRound: "Cancel round", cancelConfirm: "Cancel this round?", cancelHint: "This cannot be undone. Funding and claims will stop; donors can refund their contributions and the admin can recover the matching pool.",
+      withdrawPool: "Recover matching pool", poolReturned: "Matching pool recovered", phase2Required: "This round does not support cancellation or batch donations. Create a round using the Phase 2 factory.",
+      poolUnderfunded: "Matching has been scaled proportionally because the pool is insufficient ({percent}% funded).",
+      ownerProjectLimit: "Each wallet can register at most 2 projects per round, including pending projects.",
+      splitBudget: "Split budget across projects", singleProject: "Back to one project", allocation: "Your contribution", expectedMatching: "Expected Matching",
+      expectedHint: "Estimated matching funds for this project after your input, excluding direct donations. This can change until the round is finalized.",
+      total: "Total contribution", invalidAllocation: "Check the minimum, project limits and remaining round budget.", insufficientBalance: "Insufficient USDC balance.", confirmDonation: "Donate to selected projects", loading: "Loading wallet contributions…", actualFee: "Actual transaction fee", processing: "Waiting for wallet / confirmation…",
     },
     verification: {
       title: "Student verification",
@@ -793,6 +805,7 @@ export type Translations = typeof enData;
 
 const viData: Translations = {
     competition: {
+      cancelled: "Đã hủy",
       legacyRound: "Round phiên bản cũ",
       roundReadError: "Không đọc được round này (địa chỉ {address})",
       versionMismatch: "Contract không khớp phiên bản. Hãy chọn round từ factory mới.",
@@ -926,6 +939,17 @@ const viData: Translations = {
       "notifications": "Thông báo",
       "balance": "Số dư",
       "profile": "Hồ sơ ví"
+    },
+    phase2: {
+      cancelled: "Vòng đã hủy", cancelledHint: "Đã dừng nhận ủng hộ. Người ủng hộ có thể rút lại khoản đóng góp bất kỳ lúc nào.",
+      refund: "Hoàn tiền đóng góp", refundTotal: "Có thể hoàn tiền", noRefund: "Ví này không có khoản đóng góp cần hoàn tiền.",
+      cancelRound: "Hủy vòng", cancelConfirm: "Hủy vòng tài trợ này?", cancelHint: "Không thể hoàn tác. Các hoạt động tài trợ và nhận tiền dự án sẽ dừng; người ủng hộ có thể hoàn tiền, admin được rút lại quỹ đối ứng.",
+      withdrawPool: "Rút lại quỹ đối ứng", poolReturned: "Đã rút quỹ đối ứng", phase2Required: "Round này chưa hỗ trợ hủy hoặc ủng hộ nhiều dự án một lần. Hãy tạo round từ factory Giai đoạn 2.",
+      poolUnderfunded: "Matching đã được thu nhỏ theo tỉ lệ vì pool chưa đủ (đủ {percent}%).",
+      ownerProjectLimit: "Mỗi ví chỉ được đăng ký tối đa 2 dự án trong một vòng, gồm cả dự án chờ duyệt.",
+      splitBudget: "Chia ngân sách cho nhiều dự án", singleProject: "Trở lại một dự án", allocation: "Khoản bạn ủng hộ", expectedMatching: "Quỹ đối ứng dự kiến",
+      expectedHint: "Phần quỹ đối ứng dự kiến của dự án sau khoản bạn nhập, chưa gồm tiền ủng hộ trực tiếp. Số tiền có thể thay đổi đến khi chốt vòng.",
+      total: "Tổng ủng hộ", invalidAllocation: "Kiểm tra mức tối thiểu, trần mỗi dự án và ngân sách còn lại của vòng.", insufficientBalance: "Số dư USDC không đủ.", confirmDonation: "Ủng hộ các dự án đã chọn", loading: "Đang đọc đóng góp của ví…", actualFee: "Phí giao dịch thực tế", processing: "Đang chờ xác nhận trong ví / trên chuỗi…",
     },
     verification: {
       title: "Xác nhận sinh viên",

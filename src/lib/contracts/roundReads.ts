@@ -5,7 +5,8 @@ export const roundModernFunctions = ["name", "organizer", "maxPerRound"] as cons
 export type RoundReadCall = { address: Address; abi: Abi; functionName: string };
 export type RoundReadResult = { status: "success" | "failure" | "skipped"; result?: unknown; error?: unknown };
 export type RoundBatchReader = (contracts: readonly RoundReadCall[]) => Promise<readonly RoundReadResult[]>;
-export type RoundCapability = { version: "current" | "legacy"; registry?: Address };
+export const roundPhase2Functions = ["isCancelled", "cancelledPoolWithdrawn"] as const;
+export type RoundCapability = { supportsPhase2?: boolean; version: "current" | "legacy"; registry?: Address };
 export type RoundReadKind = "version" | "rpc";
 export function isVersionReadError(error: unknown): boolean {
   let current = error;
@@ -44,7 +45,7 @@ export async function loadRoundFields(read: RoundBatchReader, address: Address, 
     } else capability = { version: "current", registry: probe.result as Address };
     capabilities.set(key, capability);
   }
-  const functions: readonly string[] = capability.version === "legacy" ? roundCoreFunctions : [...roundCoreFunctions, ...roundModernFunctions];
+  const functions: readonly string[] = capability.version === "legacy" ? roundCoreFunctions : [...roundCoreFunctions, ...roundModernFunctions, ...(capability.supportsPhase2 === false ? [] : roundPhase2Functions)];
   let results: readonly RoundReadResult[];
   try { results = await read(functions.map(functionName => ({ address, abi: qfRoundAbi, functionName }))); }
   catch (error) { for (const fn of functions) logContractReadFailure(address, fn, error); throw error; }
@@ -54,7 +55,19 @@ export async function loadRoundFields(read: RoundBatchReader, address: Address, 
     if (result.status === "failure") logContractReadFailure(address, fn, result.error);
     return result;
   });
-  if (capability.version === "legacy") complete.push(...roundModernFunctions.map(() => ({ status: "skipped" as const })));
+  if (capability.version === "current" && complete[14]?.status === "failure" && isVersionReadError(complete[14].error)) {
+    capability = { version: "legacy" };
+    capabilities.set(key, capability);
+    complete.splice(12, complete.length - 12, ...[...roundModernFunctions, ...roundPhase2Functions].map(() => ({ status: "skipped" as const })));
+    return { ...capability, results: complete };
+  }
+  if (capability.version === "legacy") complete.push(...[...roundModernFunctions, ...roundPhase2Functions].map(() => ({ status: "skipped" as const })));
+  else if (capability.supportsPhase2 === false) complete.push(...roundPhase2Functions.map(() => ({ status: "skipped" as const })));
+  else if (complete[15]?.status === "success" && complete[16]?.status === "success") capability.supportsPhase2 = true;
+  else if (complete.slice(15).some(result => result.status === "failure" && isVersionReadError(result.error))) {
+    capability.supportsPhase2 = false;
+    complete.splice(15, 2, { status: "skipped" }, { status: "skipped" });
+  }
   return { ...capability, results: complete };
 }
 export const roundReadRetry = { retry: 2, retryDelay: (attempt: number) => Math.min(750 * 2 ** attempt, 3000) };

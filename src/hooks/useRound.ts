@@ -53,6 +53,7 @@ export function useRound(customRoundAddress?: Address) {
   const maxDonation = roundData?.[5]?.result as bigint | undefined;
   const maxMatchBps = roundData?.[6]?.result as bigint | undefined;
   const pool = roundData?.[7]?.result as bigint | undefined;
+  const isCancelled = roundData?.[15]?.result === true;
   const finalized = Boolean(roundData?.[8]?.result);
   const leftover = roundData?.[9]?.result as bigint | undefined;
   const leftoverWithdrawn = Boolean(roundData?.[10]?.result);
@@ -62,16 +63,18 @@ export function useRound(customRoundAddress?: Address) {
   const name = rawName?.trim() || undefined;
   const organizer = rawOrganizer?.trim() || undefined;
   const status: RoundStatus = useMemo(() => {
+    if (isCancelled) return "cancelled";
     if (finalized) return "finalized";
     if (startTime && endTime && nowSec > 0 && BigInt(nowSec) >= endTime) return "closed";
     return "open";
-  }, [finalized, startTime, endTime, nowSec]);
+  }, [isCancelled, finalized, startTime, endTime, nowSec]);
   const refetch = useCallback(() => { void refetchFactory(); if (roundAddress) void refetchRound(); }, [refetchFactory, roundAddress, refetchRound]);
   return {
     roundAddress, allRounds, factoryOwner, admin, token, name, organizer, startTime, endTime,
     minDonation, maxDonation, maxMatchBps, maxPerRound: roundData?.[14]?.result as bigint | undefined,
     pool: pool ?? 0n, finalized, leftover: leftover ?? 0n, leftoverWithdrawn,
     projectCount: projectCount ?? 0n, status,
+    isCancelled, supportsPhase2: fields?.supportsPhase2 === true, cancelledPoolWithdrawn: roundData?.[16]?.result === true,
     roundVersion: fields?.version, studentRegistry: fields?.registry, readFailureKind,
     isLoading: (!customRoundAddress && isFactoryLoading) || (Boolean(roundAddress) && isRoundLoading),
     isError: (!customRoundAddress && (isFactoryError || Boolean(factoryData?.some(result => result.status === "failure")))) || isRoundError || coreFailure,

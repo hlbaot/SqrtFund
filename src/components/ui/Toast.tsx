@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { formatEther } from "viem";
 import { createPortal } from "react-dom";
 import { useToast } from "@/lib/context/toast";
 import { useLocale } from "@/lib/context/locale";
@@ -52,6 +53,7 @@ export function ToastContainer() {
                   {toast.description}
                 </p>
               )}
+              {toast.feeWei !== undefined && <p className="mt-1 break-all text-xs text-muted">{t.phase2.actualFee}: {formatEther(toast.feeWei)} AVAX</p>}
               {toast.txHash && (
                 <a
                   href={getExplorerTxUrl(toast.txHash)}

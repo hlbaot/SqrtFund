@@ -48,7 +48,7 @@ export function Navbar() {
             <div className="mono-label flex min-w-0 items-center gap-2 text-muted text-xs">
               <ArrowRight className={`h-3.5 w-3.5 shrink-0 ${status === "finalized" ? "text-money" : "text-primary"}`} aria-hidden="true" />
               <span className={`truncate ${status === "finalized" ? "text-money" : status === "open" ? "text-primary" : "text-muted"}`}>
-                {status === "finalized"
+                {status === "cancelled" ? t.phase2.cancelled : status === "finalized"
                   ? t.nav.announcementFinalized
                   : status === "closed"
                     ? t.nav.announcementClosed

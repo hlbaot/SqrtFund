@@ -2,10 +2,12 @@
 
 import { useMemo, useEffect } from "react";
 import type { Address } from "viem";
-import { useReadContracts } from "wagmi";
+import { useAccount, useReadContracts } from "wagmi";
 import { logContractReadFailure, isVersionReadError, roundReadRetry } from "@/lib/contracts/roundReads";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
+import { canViewProject } from "@/lib/projectVisibility";
+import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import type { Project, ProjectCategory } from "@/types";
 
 export type ProjectContractItem = {
@@ -32,7 +34,9 @@ export type EnrichedProject = Project & {
 };
 
 export function useProjects(customRoundAddress?: Address) {
-  const { roundAddress: defaultRoundAddress } = useRound(customRoundAddress);
+  const { roundAddress: defaultRoundAddress, admin } = useRound(customRoundAddress);
+  const { address, isConnected, chainId } = useAccount();
+  const viewer = isConnected && chainId === TARGET_CHAIN_ID ? address : undefined;
   const roundAddress = customRoundAddress || defaultRoundAddress;
 
   const {
@@ -127,8 +131,10 @@ export function useProjects(customRoundAddress?: Address) {
     });
   }, [projectsData, estimatedMap, roundAddress]);
 
+  const visibleProjects = useMemo(() => projects.filter(project => canViewProject(project, viewer, admin)), [projects, viewer, admin]);
+
   return {
-    projects,
+    projects: visibleProjects,
     readFailureKind: contractData?.some(result => result.status === "failure" && isVersionReadError(result.error)) ? "version" as const : "rpc" as const,
     isLoading: Boolean(roundAddress) && isLoading,
     isError: isError || contractData?.[0]?.status === "failure",

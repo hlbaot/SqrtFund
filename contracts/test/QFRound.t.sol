@@ -516,10 +516,15 @@ contract QFRoundTest is Test {
     // --- Boundary Tests (Max Projects & Max Requesters) ---
 
     function test_MaxProjectsBoundary() public {
-        _verifyUser(address(this));
-        for (uint256 i = 0; i < 50; i++) {
+        for (uint160 i = 0; i < 25; i++) {
+            address owner = address(0xC000 + i);
+            _verifyUser(owner);
+            vm.startPrank(owner);
             round.registerProject("Project", "Desc", "https://img", "https://site");
+            round.registerProject("Project", "Desc", "https://img", "https://site");
+            vm.stopPrank();
         }
+        _verifyUser(address(this));
         assertEq(round.projectCount(), 50);
 
         // 51st project reverts

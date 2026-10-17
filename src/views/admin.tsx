@@ -1,4 +1,5 @@
 "use client";
+import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
 
 import { AOSInit } from "@/components/common/AOSInit";
 
@@ -208,6 +209,8 @@ export function AdminView() {
           {roundAddress && <FinalizeButton />}
         </div>
       </div>
+
+      <RoundCancellationPanel roundAddress={roundAddress} adminControls />
 
       {/* Finalized Round Distribution Results Table */}
       {finalized && (

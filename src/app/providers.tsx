@@ -9,8 +9,15 @@ import { ToastProvider } from "@/lib/context/toast";
 import { WalletWatcher } from "@/components/common/WalletWatcher";
 import { ToastContainer } from "@/components/ui/Toast";
 import { isWalletLoggedOut } from "@/lib/walletSession";
+import type { Locale } from "@/lib/copy";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}) {
   const [reconnectOnMount] = useState(() => {
     const loggedOut = isWalletLoggedOut();
     console.log("[LOGOUT_DEBUG] Providers mount: isWalletLoggedOut() =", loggedOut, "reconnectOnMount =", !loggedOut);
@@ -37,7 +44,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig} initialState={initialState} reconnectOnMount={reconnectOnMount}>
       <QueryClientProvider client={queryClient}>
-        <LocaleProvider>
+        <LocaleProvider initialLocale={initialLocale}>
           <ToastProvider>
             <WalletWatcher />
             {children}

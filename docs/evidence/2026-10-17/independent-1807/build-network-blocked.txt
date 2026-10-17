@@ -1,0 +1,52 @@
+$ next build --webpack
+▲ Next.js 16.4.0 (webpack)
+✓ Running next.config.ts took 78ms
+- Experiments (use with caution):
+  ✓ agentFeedback
+
+  Creating an optimized production build ...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 1/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 1/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 2/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 2/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 3/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 3/3...
+Error: getaddrinfo ENOTFOUND fonts.googleapis.com
+    at ignore-listed frames {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'fonts.googleapis.com'
+}
+Error: getaddrinfo ENOTFOUND fonts.googleapis.com
+    at ignore-listed frames {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'fonts.googleapis.com'
+}
+Failed to compile.
+
+src/app/layout.tsx
+`next/font` error:
+Failed to fetch `Be Vietnam Pro` from Google Fonts.
+
+src/app/layout.tsx
+`next/font` error:
+Failed to fetch `JetBrains Mono` from Google Fonts.
+
+
+> Build failed because of webpack errors
+[ELIFECYCLE] Command failed with exit code 1.

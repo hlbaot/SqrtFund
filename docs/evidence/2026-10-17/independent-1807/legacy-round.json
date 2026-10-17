@@ -1,0 +1,32 @@
+{
+  "address": "0x340618b437F0314f136d5dB2228C13db61F7a7cc",
+  "provenance": "__tests__/round-rpc.integration.test.ts; not returned by manifest factory",
+  "studentRegistry()(address)": {
+    "ok": false,
+    "result": "Error: server returned an error response: error code 3: execution reverted, data: \"0x\""
+  },
+  "maxPerRound()(uint256)": {
+    "ok": false,
+    "result": "Error: server returned an error response: error code 3: execution reverted, data: \"0x\""
+  },
+  "isCancelled()(bool)": {
+    "ok": false,
+    "result": "Error: server returned an error response: error code 3: execution reverted, data: \"0x\""
+  },
+  "minDonation()(uint256)": {
+    "ok": true,
+    "result": "1000000 [1e6]"
+  },
+  "maxDonation()(uint256)": {
+    "ok": true,
+    "result": "5000000 [5e6]"
+  },
+  "projectCount()(uint256)": {
+    "ok": true,
+    "result": "1"
+  },
+  "finalized()(bool)": {
+    "ok": true,
+    "result": "true"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "checked": [
+    "README.md",
+    "docs/EVALUATION.md"
+  ],
+  "missingLocalPaths": [],
+  "unknownEvaluationAnchors": [],
+  "exactReferencedSolidityTestNames": 23,
+  "unknownSolidityTestNames": [],
+  "credentialPatternScan": "passed; no environment values read",
+  "externalLinks": "RPC checked; browser URLs require manual check as documented"
+}

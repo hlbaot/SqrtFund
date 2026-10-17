@@ -22,6 +22,7 @@ export function useRole(customRound?: Address) {
   const {
     roundAddress,
     admin,
+    isCancelled,
     factoryOwner,
     studentRegistry: roundRegistry,
   } = useRound(customRound);
@@ -30,7 +31,7 @@ export function useRole(customRound?: Address) {
   const isTargetChain = chainId === TARGET_CHAIN_ID;
 
   const hasConnectedTargetAccount = Boolean(address && isConnected && isTargetChain);
-  const canParticipate = studentCanParticipate(hasConnectedTargetAccount, student.isStudent, String(roundRegistry ?? "").toLowerCase() === studentRegistryAddress.toLowerCase());
+  const canParticipate = studentCanParticipate(hasConnectedTargetAccount, student.isStudent, String(roundRegistry ?? "").toLowerCase() === studentRegistryAddress.toLowerCase() && !isCancelled);
 
   const ownerForCheck = factoryOwner;
 

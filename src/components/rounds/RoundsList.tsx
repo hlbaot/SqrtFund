@@ -160,8 +160,8 @@ export function RoundsList({ rounds, state = "ready", isAdmin, onRetry }: Rounds
   const { t, locale } = useLocale();
   const c = t.competition;
   const [filter, setFilter] = useState<"all" | "active" | "ended">("all");
-  const counts = { all: rounds.length, active: rounds.filter(r => !r.readError && r.phase === "open").length, ended: rounds.filter(r => !r.readError && (r.phase === "closed" || r.phase === "finalized")).length };
-  const visible = useMemo(() => [...rounds].sort((a, b) => b.number - a.number).filter(round => filter === "all" || (!round.readError && (filter === "active" ? round.phase === "open" : ["closed", "finalized"].includes(round.phase)))), [rounds, filter]);
+  const counts = { all: rounds.length, active: rounds.filter(r => !r.readError && r.phase === "open").length, ended: rounds.filter(r => !r.readError && (r.phase === "closed" || r.phase === "finalized" || r.phase === "cancelled")).length };
+  const visible = useMemo(() => [...rounds].sort((a, b) => b.number - a.number).filter(round => filter === "all" || (!round.readError && (filter === "active" ? round.phase === "open" : ["closed", "finalized", "cancelled"].includes(round.phase)))), [rounds, filter]);
   return <section className="min-w-0 space-y-7" aria-label={c.rounds}>
     <header className="flex flex-col justify-between gap-6 border-b border-line pb-7 xl:flex-row xl:items-end">
       <div className="min-w-0"><span className="mono-label text-xs text-primary">{c.currency} / {c.timezone}</span><h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{c.rounds}</h1><p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">{c.subtitle}</p></div>

@@ -11,7 +11,7 @@ const good = "0x1111111111111111111111111111111111111111" as Address;
 const bad = "0x2222222222222222222222222222222222222222" as Address;
 const registry = "0x3333333333333333333333333333333333333333" as Address;
 const revert = () => new ContractFunctionRevertedError({ abi: qfRoundAbi, functionName: "studentRegistry", data: "0x" });
-const success = (calls: readonly RoundReadCall[]) => calls.map(call => ({ status: "success" as const, result: call.functionName === "studentRegistry" ? registry : call.functionName === "name" ? "Healthy round" : call.functionName === "organizer" ? "Club" : 1n }));
+const success = (calls: readonly RoundReadCall[]) => calls.map(call => ({ status: "success" as const, result: call.functionName === "isCancelled" || call.functionName === "cancelledPoolWithdrawn" ? false : call.functionName === "studentRegistry" ? registry : call.functionName === "name" ? "Healthy round" : call.functionName === "organizer" ? "Club" : 1n }));
 afterEach(() => vi.restoreAllMocks());
 it("probes legacy once and never sends modern detail getters to it", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -21,7 +21,7 @@ it("probes legacy once and never sends modern detail getters to it", async () =>
   const second = await loadRoundFields(read, bad, cache);
   expect(first.version).toBe("legacy"); expect(second.version).toBe("legacy");
   expect(read.mock.calls.map(([calls]) => calls.map(c => c.functionName))).toEqual([["studentRegistry"], [...roundCoreFunctions], [...roundCoreFunctions]]);
-  expect(first.results.slice(12).map(r => r.status)).toEqual(["skipped", "skipped", "skipped"]);
+  expect(first.results.slice(12).map(r => r.status)).toEqual(["skipped", "skipped", "skipped", "skipped", "skipped"]);
 });
 it("loads modern fields only after the registry capability succeeds", async () => {
   const read = vi.fn(async (calls: readonly RoundReadCall[]) => success(calls));
@@ -66,4 +66,42 @@ it("renders an individual error and legacy label while keeping a healthy round c
   expect(html).toContain("Không đọc được round này"); expect(html).toContain("Contract không khớp phiên bản");
   expect(html).toContain("Round phiên bản cũ"); expect(html).toContain(bad);
   expect(html).not.toContain("Không tải được dữ liệu");
+});
+
+it("detects Phase 1 rounds and stops polling missing Phase 2 getters", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const cache = new Map<string, RoundCapability>();
+  const read = vi.fn(async (calls: readonly RoundReadCall[]) => success(calls).map((result, i) =>
+    ["isCancelled", "cancelledPoolWithdrawn"].includes(calls[i].functionName)
+      ? { status: "failure" as const, error: revert() } : result));
+  const first = await loadRoundFields(read, good, cache);
+  const second = await loadRoundFields(read, good, cache);
+  expect(first.supportsPhase2).toBe(false);
+  expect(second.results.slice(15).map(r => r.status)).toEqual(["skipped", "skipped"]);
+  expect(read.mock.calls[2][0].map(c => c.functionName)).not.toContain("isCancelled");
+  expect(second.results.slice(0, 15).every(r => r.status === "success")).toBe(true);
+});
+it("reads cancellation state from Phase 2 without treating false as missing", async () => {
+  const result = await loadRoundFields(async calls => success(calls).map((r, i) =>
+    calls[i].functionName === "isCancelled" ? { status: "success", result: true } : r), good);
+  expect(result.supportsPhase2).toBe(true);
+  expect(result.results[15].result).toBe(true);
+  expect(result.results[16].result).toBe(false);
+});
+it("does not cache transient Phase 2 RPC failures as an older contract", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const cache = new Map<string, RoundCapability>();
+  const read = vi.fn(async (calls: readonly RoundReadCall[]) => success(calls).map((r, i) =>
+    calls[i].functionName === "isCancelled" ? { status: "failure" as const, error: new HttpRequestError({ url: "https://rpc.invalid", status: 503 }) } : r));
+  expect((await loadRoundFields(read, good, cache)).supportsPhase2).toBeUndefined();
+  await loadRoundFields(read, good, cache);
+  expect(read.mock.calls[2][0].map(c => c.functionName)).toContain("isCancelled");
+});
+it("treats missing maxPerRound as legacy and skips modern reads on subsequent polls", async () => {
+  vi.spyOn(console,"warn").mockImplementation(()=>{});
+  const cache = new Map<string,RoundCapability>();
+  const read=vi.fn(async(calls:readonly RoundReadCall[])=>success(calls).map((r,i)=>calls[i].functionName==="maxPerRound"?{status:"failure" as const,error:revert()}:r));
+  expect((await loadRoundFields(read,good,cache)).version).toBe("legacy");
+  await loadRoundFields(read,good,cache);
+  expect(read.mock.calls[2][0].map(c=>c.functionName)).toEqual([...roundCoreFunctions]);
 });

@@ -11,7 +11,7 @@ export type MatchingProjectResult = MatchingProjectInput & {
   matching: number;
 };
 
-export type RoundStatus = "open" | "closed" | "finalized";
+export type RoundStatus = "open" | "closed" | "finalized" | "cancelled";
 
 export type Round = {
   id: string;

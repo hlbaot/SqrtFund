@@ -1,0 +1,32 @@
+{
+  "block": "59595539",
+  "chainId": "43113",
+  "gasPriceWeiAtQuery": "160",
+  "contracts": [
+    {
+      "contract": "mockUsdc",
+      "address": "0x38efb1BA71C7CDB8Dd44e860A0A5cADE864d3205",
+      "runtimeBytes": 2354,
+      "runtimeHash": "0x4ef1c28fbacfefb25c8ef8fedf7ed41bc498311ec3cf7f336c227a8b929a86f2",
+      "runtimeMatchIgnoringMetadataAndImmutables": false
+    },
+    {
+      "contract": "roundFactory",
+      "address": "0x4fb01ae390bD9F46Dd921e5aC5D99c17912074D8",
+      "runtimeBytes": 12860,
+      "runtimeHash": "0xfe5768521fc0c1eadf220a9492eb85dffb1241eab96b45532fe0969a67617875",
+      "runtimeMatchIgnoringMetadataAndImmutables": false
+    },
+    {
+      "contract": "studentRegistry",
+      "address": "0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e",
+      "runtimeBytes": 2575,
+      "runtimeHash": "0xd2ddb0b38d106556f5be8ccebb2967a5602d44f98abbaaf75025585c12ceb527",
+      "runtimeMatchIgnoringMetadataAndImmutables": true
+    }
+  ],
+  "factoryRegistry": "0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e",
+  "rounds": "[]",
+  "tokenDecimals": "6",
+  "attester": "0x5C2001c91aEFFaEDf9ef438cA50Bcddd23ce6181"
+}

@@ -1,4 +1,5 @@
 "use client";
+import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
 
 import { AOSInit } from "@/components/common/AOSInit";
 
@@ -76,6 +77,7 @@ export function ProjectDetailView() {
 
   return (
     <Container className="py-8 sm:py-10 space-y-8 pb-24 lg:pb-8">
+      <RoundCancellationPanel roundAddress={roundAddress} />
       <AOSInit />
       {/* Back Link */}
       <div>

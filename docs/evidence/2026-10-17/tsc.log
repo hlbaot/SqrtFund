@@ -1,0 +1,43 @@
+Already up to date
+Done in 509ms using pnpm v11.20.0
+Already up to date
+Done in 563ms using pnpm v11.20.0
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/admin/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/api/verify/confirm/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/api/verify/request-otp/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/api/verify/stats/route.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/dev/leaderboard-preview/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/my/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/register/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/round/[id]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/round/[id]/project/[projectId]/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/round/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/rounds/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'
+error TS6053: File '/Users/baotoan/Documents/SqrtFund/.next/types/app/verify/page.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in '/Users/baotoan/Documents/SqrtFund/tsconfig.json'

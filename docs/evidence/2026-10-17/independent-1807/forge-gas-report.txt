@@ -1,0 +1,315 @@
+No files changed, compilation skipped
+
+Ran 27 tests for test/QFRound.t.sol:QFRoundTest
+[PASS] testFuzz_PayoutsNeverExceedPool(uint256,uint256,uint256) (runs: 256, μ: 2601644, ~: 2601592)
+[PASS] test_AccountingDustBound() (gas: 2886386)
+[PASS] test_ApproveProject_RevertsAfterEndTimeOrFinalize() (gas: 444944)
+[PASS] test_ClaimFlow() (gas: 1633904)
+[PASS] test_DepositPool_ZeroAmountReverts() (gas: 40547)
+[PASS] test_DonationLimits_PerProject_And_MultipleProjects() (gas: 1705945)
+[PASS] test_Finalize_AnyoneCanFinalizeAfterGrace() (gas: 500880)
+[PASS] test_Finalize_GracePeriod_AdminCanFinalize_NonAdminReverts() (gas: 530645)
+[PASS] test_Finalize_StrangerCannotLockRoundWithPoolZeroBeforeGrace() (gas: 907406)
+[PASS] test_Finalize_ZeroApprovedProjectsAndZeroPool() (gas: 3117656)
+[PASS] test_FullRound_100kUsdcPool() (gas: 8306725)
+[PASS] test_MatchingCapEnforced() (gas: 1951288)
+[PASS] test_Math_300x1_beats_60x5() (gas: 185729105)
+[PASS] test_Math_300x1_beats_60x5_Uncapped() (gas: 187483780)
+[PASS] test_Math_SingleDonor_YieldsZeroMatching_And_Incremental1plus1plus1() (gas: 1524116)
+[PASS] test_MaxProjectsBoundary() (gas: 12056636)
+[PASS] test_MockUSDC_faucet() (gas: 625627)
+[PASS] test_MockUSDC_ownerMint_and_nonOwnerReverts() (gas: 125112)
+[PASS] test_PoolLargerThanTotalRaw_LeftoverAndWithdraw() (gas: 2103731)
+[PASS] test_PoolSmallerThanTotalRaw_ProportionalPayout() (gas: 5289190)
+[PASS] test_PreviewMatchingEqualsFinalize() (gas: 2562666)
+[PASS] test_QFRound_ConstructorValidation() (gas: 25696)
+[PASS] test_QFRound_NameAndOrganizerValidation() (gas: 105592)
+[PASS] test_RegisterProject_LengthLimits() (gas: 409190)
+[PASS] test_RegisterProject_UnverifiedReverts() (gas: 53547)
+[PASS] test_Reverts() (gas: 1832943)
+[PASS] test_RoundFactory_OnlyOwnerAndRoundCountWithSeveralRounds() (gas: 5017766)
+Suite result: ok. 27 passed; 0 failed; 0 skipped; finished in 901.37ms (1.58s CPU time)
+
+Ran 45 tests for test/RoundPhase2.t.sol:RoundPhase2Test
+[PASS] testFuzz_CancelConservation(uint96,uint96,uint96,bool) (runs: 256, μ: 2811011, ~: 2813180)
+[PASS] testFuzz_DonateManyEqualsSequential(uint96,uint96) (runs: 256, μ: 2782809, ~: 2782814)
+[PASS] testFuzz_ManyDonorsProjectsRefundToZero(uint8,uint8,uint96) (runs: 256, μ: 4988291, ~: 4533956)
+[PASS] testFuzz_PayoutsNeverExceedPool(uint256,uint256,uint256) (runs: 256, μ: 2602392, ~: 2602334)
+[PASS] test_AccountingDustBound() (gas: 2886609)
+[PASS] test_ApproveProject_RevertsAfterEndTimeOrFinalize() (gas: 445247)
+[PASS] test_CancelBlocksAllFundingActions() (gas: 2264947)
+[PASS] test_CancelRefundAllAndPoolAccounting() (gas: 2807071)
+[PASS] test_CancellationAccessAndFinalizeBoundary() (gas: 2085530)
+[PASS] test_ClaimFlow() (gas: 1634106)
+[PASS] test_DepositPool_ZeroAmountReverts() (gas: 40833)
+[PASS] test_DonateManyFailedTokenTransferRollsBack() (gas: 2245032)
+[PASS] test_DonateManyLimitsAndAtomicRollback() (gas: 3552348)
+[PASS] test_DonationLimits_PerProject_And_MultipleProjects() (gas: 1705970)
+[PASS] test_Finalize_AnyoneCanFinalizeAfterGrace() (gas: 501113)
+[PASS] test_Finalize_GracePeriod_AdminCanFinalize_NonAdminReverts() (gas: 530636)
+[PASS] test_Finalize_StrangerCannotLockRoundWithPoolZeroBeforeGrace() (gas: 907434)
+[PASS] test_Finalize_ZeroApprovedProjectsAndZeroPool() (gas: 3117897)
+[PASS] test_FullRound_100kUsdcPool() (gas: 8306633)
+[PASS] test_FundedRawPayoutNoUnderfundedEvent() (gas: 3288947)
+[PASS] test_GasFinalizeExactly50Projects() (gas: 36076965)
+Logs:
+  finalize_50_projects_cold_call_gas: 1583871
+
+[PASS] test_MatchingCapEnforced() (gas: 1951524)
+[PASS] test_Math_300x1_beats_60x5() (gas: 185726203)
+[PASS] test_Math_300x1_beats_60x5_Uncapped() (gas: 187484739)
+[PASS] test_Math_SingleDonor_YieldsZeroMatching_And_Incremental1plus1plus1() (gas: 1524279)
+[PASS] test_MaxProjectsBoundary() (gas: 12056777)
+[PASS] test_MockUSDC_faucet() (gas: 625715)
+[PASS] test_MockUSDC_ownerMint_and_nonOwnerReverts() (gas: 125134)
+[PASS] test_NoTimeoutRefundWithoutCancellation() (gas: 2176980)
+[PASS] test_OwnerProjectLimitAndIndependentOwners() (gas: 1142183)
+[PASS] test_PartialRefundKeepsOtherDonorsAccounting() (gas: 2433450)
+[PASS] test_PendingProjectExcludedAndCannotClaim() (gas: 1219263)
+[PASS] test_PoolLargerThanTotalRaw_LeftoverAndWithdraw() (gas: 2103132)
+[PASS] test_PoolSmallerThanTotalRaw_ProportionalPayout() (gas: 5289143)
+[PASS] test_PreviewMatchingEqualsFinalize() (gas: 2562634)
+[PASS] test_QFRound_ConstructorValidation() (gas: 25806)
+[PASS] test_QFRound_NameAndOrganizerValidation() (gas: 106198)
+[PASS] test_RefundBatchIsAtomicAndBounded() (gas: 2452706)
+[PASS] test_RegisterProject_LengthLimits() (gas: 409471)
+[PASS] test_RegisterProject_UnverifiedReverts() (gas: 53893)
+[PASS] test_Reverts() (gas: 1833157)
+[PASS] test_RoundFactory_OnlyOwnerAndRoundCountWithSeveralRounds() (gas: 5017766)
+[PASS] test_UnderfundedCapAndZeroPool() (gas: 3288032)
+[PASS] test_UnderfundedProportionalEvent() (gas: 3269607)
+[PASS] test_ZeroPoolStillReportsRawDemandAndEvent() (gas: 2865243)
+Suite result: ok. 45 passed; 0 failed; 0 skipped; finished in 901.39ms (2.46s CPU time)
+
+Ran 40 tests for test/StudentVerification.t.sol:StudentVerificationTest
+[PASS] testFuzz_PayoutsNeverExceedPool(uint256,uint256,uint256) (runs: 256, μ: 2603792, ~: 2603741)
+[PASS] testFuzz_SpentAndPayoutBound(uint96,uint96) (runs: 256, μ: 2547057, ~: 2548286)
+[PASS] test_AccountingDustBound() (gas: 2887861)
+[PASS] test_ApproveProject_RevertsAfterEndTimeOrFinalize() (gas: 445487)
+[PASS] test_ClaimFlow() (gas: 1634684)
+[PASS] test_DepositPool_ZeroAmountReverts() (gas: 40823)
+[PASS] test_DonationLimits_PerProject_And_MultipleProjects() (gas: 1706831)
+[PASS] test_EmailAndWalletAreGloballyUnique() (gas: 213339)
+[PASS] test_ExactRoundCapAndOneWeiOver() (gas: 2223619)
+[PASS] test_ExpiredSignature() (gas: 45261)
+[PASS] test_Finalize_AnyoneCanFinalizeAfterGrace() (gas: 501357)
+[PASS] test_Finalize_GracePeriod_AdminCanFinalize_NonAdminReverts() (gas: 530924)
+[PASS] test_Finalize_StrangerCannotLockRoundWithPoolZeroBeforeGrace() (gas: 907736)
+[PASS] test_Finalize_ZeroApprovedProjectsAndZeroPool() (gas: 3117970)
+[PASS] test_FullRound_100kUsdcPool() (gas: 8310585)
+[PASS] test_GlobalStudentParticipatesInTwoRoundsWithoutAnotherOtp() (gas: 3852318)
+[PASS] test_IdempotentReplay() (gas: 167541)
+[PASS] test_InvalidBudgetRejected() (gas: 110597)
+[PASS] test_MatchingCapEnforced() (gas: 1952452)
+[PASS] test_Math_300x1_beats_60x5() (gas: 185844446)
+[PASS] test_Math_300x1_beats_60x5_Uncapped() (gas: 187599086)
+[PASS] test_Math_SingleDonor_YieldsZeroMatching_And_Incremental1plus1plus1() (gas: 1524852)
+[PASS] test_MaxProjectsBoundary() (gas: 12063832)
+[PASS] test_MockUSDC_faucet() (gas: 625683)
+[PASS] test_MockUSDC_ownerMint_and_nonOwnerReverts() (gas: 125124)
+[PASS] test_NewRoundResetsBudgetAndKeepsStudent() (gas: 3515588)
+[PASS] test_OnlyRegistryOwnerRotatesAttesterAndStudentsRemainVerified() (gas: 260854)
+[PASS] test_PoolLargerThanTotalRaw_LeftoverAndWithdraw() (gas: 2104873)
+[PASS] test_PoolSmallerThanTotalRaw_ProportionalPayout() (gas: 5290438)
+[PASS] test_PreviewMatchingEqualsFinalize() (gas: 2563899)
+[PASS] test_QFRound_ConstructorValidation() (gas: 25752)
+[PASS] test_QFRound_NameAndOrganizerValidation() (gas: 105868)
+[PASS] test_RegisterProject_LengthLimits() (gas: 409733)
+[PASS] test_RegisterProject_UnverifiedReverts() (gas: 53823)
+[PASS] test_Reverts() (gas: 1834053)
+[PASS] test_RoundFactory_OnlyOwnerAndRoundCountWithSeveralRounds() (gas: 5017802)
+[PASS] test_SplitFiveUsdcAcrossFiveProjects() (gas: 3211145)
+[PASS] test_UnverifiedCannotDonateOrRegister() (gas: 505220)
+[PASS] test_VerificationWithoutAnyFactoryOrRound() (gas: 124329)
+[PASS] test_WrongSignerSenderRegistryChainAndLegacyDomain() (gas: 232063)
+Suite result: ok. 40 passed; 0 failed; 0 skipped; finished in 901.45ms (1.48s CPU time)
+
+Ran 1 test for test/RoundCancellationInvariant.t.sol:RoundCancellationInvariantTest
+[PASS] invariant_RecognizedInflowsEqualHeldPlusReturned() (runs: 256, calls: 128000, reverts: 0)
+
+╭---------------------+--------------+-------+---------+----------╮
+| Contract            | Selector     | Calls | Reverts | Discards |
++=================================================================+
+| CancellationHandler | cancel       | 25740 | 0       | 0        |
+|---------------------+--------------+-------+---------+----------|
+| CancellationHandler | deposit      | 25361 | 0       | 0        |
+|---------------------+--------------+-------+---------+----------|
+| CancellationHandler | donate       | 25626 | 0       | 0        |
+|---------------------+--------------+-------+---------+----------|
+| CancellationHandler | refund       | 25760 | 0       | 0        |
+|---------------------+--------------+-------+---------+----------|
+| CancellationHandler | withdrawPool | 25513 | 0       | 0        |
+╰---------------------+--------------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 5.96s (5.91s CPU time)
+
+╭------------------------------------+-----------------+-------+--------+--------+---------╮
+| src/MockUSDC.sol:MockUSDC Contract |                 |       |        |        |         |
++==========================================================================================+
+| Deployment Cost                    | Deployment Size |       |        |        |         |
+|------------------------------------+-----------------+-------+--------+--------+---------|
+|                                  0 |            3860 |       |        |        |         |
+|------------------------------------+-----------------+-------+--------+--------+---------|
+|                                    |                 |       |        |        |         |
+|------------------------------------+-----------------+-------+--------+--------+---------|
+| Function Name                      | Min             | Avg   | Median | Max    | # Calls |
+|------------------------------------+-----------------+-------+--------+--------+---------|
+| approve                            |           28804 | 45940 |  45940 |  46288 |    8553 |
+|------------------------------------+-----------------+-------+--------+--------+---------|
+| balanceOf                          |            2599 |  2599 |   2599 |   2599 |   45910 |
+|------------------------------------+-----------------+-------+--------+--------+---------|
+| faucetMint                         |           23762 | 47429 |  45127 | 113472 |      36 |
+|------------------------------------+-----------------+-------+--------+--------+---------|
+| mint                               |           23959 | 56748 |  71476 |  71482 |      12 |
+|------------------------------------+-----------------+-------+--------+--------+---------|
+| owner                              |            2581 |  2581 |   2581 |   2581 |       3 |
+╰------------------------------------+-----------------+-------+--------+--------+---------╯
+
+╭----------------------------------+-----------------+--------+--------+---------+---------╮
+| src/QFRound.sol:QFRound Contract |                 |        |        |         |         |
++==========================================================================================+
+| Deployment Cost                  | Deployment Size |        |        |         |         |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+|                                0 |           13635 |        |        |         |         |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+|                                  |                 |        |        |         |         |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| Function Name                    | Min             | Avg    | Median | Max     | # Calls |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| SCALE                            |             972 |    972 |    972 |     972 |       1 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| approveProject                   |           24514 |  85559 |  77568 |   94668 |    3942 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| cancelRound                      |           21753 |  44940 |  45025 |   45025 |     778 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| cancelledPoolWithdrawn           |             695 |   2694 |   2695 |    2695 |   25319 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| claim                            |           28881 |  60909 |  77231 |   77231 |    1571 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| depositPool                      |           26679 |  74784 |  73618 |   90706 |    2384 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| donate                           |           28839 | 137325 | 125132 |  193562 |    8980 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| donateMany                       |           30785 | 275610 | 276372 |  283126 |     528 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| donationOf                       |            2935 |   2935 |   2935 |    2935 |   25837 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| finalize                         |           28800 | 117873 | 118297 | 1580835 |    1090 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| finalized                        |            2911 |   2911 |   2911 |    2911 |      19 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| getProjects                      |           49911 |  49911 |  49911 |   49911 |     516 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| isCancelled                      |            2805 |   2805 |   2805 |    2805 |  128507 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| isWhitelisted                    |            6074 |   6074 |   6074 |    6074 |       7 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| leftover                         |            2369 |   2369 |   2369 |    2369 |     797 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| matchingTotalRaw                 |           31561 |  31877 |  31969 |   32009 |       4 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| maxDonation                      |             752 |    752 |    752 |     752 |     252 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| maxPerRound                      |             774 |    774 |    774 |     774 |       2 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| minDonation                      |             288 |    288 |    288 |     288 |     470 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| name                             |            2910 |   2910 |   2910 |    2910 |       6 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| organizer                        |            3201 |   3242 |   3242 |    3284 |       6 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| payoutOf                         |            3052 |   3052 |   3052 |    3052 |    2185 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| pool                             |            2347 |   2347 |   2347 |    2347 |     267 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| previewMatching                  |            8290 |  22751 |  24458 |   32263 |      17 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| projectCount                     |            2523 |   2523 |   2523 |    2523 |       5 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| projectsOf                       |            2400 |   2400 |   2400 |    2400 |       2 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| refund                           |           28809 |  74605 |  74967 |   74997 |     473 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| refundMany                       |           29642 | 114772 | 100314 |  196614 |    1341 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| registerProject                  |           26251 | 190469 | 185272 |  202492 |    4121 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| remainingBudget                  |            2844 |   2844 |   2844 |    2844 |     255 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| spentInRound                     |            3071 |   3071 |   3071 |    3071 |    2117 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| withdrawLeftover                 |           26915 |  86995 |  87440 |   87440 |     789 |
+|----------------------------------+-----------------+--------+--------+---------+---------|
+| withdrawPoolIfCancelled          |           27185 |  60271 |  68524 |   68524 |     775 |
+╰----------------------------------+-----------------+--------+--------+---------+---------╯
+
+╭--------------------------------------------+-----------------+---------+---------+---------+---------╮
+| src/RoundFactory.sol:RoundFactory Contract |                 |         |         |         |         |
++======================================================================================================+
+| Deployment Cost                            | Deployment Size |         |         |         |         |
+|--------------------------------------------+-----------------+---------+---------+---------+---------|
+|                                          0 |           15011 |         |         |         |         |
+|--------------------------------------------+-----------------+---------+---------+---------+---------|
+|                                            |                 |         |         |         |         |
+|--------------------------------------------+-----------------+---------+---------+---------+---------|
+| Function Name                              | Min             | Avg     | Median  | Max     | # Calls |
+|--------------------------------------------+-----------------+---------+---------+---------+---------|
+| createRound                                |           26104 | 2414095 | 2489946 | 2489946 |     133 |
+|--------------------------------------------+-----------------+---------+---------+---------+---------|
+| getRounds                                  |            9477 |    9477 |    9477 |    9477 |       3 |
+|--------------------------------------------+-----------------+---------+---------+---------+---------|
+| roundCount                                 |            2257 |    2257 |    2257 |    2257 |       3 |
+╰--------------------------------------------+-----------------+---------+---------+---------+---------╯
+
+╭--------------------------------------------------+-----------------+-------+--------+-------+---------╮
+| src/StudentRegistry.sol:StudentRegistry Contract |                 |       |        |       |         |
++=======================================================================================================+
+| Deployment Cost                                  | Deployment Size |       |        |       |         |
+|--------------------------------------------------+-----------------+-------+--------+-------+---------|
+|                                                0 |            3308 |       |        |       |         |
+|--------------------------------------------------+-----------------+-------+--------+-------+---------|
+|                                                  |                 |       |        |       |         |
+|--------------------------------------------------+-----------------+-------+--------+-------+---------|
+| Function Name                                    | Min             | Avg   | Median | Max   | # Calls |
+|--------------------------------------------------+-----------------+-------+--------+-------+---------|
+| STUDENT_VERIFICATION_TYPEHASH                    |             274 |   274 |    274 |   274 |   10182 |
+|--------------------------------------------------+-----------------+-------+--------+-------+---------|
+| isStudent                                        |            2525 |  2525 |   2525 |  2525 |   24087 |
+|--------------------------------------------------+-----------------+-------+--------+-------+---------|
+| setAttester                                      |           23795 | 25927 |  23805 | 30182 |       3 |
+|--------------------------------------------------+-----------------+-------+--------+-------+---------|
+| verifyStudent                                    |           23565 | 98249 |  98320 | 98320 |   10183 |
+|--------------------------------------------------+-----------------+-------+--------+-------+---------|
+| walletEmail                                      |            2373 |  2373 |   2373 |  2373 |       1 |
+╰--------------------------------------------------+-----------------+-------+--------+-------+---------╯
+
+╭--------------------------------------------------------------------+-----------------+-------+--------+--------+---------╮
+| test/RoundCancellationInvariant.t.sol:CancellationHandler Contract |                 |       |        |        |         |
++==========================================================================================================================+
+| Deployment Cost                                                    | Deployment Size |       |        |        |         |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+|                                                            1824045 |            8071 |       |        |        |         |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+|                                                                    |                 |       |        |        |         |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+| Function Name                                                      | Min             | Avg   | Median | Max    | # Calls |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+| cancel                                                             |            5987 |  9034 |   8487 |  63540 |   25840 |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+| deposit                                                            |            6045 |  9584 |   8545 | 136415 |   25464 |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+| donate                                                             |            6010 | 10315 |   8510 | 253511 |   25726 |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+| poolReturned                                                       |            2584 |  2584 |   2584 |   2584 |       2 |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+| refund                                                             |            8554 | 17370 |  16658 | 121734 |   25863 |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+| totalIn                                                            |            2672 |  2672 |   2672 |   2672 |       2 |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+| totalRefunded                                                      |            2628 |  2628 |   2628 |   2628 |       2 |
+|--------------------------------------------------------------------+-----------------+-------+--------+--------+---------|
+| withdrawPool                                                       |            8229 | 14525 |  13860 | 102690 |   25614 |
+╰--------------------------------------------------------------------+-----------------+-------+--------+--------+---------╯
+
+
+Ran 4 test suites in 6.09s (8.66s CPU time): 113 tests passed, 0 failed, 0 skipped (113 total tests)

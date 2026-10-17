@@ -10,6 +10,7 @@ export type ToastItem = {
   title: string;
   description?: string;
   txHash?: string;
+  feeWei?: bigint;
 };
 
 export type ToastListener = (toasts: ToastItem[]) => void;
@@ -75,8 +76,13 @@ class TxToastStore {
     this.upsert({ id, type: "pending", title, description, txHash }, Infinity);
   }
 
-  success(id: string, title: string, description?: string, txHash?: string, duration = SUCCESS_MS) {
-    this.upsert({ id, type: "success", title, description, txHash }, duration);
+  success(id: string, title: string, description?: string, txHash?: string, duration = SUCCESS_MS, feeWei?: bigint) {
+    this.upsert({ id, type: "success", title, description, txHash, feeWei }, duration);
+  }
+
+  attachReceipt(id: string, txHash: string, feeWei: bigint) {
+    this.toasts = this.toasts.map(item => item.id === id ? { ...item, txHash, feeWei } : item);
+    this.notify();
   }
 
   error(id: string, title: string, description?: string) {
@@ -184,13 +190,15 @@ export class TransactionFlow {
   private controller = new AbortController();
   private ids = new Set<string>();
   private failed = false;
+  private receipts = new Map<string, bigint>();
   get cancelled() { return this.controller.signal.aborted; }
   constructor() { activeFlows.add(this); }
 
   private show(method: "pending" | "success" | "error" | "info", args: [string, string, string?, string?]) {
     if (this.cancelled || this.failed) return;
     this.ids.add(args[0]);
-    txToast[method](...args);
+    if (method === "success") txToast.success(...args, SUCCESS_MS, args[3] ? this.receipts.get(args[3].toLowerCase()) : undefined);
+    else txToast[method](...args);
   }
   readonly toast = {
     pending: (...args: [string, string, string?, string?]) => this.show("pending", args),
@@ -206,7 +214,12 @@ export class TransactionFlow {
     for (const item of txToast.getToasts()) {
       if (item.type === "pending" && item.id !== id && this.ids.has(item.id)) txToast.dismiss(item.id);
     }
+    const hash = txToast.getToasts().find(item => item.id === id)?.txHash;
     handleTxError(id, error, title, locale);
+    if (hash) {
+      const fee = this.receipts.get(hash.toLowerCase());
+      if (fee !== undefined) txToast.attachReceipt(id, hash, fee);
+    }
     this.failed = true;
     this.finish();
   };
@@ -217,6 +230,12 @@ export class TransactionFlow {
     const promise = Promise.resolve().then(() => {
       if (signal.aborted) throw new DOMException("Flow cancelled", "AbortError");
       return operation();
+    }).then(value => {
+      const receipt = value as { transactionHash?: unknown; gasUsed?: unknown; effectiveGasPrice?: unknown } | null;
+      if (receipt && typeof receipt.transactionHash === "string" && typeof receipt.gasUsed === "bigint" && typeof receipt.effectiveGasPrice === "bigint") {
+        this.receipts.set(receipt.transactionHash.toLowerCase(), receipt.gasUsed * receipt.effectiveGasPrice);
+      }
+      return value;
     });
     return withTimeout(promise, timeoutMs ?? Infinity, undefined, signal);
   }

@@ -15,13 +15,13 @@ export function FinalizeButton() {
   const { t, locale } = useLocale();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
-  const { roundAddress, endTime, finalized, refetch } = useRound();
+  const { roundAddress, endTime, finalized, isCancelled, refetch } = useRound();
   const nowSec = useCurrentTimestamp();
 
   const [showTooltip, setShowTooltip] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
-  const canFinalize = Boolean(roundAddress && !finalized && endTime && nowSec > 0 && BigInt(nowSec) >= endTime);
+  const canFinalize = Boolean(roundAddress && !isCancelled && !finalized && endTime && nowSec > 0 && BigInt(nowSec) >= endTime);
 
   const handleFinalize = async () => {
     const flow = beginFlow();

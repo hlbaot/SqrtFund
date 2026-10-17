@@ -26,7 +26,7 @@ export function DepositPoolForm() {
   const { writeContractAsync } = useWriteContract();
   const queryClient = useQueryClient();
 
-  const { roundAddress, name: roundName, token, refetch, finalized, pool } = useRound();
+  const { roundAddress, name: roundName, token, refetch, finalized, isCancelled, pool } = useRound();
 
   const [amount, setAmount] = useState("");
   const [isPending, setIsPending] = useState(false);
@@ -60,6 +60,7 @@ export function DepositPoolForm() {
   let disabledExplanation: string | null = null;
   let isButtonDisabled = isPending;
 
+  if (isCancelled) return null;
   if (finalized) {
     isButtonDisabled = true;
     disabledExplanation = t.admin.disabledFinalizedExplanation;

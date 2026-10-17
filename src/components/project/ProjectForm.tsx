@@ -223,6 +223,7 @@ export function ProjectForm() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 max-w-[720px]">
+          <p className="text-sm text-muted">{t.phase2.ownerProjectLimit}</p>
           <Input
             label={`${t.register.nameLabel} (max 60 bytes)`}
             placeholder={t.register.namePlaceholder}

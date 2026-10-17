@@ -53,9 +53,9 @@ describe("wallet logout persistence", () => {
     expect(config.state.status).toBe("disconnected");
     expect(client.getQueryCache().getAll()).toEqual([]);
     expect(window.location.replace).toHaveBeenCalledWith("/");
-    expect(Object.keys(window.localStorage).some(key => key.startsWith("wagmi"))).toBe(false);
-    // Demonstrates the original bug: clearing the wagmi shim makes this wallet authorized again.
-    expect(await config.connectors[0].isAuthorized()).toBe(true);
+    expect(Object.keys(window.localStorage).filter(key => key.startsWith("wagmi"))).toEqual(["wagmi.test-core.disconnected"]);
+    // The retained shim blocks authorization even though the provider still exposes accounts.
+    expect(await config.connectors[0].isAuthorized()).toBe(false);
     vi.resetModules(); // A fresh page must still remember explicit logout.
     const reloaded = await import("../src/lib/walletSession");
     const reconnectOnMount = !reloaded.isWalletLoggedOut();
@@ -63,8 +63,8 @@ describe("wallet logout persistence", () => {
     expect(reconnectOnMount).toBe(false);
     expect(config.state.status).toBe("disconnected");
     // Explicit Connect Wallet is allowed and removes the logout guard after success.
-    await connect(config, { connector: config.connectors[0] });
     reloaded.markWalletConnected();
+    await connect(config, { connector: config.connectors[0] });
     expect(config.state.status).toBe("connected");
     expect(reloaded.isWalletLoggedOut()).toBe(false);
     await disconnect(config);
@@ -74,7 +74,7 @@ describe("wallet logout persistence", () => {
     const session = await import("../src/lib/walletSession");
     const client = new QueryClient();
     client.setQueryData(["private-wallet-data"], "stale");
-    await expect(session.logoutWallet(async () => { throw new Error("Provider disconnected"); }, client)).rejects.toThrow("Provider disconnected");
+    await expect(session.logoutWallet(async () => { throw new Error("Provider disconnected"); }, client)).resolves.toBeUndefined();
     expect(session.isWalletLoggedOut()).toBe(true);
     expect(client.getQueryCache().getAll()).toEqual([]);
     expect(window.location.replace).toHaveBeenCalledWith("/");

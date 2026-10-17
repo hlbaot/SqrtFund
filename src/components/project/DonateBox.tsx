@@ -1,4 +1,6 @@
 "use client";
+import { MatchingPoolWarning } from "@/components/project/MatchingPoolWarning";
+import { BatchDonationForm } from "@/components/project/BatchDonationForm";
 import { StudentVerifyBox } from "@/components/verify/StudentVerifyBox";
 
 import type { Address } from "viem";
@@ -38,11 +40,12 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   const { address, isConnected } = useAccount();
 
   const queryClient = useQueryClient();
-  const { roundAddress, token, status: roundStatus, pool, minDonation = 1_000_000n, maxPerRound, maxDonation = 5_000_000n, maxMatchBps = 3000n, refetch: refetchRound } = useRound(customRound);
+  const { roundAddress, token, status: roundStatus, pool, supportsPhase2, isCancelled, minDonation = 1_000_000n, maxPerRound, maxDonation = 5_000_000n, maxMatchBps = 3000n, refetch: refetchRound } = useRound(customRound);
   const { projects, refetch: refetchProjects } = useProjects(roundAddress);
   const { isStudent, canParticipate } = useRole(customRound);
   const { donate, step: donationStep, isPending: isDonatePending, activeTxHash, reset: resetDonate } = useDonate(customRound);
 
+  const [batchMode, setBatchMode] = useState(false);
   const [amount, setAmount] = useState<number>(1);
   const [inputValue, setInputValue] = useState<string>("1");
 
@@ -121,7 +124,8 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
 
   // QF Impact preview calculated with BigInt math matching smart contracts
   const impact = useMemo(() => {
-    const donationAmountBigInt = BigInt(Math.max(0, Math.round(amount * 1_000_000)));
+    const parsed = parseUsdc(inputValue);
+    const donationAmountBigInt = parsed.success ? parsed.amount : 0n;
     const currentSumSqrt = project.sumSqrtRaw ?? 0n;
     const currentTotalDonated = project.totalDonatedRaw ?? 0n;
 
@@ -139,8 +143,8 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
     const nextMatching = Number(res.newPayout) / 1_000_000;
     const increase = Number(res.deltaPayout) / 1_000_000;
 
-    return { nextMatching, increase };
-  }, [project, amount, userDonatedBigInt, pool, allProjects, maxMatchBps]);
+    return { nextMatching, increase, totalRaw: res.totalRaw };
+  }, [project, inputValue, userDonatedBigInt, pool, allProjects, maxMatchBps]);
 
   // Stepper definition
   const steps: StepItem[] = [
@@ -180,6 +184,8 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   const isRoundClosed = roundStatus !== "open";
   const isMaxAllowanceReached = remainingAllowanceUsdc <= 0;
 
+  if (isCancelled) return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><h2 className="font-bold text-primary">{t.phase2.cancelled}</h2><p className="text-sm">{t.phase2.cancelledHint}</p><Link className="underline" href={`/round/${roundAddress}`}>{t.phase2.refund}</Link></Frame>;
+  if (batchMode && roundAddress && supportsPhase2) return <Frame className={`bg-surface p-5 ${className}`}><BatchDonationForm roundAddress={roundAddress} onBack={() => setBatchMode(false)} /></Frame>;
   return (
     <Frame className={`bg-surface p-5 lg:p-6 ${className}`}>
       <div className="flex items-center justify-between border-b border-line pb-3">
@@ -193,6 +199,8 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
           {minDonationUsdc} - {maxDonationUsdc} USDC
         </span>
       </div>
+
+      {supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
 
       {/* Round Closed Banner */}
       {isRoundClosed && (
@@ -254,9 +262,9 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
                 <input
                   id="donation-amount"
                   type="number"
-                  min="1"
+                  min={minDonationUsdc}
                   max={remainingAllowanceUsdc}
-                  step="1"
+                  step="0.000001"
                   value={inputValue}
                   disabled={isDonatePending || isRoundClosed || isOwner || isMaxAllowanceReached || !canParticipate || !budgetReady || roundBudgetExhausted}
                   onChange={(e) => handleAmountChange(e.target.value)}
@@ -296,11 +304,13 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
             )}
           </div>
 
+          <p className="text-xs text-muted">{t.phase2.expectedHint}</p>
+          <MatchingPoolWarning totalRaw={impact.totalRaw} pool={pool} />
           {/* Impact preview */}
           <div className="border border-money/30 bg-money/10 p-3 text-xs text-foreground">
             <div className="flex items-center gap-1.5 font-bold text-money">
               <Sparkles className="h-4 w-4" />
-              <span>{t.donateBox.impactPreview}</span>
+              <span>{t.phase2.expectedMatching}: {formatUsdcFixed(impact.nextMatching)} USDC</span>
             </div>
             <p className="mt-1 leading-relaxed text-foreground">
               {fmt(t.donateBox.impactText, {
