@@ -1,5 +1,7 @@
 "use client";
 
+import { tokenMatchesConfigured } from "@/lib/tokenBalance";
+import { usdcAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { useTxFlow } from "@/hooks/useTxFlow";
 
 import type { Address } from "viem";
@@ -15,7 +17,7 @@ export type DonationStep = "idle" | "approving" | "donating" | "success" | "erro
 export function useDonate(customRound?: Address) {
   const beginFlow = useTxFlow();
   const { address } = useAccount();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: TARGET_CHAIN_ID });
   const { writeContractAsync } = useWriteContract();
   const { locale } = useLocale();
   const { roundAddress, token } = useRound(customRound);
@@ -32,7 +34,7 @@ export function useDonate(customRound?: Address) {
     if (busy.current) return false;
     const amount = amounts.reduce((sum, value) => sum + value, 0n);
     const flow = beginFlow();
-    if (!address || !roundAddress || !token || !publicClient) {
+    if (!address || !roundAddress || !tokenMatchesConfigured(token) || !publicClient) {
       flow.toast.error(
         donateId,
         locale === "vi" ? "Chưa kết nối ví" : "Wallet not connected",
@@ -49,7 +51,7 @@ export function useDonate(customRound?: Address) {
     try {
       // 1. Check user's USDC balance first to prevent gas estimation reverts
       const userBalance = await flow.wait(() => publicClient.readContract({
-        address: token,
+        address: usdcAddress,
         abi: mockUsdcAbi,
         functionName: "balanceOf",
         args: [address],
@@ -73,7 +75,7 @@ export function useDonate(customRound?: Address) {
 
       // 2. Check existing allowance
       const currentAllowance = await flow.wait(() => publicClient.readContract({
-        address: token,
+        address: usdcAddress,
         abi: mockUsdcAbi,
         functionName: "allowance",
         args: [address, roundAddress],
@@ -93,7 +95,7 @@ export function useDonate(customRound?: Address) {
         let approveHash: `0x${string}`;
         try {
           approveHash = await flow.wait(() => writeContractAsync({
-            address: token,
+            address: usdcAddress,
             abi: mockUsdcAbi,
             functionName: "approve",
             args: [roundAddress, amount],

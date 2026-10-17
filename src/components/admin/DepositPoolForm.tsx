@@ -2,13 +2,15 @@
 
 import { useTxFlow } from "@/hooks/useTxFlow";
 import React, { useState } from "react";
-import { useAccount, useReadContract, useWriteContract, usePublicClient } from "wagmi";
+import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
 import { mockUsdcAbi, qfRoundAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
-import { useRole } from "@/hooks/useRole";
-import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { useAdminRounds } from "@/hooks/useAdminRounds";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { tokenMatchesConfigured } from "@/lib/tokenBalance";
+import { TARGET_CHAIN_ID, usdcAddress } from "@/lib/contracts/addresses";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -21,12 +23,14 @@ export function DepositPoolForm() {
   const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
   const { address, isConnected, chainId } = useAccount();
-  const { role, isReady } = useRole();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: TARGET_CHAIN_ID });
   const { writeContractAsync } = useWriteContract();
   const queryClient = useQueryClient();
 
-  const { roundAddress, name: roundName, token, refetch, finalized, isCancelled, pool } = useRound();
+  const selection = useAdminRounds(address);
+  const { name: roundName, token, admin, refetch, finalized, isCancelled, pool, isLoading: isRoundLoading, isError: isRoundError } = useRound(selection.roundAddress);
+  const roundAddress = selection.roundAddress;
+  const balance = useTokenBalance(address);
 
   const [amount, setAmount] = useState("");
   const [isPending, setIsPending] = useState(false);
@@ -35,33 +39,28 @@ export function DepositPoolForm() {
   const approveId = "deposit-approve";
   const depositId = "deposit-pool";
 
-  // Read admin's USDC balance on-chain from round's token contract
-  const { data: adminBalanceData, refetch: refetchAdminBalance } = useReadContract({
-    address: token,
-    abi: mockUsdcAbi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: {
-      enabled: Boolean(token && address),
-      refetchInterval: 5000,
-    },
-  });
-
-  const adminBalance = (adminBalanceData as bigint | undefined) ?? 0n;
-
-  // Validation using BigInt parsing without Number conversions
-  const validation = parseUsdc(amount, adminBalance);
-
+  // Undefined/loading/error is not a zero balance. Only successful reads constrain the amount.
+  const adminBalance = balance.balance;
+  const validation = parseUsdc(amount, balance.isReady ? adminBalance : undefined);
   const isFuji = chainId === TARGET_CHAIN_ID;
-  const isAdmin = isReady && role === "admin";
-  const hasNoBalance = adminBalance === 0n;
+  const isAdmin = Boolean(address && admin && address.toLowerCase() === admin.toLowerCase());
+  const hasNoBalance = balance.isReady && adminBalance === 0n;
+  const roundExplanation = selection.isError ? t.tokenBalance.roundsError
+    : selection.isLoading ? t.tokenBalance.loadingRounds
+    : !roundAddress ? (selection.totalRounds === 0 ? t.tokenBalance.noRound : t.tokenBalance.noAdminRound)
+    : isRoundError ? t.tokenBalance.roundError
+    : isRoundLoading || !token || !admin ? t.tokenBalance.loadingRounds
+    : !tokenMatchesConfigured(token) ? t.tokenBalance.tokenMismatch
+    : isCancelled ? t.tokenBalance.cancelled : null;
 
   // Determine disabled reason and state
   let disabledExplanation: string | null = null;
   let isButtonDisabled = isPending;
 
-  if (isCancelled) return null;
-  if (finalized) {
+  if (roundExplanation) {
+    isButtonDisabled = true;
+    disabledExplanation = roundExplanation;
+  } else if (finalized) {
     isButtonDisabled = true;
     disabledExplanation = t.admin.disabledFinalizedExplanation;
   } else if (!isConnected || !isAdmin) {
@@ -70,6 +69,9 @@ export function DepositPoolForm() {
   } else if (!isFuji) {
     isButtonDisabled = true;
     disabledExplanation = t.admin.disabledWrongNetworkExplanation;
+  } else if (!balance.isReady) {
+    isButtonDisabled = true;
+    disabledExplanation = balance.isError ? t.tokenBalance.error : balance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable;
   } else if (hasNoBalance) {
     isButtonDisabled = true;
     disabledExplanation = t.admin.disabledNoBalanceExplanation;
@@ -78,7 +80,7 @@ export function DepositPoolForm() {
   }
 
   let validationErrorMessage: string | null = null;
-  if (amount.trim() !== "" && !validation.success) {
+  if (!roundExplanation && amount.trim() !== "" && !validation.success) {
     switch (validation.errorKey) {
       case "empty":
         validationErrorMessage = t.admin.validationEmptyAmount;
@@ -109,7 +111,7 @@ export function DepositPoolForm() {
   };
 
   const handleConfirmedDeposit = async () => {
-    if (!validation.success || !address || !roundAddress || !token || !publicClient) return;
+    if (!validation.success || isButtonDisabled || !balance.isReady || !address || !roundAddress || !tokenMatchesConfigured(token) || !publicClient) return;
     const amountBigInt = validation.amount;
 
     setIsConfirmOpen(false);
@@ -120,7 +122,7 @@ export function DepositPoolForm() {
       // 1. Check current allowance
       const allowance = await flow.wait(() =>
         publicClient.readContract({
-          address: token,
+          address: usdcAddress,
           abi: mockUsdcAbi,
           functionName: "allowance",
           args: [address, roundAddress],
@@ -139,7 +141,7 @@ export function DepositPoolForm() {
         try {
           appHash = await flow.wait(() =>
             writeContractAsync({
-              address: token,
+              address: usdcAddress,
               abi: mockUsdcAbi,
               functionName: "approve",
               args: [roundAddress, amountBigInt],
@@ -235,7 +237,6 @@ export function DepositPoolForm() {
 
       setAmount("");
       refetch();
-      refetchAdminBalance();
       await queryClient.invalidateQueries();
     } catch (err) {
       if (flow.cancelled) return;
@@ -267,6 +268,18 @@ export function DepositPoolForm() {
         {t.admin.depositPoolDesc}
       </p>
 
+      <label className="block space-y-1 text-xs">
+        <span>{t.tokenBalance.selectRound}</span>
+        <select className="w-full border border-line bg-bg p-2" value={roundAddress ?? ""} disabled={isPending || selection.isLoading || selection.isError || !selection.rounds.length}
+          onChange={event => { selection.selectRound(event.target.value); setIsConfirmOpen(false); }}>
+          {!roundAddress && <option value="">{selection.isLoading ? t.tokenBalance.loadingRounds : t.tokenBalance.selectRound}</option>}
+          {selection.rounds.map(round => <option key={round.address} value={round.address}>{round.name || shortAddress(round.address)} · {shortAddress(round.address)}</option>)}
+        </select>
+      </label>
+      {roundExplanation && <p role="status" className="text-sm text-muted">{roundExplanation}</p>}
+      {(selection.isError || isRoundError) && <Button type="button" variant="secondary" onClick={() => { selection.refetch(); refetch(); }}>{t.tokenBalance.retry}</Button>}
+      {balance.isError && <Button type="button" variant="secondary" onClick={() => void balance.refetch()}>{t.tokenBalance.retry}</Button>}
+
       {/* Current Matching Pool Indicator (Top-up deposits supported) */}
       <div className="flex items-center justify-between border border-line/70 bg-surface-2 p-3 text-xs">
         <span className="text-muted flex items-center gap-1.5 role-label">
@@ -275,9 +288,9 @@ export function DepositPoolForm() {
         </span>
         <span
           className="role-value-md text-money truncate ml-2"
-          title={formatUsdc(pool)}
+          title={roundAddress && !roundExplanation ? formatUsdc(pool) : undefined}
         >
-          {formatUsdc(pool)}
+          {roundAddress && !roundExplanation ? formatUsdc(pool) : "—"}
         </span>
       </div>
 
@@ -285,19 +298,19 @@ export function DepositPoolForm() {
         {/* Admin USDC balance & Max button */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted font-mono truncate" title={formatUsdc(adminBalance)}>
-              {fmt(t.admin.adminBalanceLabel, {
+            <span className="text-muted font-mono truncate" title={adminBalance !== undefined ? formatUsdc(adminBalance) : undefined}>
+              {balance.isReady && adminBalance !== undefined ? fmt(t.admin.adminBalanceLabel, {
                 balance: formatUsdc(adminBalance, { includeSymbol: false }),
-              })}
+              }) : balance.isError ? t.tokenBalance.error : balance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}
             </span>
             <button
               type="button"
               onClick={() => {
-                if (adminBalance > 0n) {
+                if (adminBalance !== undefined && adminBalance > 0n) {
                   setAmount(formatUnits(adminBalance, 6));
                 }
               }}
-              disabled={isPending || finalized || adminBalance === 0n}
+              disabled={isPending || finalized || Boolean(roundExplanation) || !balance.isReady || !adminBalance}
               className="mono-label text-xs font-bold text-primary hover:underline disabled:text-muted disabled:no-underline"
             >
               {t.admin.maxBtn}
@@ -310,7 +323,7 @@ export function DepositPoolForm() {
             inputMode="decimal"
             placeholder="100"
             value={amount}
-            disabled={isPending || finalized}
+            disabled={isPending || finalized || Boolean(roundExplanation)}
             onChange={(e) => setAmount(e.target.value)}
             suffixElement="USDC"
             error={validationErrorMessage ?? undefined}
@@ -325,7 +338,7 @@ export function DepositPoolForm() {
                 key={chip.value}
                 type="button"
                 onClick={() => setAmount(chip.value)}
-                disabled={isPending || finalized}
+                disabled={isPending || finalized || Boolean(roundExplanation)}
                 className="rounded-xs border border-line bg-surface-2 px-2.5 py-1 text-xs font-mono font-semibold text-foreground hover:bg-surface hover:border-line-strong transition-colors disabled:opacity-50"
               >
                 {chip.label}
@@ -409,7 +422,7 @@ export function DepositPoolForm() {
               size="sm"
               onClick={handleConfirmedDeposit}
               isLoading={isPending}
-              disabled={isPending}
+              disabled={isButtonDisabled}
               className="font-bold gap-1"
             >
               <Check className="h-3.5 w-3.5" />

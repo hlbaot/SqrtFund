@@ -192,7 +192,7 @@ export class TransactionFlow {
   private failed = false;
   private receipts = new Map<string, bigint>();
   get cancelled() { return this.controller.signal.aborted; }
-  constructor() { activeFlows.add(this); }
+  constructor(private onConfirmed?: () => Promise<unknown>) { activeFlows.add(this); }
 
   private show(method: "pending" | "success" | "error" | "info", args: [string, string, string?, string?]) {
     if (this.cancelled || this.failed) return;
@@ -230,11 +230,12 @@ export class TransactionFlow {
     const promise = Promise.resolve().then(() => {
       if (signal.aborted) throw new DOMException("Flow cancelled", "AbortError");
       return operation();
-    }).then(value => {
-      const receipt = value as { transactionHash?: unknown; gasUsed?: unknown; effectiveGasPrice?: unknown } | null;
+    }).then(async value => {
+      const receipt = value as { transactionHash?: unknown; gasUsed?: unknown; effectiveGasPrice?: unknown; status?: unknown } | null;
       if (receipt && typeof receipt.transactionHash === "string" && typeof receipt.gasUsed === "bigint" && typeof receipt.effectiveGasPrice === "bigint") {
         this.receipts.set(receipt.transactionHash.toLowerCase(), receipt.gasUsed * receipt.effectiveGasPrice);
       }
+      if (!this.cancelled && receipt?.transactionHash && receipt.status === "success") await this.onConfirmed?.();
       return value;
     });
     return withTimeout(promise, timeoutMs ?? Infinity, undefined, signal);

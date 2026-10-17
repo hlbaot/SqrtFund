@@ -545,6 +545,10 @@ const enData = {
       statusPending: "Pending admin review",
       statusApproved: "Approved & active",
     },
+    tokenBalance: {
+      loading: "Loading USDC balance…", error: "Could not read USDC balance. Please retry.", unavailable: "USDC balance unavailable", recipient: "Recipient balance", retry: "Retry",
+      noRound: "No round yet. Create a round first.", noAdminRound: "You have no round to fund. Create a round first.", selectRound: "Select round", loadingRounds: "Loading rounds…", roundsError: "Could not load rounds. Please retry.", roundError: "Could not read the selected round. Please retry.", tokenMismatch: "This round uses a different token than the configured USDC. Check the deployment configuration.", cancelled: "This round is cancelled. Select another round.",
+    },
     admin: {
       maxPerRoundLabel: "Total budget per student / round",
       invalidRoundBudget: "Round budget must be at least the per-project maximum; minimum donation must not exceed that maximum.",
@@ -1343,6 +1347,10 @@ const viData: Translations = {
       estimatedPayout: "Tổng nhận ước tính",
       statusPending: "Đang chờ duyệt",
       statusApproved: "Đã duyệt & đang nhận tài trợ",
+    },
+    tokenBalance: {
+      loading: "Đang tải số dư USDC…", error: "Không đọc được số dư USDC. Vui lòng thử lại.", unavailable: "Chưa đọc được số dư USDC", recipient: "Số dư ví nhận", retry: "Thử lại",
+      noRound: "Chưa có round, hãy tạo round trước.", noAdminRound: "Bạn chưa có round để nạp quỹ. Hãy tạo round trước.", selectRound: "Chọn round", loadingRounds: "Đang tải danh sách round…", roundsError: "Không tải được danh sách round. Vui lòng thử lại.", roundError: "Không đọc được round đã chọn. Vui lòng thử lại.", tokenMismatch: "Round dùng token khác USDC đang cấu hình. Vui lòng kiểm tra cấu hình deployment.", cancelled: "Round đã bị hủy. Vui lòng chọn round khác.",
     },
     admin: {
       maxPerRoundLabel: "Tổng ngân sách mỗi sinh viên / round",

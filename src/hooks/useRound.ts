@@ -14,8 +14,8 @@ export function useFactoryRounds() {
   const { data: factoryData, isLoading: isFactoryLoading, isError: isFactoryError, error: factoryError, refetch: refetchFactory } = useReadContracts({
     allowFailure: true,
     contracts: [
-      { address: factoryAddress, abi: roundFactoryAbi, functionName: "getRounds" },
-      { address: factoryAddress, abi: roundFactoryAbi, functionName: "owner" },
+      { address: factoryAddress, abi: roundFactoryAbi, functionName: "getRounds", chainId: TARGET_CHAIN_ID },
+      { address: factoryAddress, abi: roundFactoryAbi, functionName: "owner", chainId: TARGET_CHAIN_ID },
     ],
     query: { enabled: Boolean(factoryAddress), refetchInterval: 15000, ...roundReadRetry },
   });

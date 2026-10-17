@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useAccount, useConnect, useDisconnect, useBalance, useReadContract } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useBalance } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatUnits } from "viem";
 import { Wallet, LogOut, ChevronDown, Check, Copy, Loader2, Pencil } from "lucide-react";
@@ -15,8 +15,8 @@ import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
 import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 import { useClaim } from "@/hooks/useClaim";
-import { TARGET_CHAIN_ID, usdcAddress } from "@/lib/contracts/addresses";
-import { mockUsdcAbi } from "@/lib/contracts/abis";
+import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { txToast } from "@/lib/txToast";
 import { getContractErrorMessage, isUserRejected } from "@/lib/errors";
 import { logoutWallet, markWalletConnected, isWalletLoggedOut, markWalletLoggedOut } from "@/lib/walletSession";
@@ -60,10 +60,8 @@ export function ConnectWalletButton() {
   };
   const isFuji = chainId === TARGET_CHAIN_ID;
   const { data: avax } = useBalance({ address, chainId: TARGET_CHAIN_ID, query: { enabled: isConnected && isFuji, refetchInterval: 30_000 } });
-  const { data: usdc } = useReadContract({
-    address: usdcAddress, abi: mockUsdcAbi, functionName: "balanceOf", args: address ? [address] : undefined,
-    chainId: TARGET_CHAIN_ID, query: { enabled: Boolean(isConnected && isFuji && usdcAddress), refetchInterval: 30_000 },
-  });
+  const tokenBalance = useTokenBalance(address);
+  const usdc = tokenBalance.balance;
 
   useEffect(() => {
     mounted.current = true;
@@ -200,9 +198,9 @@ export function ConnectWalletButton() {
             <span aria-live="polite">{copied ? t.wallet.copied : t.common.copyAddress}</span>
             {copied ? <Check className="h-3.5 w-3.5 text-money" /> : <Copy className="h-3.5 w-3.5" />}
           </button>
-          {(avax || usdc !== undefined) && <div className="mb-3 space-y-2 border-y border-line py-3 font-mono" aria-label={t.wallet.balance}>
+          {(avax || tokenBalance.isEnabled) && <div className="mb-3 space-y-2 border-y border-line py-3 font-mono" aria-label={t.wallet.balance}>
             {avax && <p className="flex justify-between"><span className="text-muted">AVAX</span><span className="tabular-nums">{Number(formatUnits(avax.value, avax.decimals)).toFixed(4)}</span></p>}
-            {usdc !== undefined && <p className="flex justify-between"><span className="text-muted">USDC</span><span className="tabular-nums">{formatUsdcFixed(Number(formatUnits(usdc, 6)))}</span></p>}
+            <p className="flex justify-between gap-2"><span className="text-muted">USDC</span><span className="tabular-nums">{usdc !== undefined ? formatUsdcFixed(Number(formatUnits(usdc, 6))) : tokenBalance.isError ? t.tokenBalance.error : tokenBalance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}</span></p>
           </div>}
 
           {/* Student Verification section for non-admin, non-student wallets */}

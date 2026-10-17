@@ -1,5 +1,6 @@
 "use client";
 
+import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { useTxFlow } from "@/hooks/useTxFlow";
 import React, { useState } from "react";
 import { useAccount, useReadContract, useWriteContract, usePublicClient } from "wagmi";
@@ -31,9 +32,12 @@ export function MintTestUsdcForm() {
   // Derived effective recipient
   const effectiveRecipient = recipient || address || "";
 
+  const recipientBalance = useTokenBalance(isAddress(effectiveRecipient.trim()) ? effectiveRecipient.trim() as Address : undefined);
+
   // Read owner of MockUSDC contract
   const { data: tokenOwnerData } = useReadContract({
     address: usdcAddress,
+    chainId: TARGET_CHAIN_ID,
     abi: mockUsdcAbi,
     functionName: "owner",
     query: {
@@ -178,6 +182,7 @@ export function MintTestUsdcForm() {
         </div>
       </div>
 
+      <p className="text-xs text-muted" role="status">{t.tokenBalance.recipient}: {recipientBalance.isError ? t.tokenBalance.error : recipientBalance.isReady ? formatUsdc(recipientBalance.balance!) : recipientBalance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}</p>
       <form onSubmit={handleOpenConfirm} className="space-y-4 max-w-xl">
         <Input
           label={t.admin.mintRecipientLabel}

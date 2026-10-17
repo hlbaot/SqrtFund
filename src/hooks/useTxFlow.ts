@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useAccount, useChainId } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateTokenBalances } from "@/lib/tokenBalance";
 import { TransactionFlow } from "@/lib/txToast";
 
 export function useTxFlow() {
+  const queryClient = useQueryClient();
   const { address, status, chainId: accountChainId } = useAccount();
   const configChainId = useChainId();
   const chainId = accountChainId ?? configChainId;
@@ -18,8 +21,8 @@ export function useTxFlow() {
   }, [address, chainId, status]);
   return useCallback((scope = "default") => {
     scopes.current.get(scope)?.cancel();
-    const flow = new TransactionFlow();
+    const flow = new TransactionFlow(() => invalidateTokenBalances(queryClient));
     scopes.current.set(scope, flow);
     return flow;
-  }, []);
+  }, [queryClient]);
 }

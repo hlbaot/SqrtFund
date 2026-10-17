@@ -9,11 +9,13 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import type { Project } from "@/types";
 import { useAccount, useReadContract } from "wagmi";
-import { qfRoundAbi, mockUsdcAbi } from "@/lib/contracts/abis";
+import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { tokenMatchesConfigured } from "@/lib/tokenBalance";
 import { useDonate } from "@/hooks/useDonate";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatUsdcFixed, parseUsdc } from "@/lib/format";
@@ -67,21 +69,11 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   const maxDonationUsdc = Number(maxDonation) / 1_000_000;
   const remainingAllowanceUsdc = Math.max(0, maxDonationUsdc - userDonatedUsdc);
 
-  // Read current user's USDC balance
-  const { data: usdcBalanceData } = useReadContract({
-    address: token,
-    abi: mockUsdcAbi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: {
-      enabled: Boolean(token && address),
-      refetchInterval: 5000,
-    },
-  });
-
-  const usdcBalanceBigInt = (usdcBalanceData as bigint | undefined) ?? 0n;
-  const usdcBalanceUsdc = Number(usdcBalanceBigInt) / 1_000_000;
-  const hasInsufficientBalance = isConnected && isStudent && usdcBalanceUsdc < amount;
+  const balance = useTokenBalance(address);
+  const usdcBalanceBigInt = balance.balance;
+  const usdcBalanceUsdc = Number(usdcBalanceBigInt ?? 0n) / 1_000_000;
+  const tokenReady = tokenMatchesConfigured(token);
+  const hasInsufficientBalance = balance.isReady && isConnected && isStudent && usdcBalanceUsdc < amount;
 
   const { data: roundRemaining, refetch: refetchBudget } = useReadContract({ address: roundAddress, abi: qfRoundAbi,
     functionName: "remainingBudget", args: address ? [address] : undefined,
@@ -168,7 +160,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   ];
 
   const handleExecuteDonate = async () => {
-    if (!parsedInput.success || !budgetReady || !canParticipate || error) return;
+    if (!balance.isReady || !tokenReady || !parsedInput.success || !budgetReady || !canParticipate || error) return;
     const donationAmountBigInt = parsedInput.amount;
     const ok = await donate(projectIdBigInt, donationAmountBigInt);
     if (ok) {
@@ -200,6 +192,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
         </span>
       </div>
 
+      {token && !tokenReady && <p role="alert">{t.tokenBalance.tokenMismatch}</p>}
       {supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
 
       {/* Round Closed Banner */}
@@ -249,7 +242,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
                   <span>
                     {t.donateBox.balance}:{" "}
                     <strong className={usdcBalanceUsdc < 1 ? "text-primary" : "text-money"}>
-                      {formatUsdcFixed(usdcBalanceUsdc)}
+                      {balance.isReady ? formatUsdcFixed(usdcBalanceUsdc) : balance.isError ? t.tokenBalance.error : balance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}
                     </strong>
                   </span>
                 )}
@@ -399,7 +392,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
               <Button
                 variant="primary"
                 fullWidth
-                disabled={Boolean(error) || isDonatePending || isRoundClosed}
+                disabled={Boolean(error) || isDonatePending || isRoundClosed || !balance.isReady || !tokenReady}
                 isLoading={isDonatePending}
                 onClick={handleExecuteDonate}
                 className="py-3 text-sm font-bold"
