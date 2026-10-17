@@ -11,7 +11,11 @@ import { ToastContainer } from "@/components/ui/Toast";
 import { isWalletLoggedOut } from "@/lib/walletSession";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [reconnectOnMount] = useState(() => !isWalletLoggedOut());
+  const [reconnectOnMount] = useState(() => {
+    const loggedOut = isWalletLoggedOut();
+    console.log("[LOGOUT_DEBUG] Providers mount: isWalletLoggedOut() =", loggedOut, "reconnectOnMount =", !loggedOut);
+    return !loggedOut;
+  });
   const [initialState] = useState(() => ({
     ...wagmiConfig.state,
     connections: reconnectOnMount ? wagmiConfig.state.connections : new Map(),

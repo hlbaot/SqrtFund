@@ -27,9 +27,13 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { NotificationBadge } from "@/components/ui/NotificationBadge";
 
 export function ConnectWalletButton() {
-  const { address, isConnected, chainId } = useAccount();
+  const { address, isConnected, chainId, status, connector } = useAccount();
   const { connectors, connectAsync, isPending: isConnecting } = useConnect();
   const { disconnectAsync } = useDisconnect();
+
+  useEffect(() => {
+    console.log("[LOGOUT_DEBUG] useAccount state:", { status, address, connectorId: connector?.id });
+  }, [status, address, connector]);
   const queryClient = useQueryClient();
   const { t, locale } = useLocale();
   const { role, isReady, isStudent } = useRole();
@@ -120,11 +124,23 @@ export function ConnectWalletButton() {
   };
 
   const handleDisconnect = async () => {
+    console.log("[LOGOUT_DEBUG] handleDisconnect clicked! connector:", connector?.id);
     setDropdownOpen(false);
     try {
-      await logoutWallet(disconnectAsync, queryClient);
+      console.log("[LOGOUT_DEBUG] calling logoutWallet...");
+      await logoutWallet(async () => {
+        console.log("[LOGOUT_DEBUG] calling disconnectAsync...");
+        try {
+          const res = await disconnectAsync({ connector });
+          console.log("[LOGOUT_DEBUG] disconnectAsync SUCCESS:", res);
+        } catch (discErr) {
+          console.error("[LOGOUT_DEBUG] disconnectAsync ERROR:", discErr);
+          throw discErr;
+        }
+      }, queryClient);
+      console.log("[LOGOUT_DEBUG] logoutWallet completed!");
     } catch (err) {
-      console.error("Disconnect failed:", err);
+      console.error("[LOGOUT_DEBUG] Disconnect failed:", err);
     }
   };
 
@@ -143,7 +159,11 @@ export function ConnectWalletButton() {
 
   return (
     <div ref={root} className="relative flex min-h-10 min-w-[170px] items-center justify-end transition-opacity duration-200 ease-in-out" onBlur={event => {
-      if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !panel.current?.contains(event.relatedTarget as Node | null)) setDropdownOpen(false);
+      console.log("[LOGOUT_DEBUG] root onBlur! relatedTarget:", event.relatedTarget);
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !panel.current?.contains(event.relatedTarget as Node | null)) {
+        console.log("[LOGOUT_DEBUG] root onBlur closing dropdown!");
+        setDropdownOpen(false);
+      }
     }}>
       <button ref={trigger} type="button" onClick={() => { const rect = trigger.current?.getBoundingClientRect(); if (rect) setPosition({ top: rect.bottom + 8, right: Math.max(16, window.innerWidth - rect.right) }); setDropdownOpen(open => !open); }} aria-label={t.wallet.profile}
         aria-expanded={dropdownOpen} aria-haspopup="dialog" aria-controls={menuId}
@@ -220,7 +240,15 @@ export function ConnectWalletButton() {
               </Link>
             )}
           </div>
-          <button type="button" onClick={handleDisconnect} className="mono-label mt-3 flex w-full items-center gap-2 border-t border-line px-2 pt-4 pb-1 text-primary hover:bg-primary/10">
+          <button
+            type="button"
+            onMouseDown={() => console.log("[LOGOUT_DEBUG] Disconnect button onMouseDown")}
+            onClick={() => {
+              console.log("[LOGOUT_DEBUG] Disconnect button onClick");
+              handleDisconnect();
+            }}
+            className="mono-label mt-3 flex w-full items-center gap-2 border-t border-line px-2 pt-4 pb-1 text-primary hover:bg-primary/10"
+          >
             <LogOut className="h-3.5 w-3.5" />{t.nav.disconnect}
           </button>
         </div>, document.body

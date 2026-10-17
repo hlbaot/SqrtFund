@@ -106,19 +106,28 @@ export function reloadWallet(snapshot: WalletSnapshot) {
   window.location.reload();
 }
 export async function logoutWallet(disconnect: () => Promise<unknown>, queryClient: QueryClient) {
+  console.log("[LOGOUT_DEBUG] logoutWallet started, navigating:", navigating);
   if (navigating) return;
   navigating = true;
   markWalletLoggedOut();
   cancelTransactionFlows();
   txToast.dismiss();
-  try { await disconnect(); } finally {
+  try {
+    console.log("[LOGOUT_DEBUG] logoutWallet: calling disconnect()...");
+    await disconnect();
+    console.log("[LOGOUT_DEBUG] logoutWallet: disconnect() finished.");
+  } catch (err) {
+    console.error("[LOGOUT_DEBUG] logoutWallet: disconnect() caught error:", err);
+  } finally {
     // Clear every local connection, including when the provider fails to revoke permissions.
+    console.log("[LOGOUT_DEBUG] logoutWallet: clearing wagmiConfig state, queryClient, storage");
     wagmiConfig.setState(state => ({ ...state, connections: new Map(), current: null, status: "disconnected" }));
     queryClient.clear();
     try { clearWalletStorage(window.localStorage); } catch { /* Storage may be disabled. */ }
     try { clearWalletStorage(window.sessionStorage); } catch { /* Storage may be disabled. */ }
     saveSessionValue(WALLET_SNAPSHOT_KEY, JSON.stringify({ address: null, chainId: TARGET_CHAIN_ID, role: "guest" }));
     markVisitIntroSeen();
+    console.log("[LOGOUT_DEBUG] logoutWallet: executing window.location.replace('/')");
     window.location.replace("/");
   }
 }

@@ -23,6 +23,7 @@ export function WalletWatcher() {
   const prevRef = useRef<WalletState | null>(null);
 
   useEffect(() => {
+    console.log("[LOGOUT_DEBUG] WalletWatcher effect:", { address, status, chainId, role });
     // Ignore transient intermediate states
     if (status === "connecting" || status === "reconnecting") return;
 
