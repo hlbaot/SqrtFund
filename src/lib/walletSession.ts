@@ -26,7 +26,7 @@ export function markWalletConnected() {
   }
 }
 
-function markWalletLoggedOut() {
+export function markWalletLoggedOut() {
   for (const name of ["sessionStorage", "localStorage"] as const) {
     try { window[name].setItem(WALLET_LOGOUT_KEY, "1"); } catch { /* Storage may be disabled. */ }
   }
@@ -92,6 +92,7 @@ export function takeSessionValue(key: string) {
 }
 export function clearWalletStorage(storage: Storage) {
   for (const key of Object.keys(storage)) {
+    if (key.endsWith(".disconnected")) continue;
     if (key.startsWith("wagmi") || key.startsWith("rk-")) storage.removeItem(key);
   }
 }

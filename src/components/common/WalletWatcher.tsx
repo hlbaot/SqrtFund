@@ -5,6 +5,7 @@ import { useAccount, useChainId, useDisconnect } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRole } from "@/hooks/useRole";
 import {
+  isWalletLoggedOut,
   logoutWallet,
   reloadWallet,
   saveSessionValue,
@@ -26,6 +27,10 @@ export function WalletWatcher() {
     console.log("[LOGOUT_DEBUG] WalletWatcher effect:", { address, status, chainId, role });
     // Ignore transient intermediate states
     if (status === "connecting" || status === "reconnecting") return;
+    if (status === "connected" && isWalletLoggedOut()) {
+      void disconnectAsync().catch(() => {});
+      return;
+    }
 
     const currentAddress = address ? address.toLowerCase() : null;
     const nextState: WalletState = {

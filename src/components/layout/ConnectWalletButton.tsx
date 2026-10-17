@@ -19,7 +19,7 @@ import { TARGET_CHAIN_ID, usdcAddress } from "@/lib/contracts/addresses";
 import { mockUsdcAbi } from "@/lib/contracts/abis";
 import { txToast } from "@/lib/txToast";
 import { getContractErrorMessage, isUserRejected } from "@/lib/errors";
-import { logoutWallet, markWalletConnected } from "@/lib/walletSession";
+import { logoutWallet, markWalletConnected, isWalletLoggedOut, markWalletLoggedOut } from "@/lib/walletSession";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { GradientBorder } from "@/components/ui/GradientBorder";
@@ -98,9 +98,10 @@ export function ConnectWalletButton() {
   const handleConnect = async () => {
     const connector = connectors.find(c => c.id === "app.core.extension" || /core/i.test(c.name)) ?? connectors.find(c => c.id === "injected") ?? connectors[0];
     if (!connector) { txToast.error("wallet-connect", t.wallet.connectionFailed, t.wallet.walletMissing); return; }
+    const wasLoggedOut = isWalletLoggedOut();
+    markWalletConnected();
     try {
       await connectAsync({ connector, chainId: TARGET_CHAIN_ID });
-      markWalletConnected();
 
       // Wait up to 1500ms for role to resolve so toast and profile appear smoothly together
       const start = Date.now();
@@ -110,6 +111,7 @@ export function ConnectWalletButton() {
 
       if (mounted.current) txToast.success("wallet-connect", t.wallet.connected, undefined, undefined, 3000);
     } catch (error) {
+      if (wasLoggedOut) markWalletLoggedOut();
       if (mounted.current) txToast.error("wallet-connect", isUserRejected(error) ? t.wallet.connectionRejected : t.wallet.connectionFailed, getContractErrorMessage(error, locale));
     }
   };
