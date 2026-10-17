@@ -26,9 +26,15 @@ export function PresentationState({ state, onRetry, children }: { state: "empty"
   </div>;
 }
 
-export function RoundListCard({ round }: { round: RoundSummary }) {
+export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry?: () => void }) {
   const { t, locale } = useLocale();
   const c = t.competition;
+  if (round.readError) return <article role="alert" className="flex min-w-0 flex-col gap-3 border border-line bg-surface p-5 sm:p-6">
+    <h2 className="font-semibold break-all">{fmt(c.roundReadError, { address: round.id })}</h2>
+    <p className="text-sm text-muted">{round.readError === "version" ? c.versionMismatch : c.roundReadHint}</p>
+    {(round.version === "legacy" || round.readError === "version") && <span className="mono-label text-xs text-primary">{c.legacyRound}</span>}
+    <button type="button" onClick={onRetry} className="competition-action mt-auto">{c.retry}</button>
+  </article>;
   return (
     <article
       className={`relative flex h-full min-w-0 flex-col bg-surface p-5 sm:p-6 ${
@@ -51,6 +57,8 @@ export function RoundListCard({ round }: { round: RoundSummary }) {
         </div>
         <StatusChip phase={round.phase} />
       </div>
+
+      {round.version === "legacy" && <p className="mt-3 text-xs font-semibold text-primary">{c.legacyRound}</p>}
 
       {round.name && (
         <p
@@ -152,14 +160,14 @@ export function RoundsList({ rounds, state = "ready", isAdmin, onRetry }: Rounds
   const { t, locale } = useLocale();
   const c = t.competition;
   const [filter, setFilter] = useState<"all" | "active" | "ended">("all");
-  const counts = { all: rounds.length, active: rounds.filter(r => r.phase === "open").length, ended: rounds.filter(r => r.phase === "closed" || r.phase === "finalized").length };
-  const visible = useMemo(() => [...rounds].sort((a, b) => b.number - a.number).filter(round => filter === "all" || (filter === "active" ? round.phase === "open" : ["closed", "finalized"].includes(round.phase))), [rounds, filter]);
+  const counts = { all: rounds.length, active: rounds.filter(r => !r.readError && r.phase === "open").length, ended: rounds.filter(r => !r.readError && (r.phase === "closed" || r.phase === "finalized")).length };
+  const visible = useMemo(() => [...rounds].sort((a, b) => b.number - a.number).filter(round => filter === "all" || (!round.readError && (filter === "active" ? round.phase === "open" : ["closed", "finalized"].includes(round.phase)))), [rounds, filter]);
   return <section className="min-w-0 space-y-7" aria-label={c.rounds}>
     <header className="flex flex-col justify-between gap-6 border-b border-line pb-7 xl:flex-row xl:items-end">
       <div className="min-w-0"><span className="mono-label text-xs text-primary">{c.currency} / {c.timezone}</span><h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{c.rounds}</h1><p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">{c.subtitle}</p></div>
       <div role="group" aria-label={c.rounds} className="competition-segment flex max-w-full self-start border border-line bg-bg xl:self-auto">{(["all", "active", "ended"] as const).map(key => <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className="competition-focus flex min-h-11 min-w-0 flex-wrap items-center justify-center gap-2 px-3 py-2 text-xs sm:px-5"><span>{c[key]}</span><span className="tabular-mono text-xs text-muted">{state === "loading" ? c.unavailable : displayNumber(counts[key], locale, 0)}</span></button>)}</div>
     </header>
-    {state === "error" ? <PresentationState state="error" onRetry={onRetry} /> : state === "loading" ? <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3" role="status" aria-label={c.loading}>{[0, 1, 2].map(i => <div key={i} className="competition-skeleton border border-line bg-surface p-6"><div className="h-6 w-1/2 bg-line" /><div className="mt-8 h-14 bg-line" /><div className="mt-8 h-16 bg-line" /><div className="mt-8 h-10 bg-line" /><div className="mt-10 h-11 bg-line" /></div>)}</div> : visible.length ? <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{visible.map(round => <RoundListCard key={round.id} round={round} />)}</div> : <PresentationState state="empty"><h2 className="font-semibold">{rounds.length ? c.noFilteredRounds : c.noRounds}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted">{rounds.length ? c.filterHint : c.noRoundsHint}</p>{isAdmin && !rounds.length && <Link href="/admin" className="competition-action mt-6 inline-flex">{c.admin}</Link>}</PresentationState>}
+    {state === "error" ? <PresentationState state="error" onRetry={onRetry} /> : state === "loading" ? <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3" role="status" aria-label={c.loading}>{[0, 1, 2].map(i => <div key={i} className="competition-skeleton border border-line bg-surface p-6"><div className="h-6 w-1/2 bg-line" /><div className="mt-8 h-14 bg-line" /><div className="mt-8 h-16 bg-line" /><div className="mt-8 h-10 bg-line" /><div className="mt-10 h-11 bg-line" /></div>)}</div> : visible.length ? <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{visible.map(round => <RoundListCard key={round.id} round={round} onRetry={onRetry} />)}</div> : <PresentationState state="empty"><h2 className="font-semibold">{rounds.length ? c.noFilteredRounds : c.noRounds}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted">{rounds.length ? c.filterHint : c.noRoundsHint}</p>{isAdmin && !rounds.length && <Link href="/admin" className="competition-action mt-6 inline-flex">{c.admin}</Link>}</PresentationState>}
     <span className="sr-only" aria-live="polite">{displayNumber(visible.length, locale, 0)} {c.rounds}</span>
   </section>;
 }

@@ -2,7 +2,7 @@ import type { Project, Round } from "@/types";
 import type { Locale } from "@/lib/copy";
 
 export type RoundPhase = Round["status"] | "upcoming";
-export type RoundSummary = Round & { number: number; phase: RoundPhase };
+export type RoundSummary = Round & { number: number; phase: RoundPhase; version?: "current" | "legacy"; readError?: "version" | "rpc" };
 export type LeaderboardProject = Project & { finalMatching?: number; supportedByWallet?: boolean };
 export type RankedProject = LeaderboardProject & { supporterRank: number; tied: boolean };
 export type LeaderboardSort = "supporters" | "direct" | "matching";

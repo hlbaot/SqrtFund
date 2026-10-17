@@ -82,6 +82,8 @@ Rate limit được kiểm tra và ghi trong cùng transaction: cooldown 60 giâ
 | `src/lib/verify/` | Config, domain, HMAC, signer, rate limit, Supabase admin, SMTP/template và lỗi an toàn |
 | `src/components/verify/` | Form email, modal OTP, gate Student, thống kê |
 | `src/hooks/useStudentStatus.ts` | Đọc Student trực tiếp từ registry |
+| `src/lib/contracts/roundReads.ts` | Probe phiên bản, multicall cho phép lỗi từng trường, bỏ getter mới trên round cũ |
+| `src/lib/contracts/rpc.ts` | HTTP batch, retry/backoff và RPC fallback tùy chọn |
 | `src/components/project/DonateBox.tsx` | Quyền donate, giới hạn dự án và ngân sách còn lại |
 | `src/components/admin/CreateRoundForm.tsx` | Cấu hình round, gồm `maxPerRound` |
 | `supabase/migrations/0001_verification.sql` | Migration duy nhất: hai bảng, RPC, RLS/quyền và khối SQL reset dưới dạng comment |
@@ -89,19 +91,24 @@ Rate limit được kiểm tra và ghi trong cùng transaction: cooldown 60 giâ
 | `scripts/sync-abis.mjs` | Sinh ABI cho cả bốn contract |
 | `scripts/test-mail.ts` | Gọi trực tiếp mailer thật, không ghi Supabase |
 | `docs/redeploy-fuji.md` | Thứ tự deploy, cập nhật manifest/env, cast và curl |
+| `docs/round-loading-fuji.md` | Chẩn đoán /round, bảng cast, factory hiện có và lệnh keystore deployer |
 | `docs/change-report.md` | Danh sách tệp đổi/xóa, từng mục README và công việc cần tự hoàn tất |
 
 ## Deployment Fuji hiện có
 
-Đọc từ `contracts/deployments/fuji.json`; chain ID 43113. **Chưa redeploy cho kiến trúc StudentRegistry/ngân sách mới.** Không dùng địa chỉ factory cũ làm deployment tương thích code mới.
+Đọc từ `contracts/deployments/fuji.json`; chain ID 43113. Các địa chỉ dưới đây đã được đối chiếu getter bằng RPC Fuji ngày 17/10/2026. Factory mới hiện trả `getRounds()=[]`, cần admin tạo round đầu tiên. Không có deployment hay giao dịch ghi chain do agent thực hiện trong lần sửa này.
 
-| Contract | Trạng thái / địa chỉ trong manifest | Explorer |
+| Contract | Địa chỉ trong manifest | Explorer |
 | --- | --- | --- |
-| StudentRegistry | **Cần deploy**, manifest chưa có địa chỉ | Chưa có địa chỉ để tạo link |
-| RoundFactory | **Cần redeploy**; địa chỉ bản cũ `0x77015FBa44D3885C25E421f59Ae5C3a5bA87AF4A` | [Factory cũ trên Snowtrace](https://testnet.snowtrace.io/address/0x77015FBa44D3885C25E421f59Ae5C3a5bA87AF4A) |
-| MockUSDC | Có thể tái sử dụng `0x38efb1BA71C7CDB8Dd44e860A0A5cADE864d3205` | [MockUSDC trên Snowtrace](https://testnet.snowtrace.io/address/0x38efb1BA71C7CDB8Dd44e860A0A5cADE864d3205) |
+| StudentRegistry | `0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e` | [StudentRegistry trên Snowtrace](https://testnet.snowtrace.io/address/0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e) |
+| RoundFactory | `0x4fb01ae390bD9F46Dd921e5aC5D99c17912074D8` | [RoundFactory trên Snowtrace](https://testnet.snowtrace.io/address/0x4fb01ae390bD9F46Dd921e5aC5D99c17912074D8) |
+| MockUSDC | `0x38efb1BA71C7CDB8Dd44e860A0A5cADE864d3205` | [MockUSDC trên Snowtrace](https://testnet.snowtrace.io/address/0x38efb1BA71C7CDB8Dd44e860A0A5cADE864d3205) |
 
-Bytecode đã deploy không thay đổi khi đồng bộ ABI. Theo [hướng dẫn redeploy](docs/redeploy-fuji.md): deploy registry một lần → deploy factory dùng registry đó và giữ token hiện có → cập nhật manifest/public env → tạo round mới. Không deploy registry riêng cho từng round. Script `DeployStudentRegistry.s.sol` cần `ATTESTER_ADDRESS`; `DeployFactory.s.sol` cần `STUDENT_REGISTRY_ADDRESS` và đọc token từ manifest; cả hai dùng Foundry keystore. `Deploy.s.sol` tạo mới cả token, registry, factory, chỉ dùng khi thực sự muốn cài mới hoàn toàn.
+Factory mới trả registry đúng địa chỉ trên và có selector `createRound` với `maxPerRound`; registry trả attester `0x5C2001c91aEFFaEDf9ef438cA50Bcddd23ce6181`. Chưa tạo round thử trên factory này. Factory cũ `0x77015FBa44D3885C25E421f59Ae5C3a5bA87AF4A` chứa round có getter `maxPerRound`/`studentRegistry` revert và chỉ dùng xem lịch sử với nhãn “Round phiên bản cũ”. Không thể cập nhật bytecode cũ bằng đổi ABI.
+
+Nếu `/round` còn trỏ factory cũ, ưu tiên [hướng dẫn chẩn đoán và chuyển sang factory đã có](docs/round-loading-fuji.md): đổi public env local/Vercel sang factory trong manifest, restart/redeploy, tạo round mới. Tài liệu có bảng từng lệnh cast, lệnh keystore `deployer` để tự deploy factory khác nếu cần, và bước mint/depositPool/duyệt dự án. Redeploy Vercel bỏ tick dùng Build Cache.
+
+[Hướng dẫn deploy tổng quát](docs/redeploy-fuji.md) dành cho môi trường chưa có deployment phù hợp. `DeployStudentRegistry.s.sol` cần `ATTESTER_ADDRESS`; `DeployFactory.s.sol` constructor chỉ truyền registry từ `STUDENT_REGISTRY_ADDRESS`, đọc token từ manifest để giữ địa chỉ, không deploy lại token. `Deploy.s.sol` tạo mới cả token, registry và factory, chỉ dùng khi muốn cài mới hoàn toàn.
 
 ## Cài đặt và cấu hình
 
@@ -120,6 +127,7 @@ pnpm abi
 | --- | --- | --- |
 | `NEXT_PUBLIC_CHAIN_ID` | Fuji: 43113, giữ thống nhất với chain xác thực | Công khai |
 | `NEXT_PUBLIC_RPC_URL` | Fuji C-Chain RPC; không đặt credential bí mật trong URL công khai | Công khai |
+| `NEXT_PUBLIC_RPC_URL_FALLBACK` | Tùy chọn: RPC Fuji thứ hai, dùng khi RPC chính lỗi; trống = chỉ dùng RPC chính | Công khai |
 | `NEXT_PUBLIC_EXPLORER_URL` | Explorer giao dịch/địa chỉ Fuji | Công khai |
 | `NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS` | Registry mới đã deploy, bắt buộc cho OTP | Công khai |
 | `NEXT_PUBLIC_FACTORY_ADDRESS` | Factory mới dùng registry chung | Công khai |
@@ -191,7 +199,7 @@ curl -sS http://localhost:3000/api/verify/confirm \
 
 Các mã phân biệt: `CONFIG_MISSING` (503, chỉ kèm tên biến thiếu/sai), `DB_SCHEMA_MISMATCH` (503), `REGISTRY_UNAVAILABLE` (503, RPC/getter/attester), `EMAIL_SEND_FAILED` (502), `SERVICE_UNAVAILABLE` (503). Domain sai trả `INVALID_DOMAIN`; email/ví đã gắn danh tính khác trả `EMAIL_ALREADY_USED`/`WALLET_ALREADY_VERIFIED`; `RATE_LIMITED` trả 429 và Retry-After. OTP sai/hết hạn/khóa có mã riêng; UI dùng toast EN/VI và countdown gửi lại.
 
-Server log chỉ gồm stage `validate|registry|rateLimit|insert|mail`, name, code, message được rút gọn/lọc dữ liệu nhạy cảm. Registry được kiểm tra **trước khi gọi mailer**: lỗi địa chỉ/attester ngăn gửi mail ngay, không đủ bằng chứng để kết luận SMTP sai. Chưa có registry mới trong manifest hiện tại nên cần hoàn tất deployment theo hướng dẫn trước khi kiểm tra toàn luồng thật.
+Server log chỉ gồm stage `validate|registry|rateLimit|insert|mail`, name, code, message được rút gọn/lọc dữ liệu nhạy cảm. Registry được kiểm tra **trước khi gọi mailer**: lỗi địa chỉ/attester ngăn gửi mail ngay, không đủ bằng chứng để kết luận SMTP sai. Registry/factory mới đã có trong manifest và getter đã được kiểm tra; cần đồng bộ public env rồi tự kiểm tra toàn luồng bằng ví/mail thật.
 
 ## Kiểm thử đã chạy
 
@@ -201,23 +209,23 @@ Kết quả cục bộ ngày 17/10/2026, theo code hiện tại:
 | --- | --- |
 | `pnpm exec tsc --noEmit` | Pass |
 | `pnpm lint` | Pass |
-| `RUN_VERIFICATION_INTEGRATION=0 pnpm test` | **195 passed, 12 skipped**; 23 file pass, 1 file integration skip |
+| `RUN_VERIFICATION_INTEGRATION=0 pnpm test` | **204 passed, 13 skipped**; 25 file pass, 2 file integration skip |
 | `forge test --root contracts` | **67 passed, 0 failed** |
 | `pnpm build` | Pass; còn warning dependency động từ ox/viem, không làm build thất bại |
 | `pnpm abi` | Đã đồng bộ ABI bốn contract |
 | Migration trên Postgres WASM cục bộ | Pass: schema sạch, đủ 5 trạng thái reserve, OTP một lần/khóa 5 sai, unique hai chiều, RLS/REVOKE |
 | Script mail không truyền recipient | Import code thật thành công, trả usage/exit 1 đúng dự kiến, không gửi mail |
-| RPC Fuji chỉ đọc | `cast chain-id` trả 43113 |
+| RPC Fuji chỉ đọc | Đối chiếu từng getter round/factory cũ, registry/factory mới; test loader multicall qua transport mới chạy riêng **1 pass** |
 
-Foundry bao phủ danh tính dùng chung qua hai round, quyền on-chain, expiry/signer/sender/chain/registry, uniqueness và replay idempotent; ngân sách chia 5 USDC cho 5 dự án, đúng trần/vượt 1 đơn vị nhỏ nhất, reset round mới, fuzz `spentInRound <= maxPerRound` và tổng matching payout `<= pool`. Vitest bao phủ API, HMAC/domain/alias, chế độ domain mở/allowlist/blocklist và chống giả mạo domain, cấu hình và lỗi SMTP, EIP-712, role/gate/budget, parity bản dịch và các test sẵn có.
+Foundry bao phủ danh tính dùng chung qua hai round, quyền on-chain, expiry/signer/sender/chain/registry, uniqueness và replay idempotent; ngân sách chia 5 USDC cho 5 dự án, đúng trần/vượt 1 đơn vị nhỏ nhất, reset round mới, fuzz `spentInRound <= maxPerRound` và tổng matching payout `<= pool`. Vitest bao phủ API, HMAC/domain/alias, chế độ domain mở/allowlist/blocklist và chống giả mạo domain, cấu hình và lỗi SMTP, EIP-712, role/gate/budget, phân lập lỗi round và nhãn legacy, HTTP batch/fallback/backoff, parity bản dịch và các test sẵn có.
 
-12 integration test Supabase thật được skip có chủ đích, vì chưa dùng project DEV riêng. Chỉ bật khi bạn cho phép ghi dữ liệu test vào project DEV đã chạy migration:
+Bộ mặc định skip có chủ đích 12 test Supabase thật và 1 test RPC Fuji opt-in. Test Fuji chỉ đọc đã được chạy riêng thành công bằng `RUN_ROUND_RPC_INTEGRATION=1 pnpm vitest run __tests__/round-rpc.integration.test.ts`. 12 test Supabase chưa chạy vì chưa dùng project DEV riêng. Chỉ bật khi bạn cho phép ghi dữ liệu test vào project DEV đã chạy migration:
 
 ```bash
 RUN_VERIFICATION_INTEGRATION=1 pnpm vitest run __tests__/email-otp.integration.test.ts
 ```
 
-Cần tự cung cấp `SUPABASE_TEST_URL` và `SUPABASE_TEST_SERVICE_ROLE_KEY` trong môi trường chạy test. Chưa kiểm chứng SMTP tới mail trường thật, migration Supabase thật hay giao dịch registry mới; không có deployment mới được thực hiện trong lần sửa này.
+Cần tự cung cấp `SUPABASE_TEST_URL` và `SUPABASE_TEST_SERVICE_ROLE_KEY` trong môi trường chạy test. Chưa kiểm chứng SMTP tới mail trường thật, migration Supabase thật hay giao dịch tạo round/donate mới. Deployment mới hiện có được kiểm tra chỉ đọc; agent không tự deploy.
 
 **Gas: chưa đo lại bảng gas từng hàm. Finalize với 50 dự án: chưa đo với 50 dự án.** Số gas hiển thị cho một hàm test Foundry không được coi là benchmark riêng của finalize.
 
@@ -255,9 +263,11 @@ Cần tự cung cấp `SUPABASE_TEST_URL` và `SUPABASE_TEST_SERVICE_ROLE_KEY` t
 ## Liên kết mạng để tự kiểm tra
 
 - [Snowtrace Fuji](https://testnet.snowtrace.io/).
+- [Factory mới trên Snowtrace](https://testnet.snowtrace.io/address/0x4fb01ae390bD9F46Dd921e5aC5D99c17912074D8).
+- [StudentRegistry trên Snowtrace](https://testnet.snowtrace.io/address/0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e).
 - [Factory cũ trên Snowtrace](https://testnet.snowtrace.io/address/0x77015FBa44D3885C25E421f59Ae5C3a5bA87AF4A).
 - [MockUSDC hiện có trên Snowtrace](https://testnet.snowtrace.io/address/0x38efb1BA71C7CDB8Dd44e860A0A5cADE864d3205).
 - [Core Fuji AVAX faucet](https://core.app/tools/testnet-faucet/); cần làm theo [điều kiện faucet của Avalanche](https://support.avax.network/en/articles/6110239-is-there-an-avax-faucet).
 - [Avalanche Fuji explorer chính thức](https://explorer-test.avax.network/c-chain).
 
-MockUSDC của ứng dụng dùng `faucetMint` tại trang `/my`; token lấy từ faucet USDC bên ngoài không tự thay thế token của round. Các link được liệt kê để bạn bấm kiểm tra; điều kiện faucet và giao diện explorer có thể thay đổi. Chưa có link registry/factory mới cho đến khi bạn deploy và cập nhật manifest cùng bảng deployment ở trên.
+MockUSDC của ứng dụng dùng `faucetMint` tại trang `/my`; token lấy từ faucet USDC bên ngoài không tự thay thế token của round. Các link được liệt kê để bạn bấm kiểm tra; điều kiện faucet và giao diện explorer có thể thay đổi. Link registry/factory mới lấy từ manifest và được liệt kê ở trên; hãy dùng đúng các địa chỉ public này cho môi trường đang chạy.

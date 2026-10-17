@@ -1,5 +1,6 @@
 {
   "chainId": 43113,
   "mockUsdc": "0x38efb1BA71C7CDB8Dd44e860A0A5cADE864d3205",
-  "roundFactory": "0x77015FBa44D3885C25E421f59Ae5C3a5bA87AF4A"
+  "roundFactory": "0x4fb01ae390bD9F46Dd921e5aC5D99c17912074D8",
+  "studentRegistry": "0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e"
 }

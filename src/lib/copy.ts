@@ -6,6 +6,10 @@ export const fmt = (s: string, p: Record<string, string | number> = {}): string 
 
 const enData = {
     competition: {
+      legacyRound: "Legacy round",
+      roundReadError: "Unable to read this round ({address})",
+      versionMismatch: "The contract is incompatible with this version. Choose a round from the updated factory.",
+      roundReadHint: "RPC data is unavailable for this round. Please retry.",
       "rounds": "Rounds",
       "languageEn": "EN",
       "languageVi": "VI",
@@ -789,6 +793,10 @@ export type Translations = typeof enData;
 
 const viData: Translations = {
     competition: {
+      legacyRound: "Round phiên bản cũ",
+      roundReadError: "Không đọc được round này (địa chỉ {address})",
+      versionMismatch: "Contract không khớp phiên bản. Hãy chọn round từ factory mới.",
+      roundReadHint: "Chưa tải được dữ liệu RPC của round này. Vui lòng thử lại.",
       "rounds": "Các vòng gây quỹ",
       "languageEn": "EN",
       "languageVi": "VI",

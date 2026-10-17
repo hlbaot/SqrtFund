@@ -2,7 +2,8 @@
 
 import { useMemo, useEffect } from "react";
 import type { Address } from "viem";
-import { useReadContracts, useBlockNumber } from "wagmi";
+import { useReadContracts } from "wagmi";
+import { logContractReadFailure, isVersionReadError, roundReadRetry } from "@/lib/contracts/roundReads";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
 import type { Project, ProjectCategory } from "@/types";
@@ -33,14 +34,15 @@ export type EnrichedProject = Project & {
 export function useProjects(customRoundAddress?: Address) {
   const { roundAddress: defaultRoundAddress } = useRound(customRoundAddress);
   const roundAddress = customRoundAddress || defaultRoundAddress;
-  const { data: blockNumber } = useBlockNumber({ watch: true });
 
   const {
     data: contractData,
     isLoading,
     isError,
+    error,
     refetch,
   } = useReadContracts({
+    allowFailure: true,
     contracts: [
       {
         address: roundAddress,
@@ -56,15 +58,18 @@ export function useProjects(customRoundAddress?: Address) {
     ],
     query: {
       enabled: Boolean(roundAddress),
-      refetchInterval: 5000,
+      refetchInterval: 15000,
+      ...roundReadRetry,
     },
   });
 
   useEffect(() => {
-    if (blockNumber && roundAddress) {
-      refetch();
-    }
-  }, [blockNumber, roundAddress, refetch]);
+    if (!roundAddress) return;
+    contractData?.forEach((result, index) => {
+      if (result.status === "failure") logContractReadFailure(roundAddress, index === 0 ? "getProjects" : "previewMatching", result.error);
+    });
+    if (isError) for (const name of ["getProjects", "previewMatching"]) logContractReadFailure(roundAddress, name, error);
+  }, [contractData, roundAddress, isError, error]);
 
   const projectsData = contractData?.[0]?.result as
     | [readonly ProjectContractItem[], bigint]
@@ -124,6 +129,7 @@ export function useProjects(customRoundAddress?: Address) {
 
   return {
     projects,
+    readFailureKind: contractData?.some(result => result.status === "failure" && isVersionReadError(result.error)) ? "version" as const : "rpc" as const,
     isLoading: Boolean(roundAddress) && isLoading,
     isError: isError || contractData?.[0]?.status === "failure",
     refetch,

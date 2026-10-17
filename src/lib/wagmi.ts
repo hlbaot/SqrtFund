@@ -1,4 +1,5 @@
-import { createConfig, http, injected } from "wagmi";
+import { createConfig, injected } from "wagmi";
+import { createFujiTransport } from "@/lib/contracts/rpc";
 import { fuji } from "@/lib/chains";
 
 export const wagmiConfig = createConfig({
@@ -6,6 +7,6 @@ export const wagmiConfig = createConfig({
   connectors: [injected()],
   ssr: true,
   transports: {
-    [fuji.id]: http(process.env.NEXT_PUBLIC_RPC_URL),
+    [fuji.id]: createFujiTransport(process.env.NEXT_PUBLIC_RPC_URL, process.env.NEXT_PUBLIC_RPC_URL_FALLBACK),
   },
 });

@@ -1,5 +1,7 @@
 # Fuji: xác thực Student dùng chung, không phụ thuộc round
 
+> Cập nhật 17/10/2026: manifest hiện đã có registry và factory mới, RPC kiểm tra thành công, nhưng factory mới chưa có round. Nếu đang xử lý lỗi `/round`, xem [bảng chẩn đoán và hướng dẫn dùng factory đã có](round-loading-fuji.md) trước khi quyết định deploy thêm. Các bước deploy bên dưới dành cho môi trường chưa có deployment phù hợp.
+
 Luồng hiện tại là **email trường → OTP → StudentRegistry.verifyStudent → ví Student dùng chung → các round đọc registry**. Trang `/verify` và hai API OTP hoạt động khi chưa có factory/round. Các bước dưới đây do bạn tự chạy; agent không deploy, không dùng khóa thật và không chạy migration trên Supabase thật.
 
 ## 1. Kiểm thử trước khi deploy

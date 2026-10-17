@@ -3,8 +3,7 @@
 import type { Address } from "viem";
 import { studentCanParticipate } from "@/lib/studentAccess";
 import { useMemo } from "react";
-import { useAccount, useChainId, useReadContracts } from "wagmi";
-import { qfRoundAbi } from "@/lib/contracts/abis";
+import { useAccount, useChainId } from "wagmi";
 import { TARGET_CHAIN_ID, ZERO_ADDRESS, studentRegistryAddress } from "@/lib/contracts/addresses";
 import { useRound } from "@/hooks/useRound";
 import { useStudentStatus } from "@/hooks/useStudentStatus";
@@ -24,24 +23,14 @@ export function useRole(customRound?: Address) {
     roundAddress,
     admin,
     factoryOwner,
+    studentRegistry: roundRegistry,
   } = useRound(customRound);
   const { projects } = useProjects(roundAddress);
   const student = useStudentStatus();
   const isTargetChain = chainId === TARGET_CHAIN_ID;
 
-  const { data } = useReadContracts({
-    contracts: [
-      { address: roundAddress, abi: qfRoundAbi, functionName: "studentRegistry" },
-    ],
-    query: {
-      enabled: Boolean(roundAddress && address && isConnected && isTargetChain),
-      refetchInterval: 5000,
-      refetchOnWindowFocus: true,
-    },
-  });
-
   const hasConnectedTargetAccount = Boolean(address && isConnected && isTargetChain);
-  const canParticipate = studentCanParticipate(hasConnectedTargetAccount, student.isStudent, String(data?.[0]?.result ?? "").toLowerCase() === studentRegistryAddress.toLowerCase());
+  const canParticipate = studentCanParticipate(hasConnectedTargetAccount, student.isStudent, String(roundRegistry ?? "").toLowerCase() === studentRegistryAddress.toLowerCase());
 
   const ownerForCheck = factoryOwner;
 

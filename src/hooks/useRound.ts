@@ -1,90 +1,50 @@
 "use client";
-
-import { useMemo } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import type { Address } from "viem";
-import { useReadContracts } from "wagmi";
-import { factoryAddress } from "@/lib/contracts/addresses";
-import { roundFactoryAbi, qfRoundAbi } from "@/lib/contracts/abis";
+import { useReadContracts, usePublicClient } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
+import { loadRoundFields, logContractReadFailure, isVersionReadError, roundReadRetry, type RoundCapability } from "@/lib/contracts/roundReads";
+import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { roundFactoryAbi } from "@/lib/contracts/abis";
 import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
 import type { RoundStatus } from "@/types";
 
+const capabilities = new Map<string, RoundCapability>(); // Fuji only; immutable QFRound deployments.
+export function useFactoryRounds() {
+  const { data: factoryData, isLoading: isFactoryLoading, isError: isFactoryError, error: factoryError, refetch: refetchFactory } = useReadContracts({
+    allowFailure: true,
+    contracts: [
+      { address: factoryAddress, abi: roundFactoryAbi, functionName: "getRounds" },
+      { address: factoryAddress, abi: roundFactoryAbi, functionName: "owner" },
+    ],
+    query: { enabled: Boolean(factoryAddress), refetchInterval: 15000, ...roundReadRetry },
+  });
+  useEffect(() => {
+    factoryData?.forEach((result, index) => {
+      if (result.status === "failure") logContractReadFailure(factoryAddress, index === 0 ? "getRounds" : "owner", result.error);
+    });
+    if (isFactoryError) for (const name of ["getRounds", "owner"]) logContractReadFailure(factoryAddress, name, factoryError);
+  }, [factoryData, isFactoryError, factoryError]);
+  return { factoryData, isFactoryLoading, isFactoryError, refetchFactory };
+}
 export function useRound(customRoundAddress?: Address) {
   const nowSec = useCurrentTimestamp();
-
-  // 1. Read all rounds and factory owner from RoundFactory
-  const {
-    data: factoryData,
-    isLoading: isFactoryLoading,
-    isError: isFactoryError,
-    refetch: refetchFactory,
-  } = useReadContracts({
-    contracts: [
-      {
-        address: factoryAddress,
-        abi: roundFactoryAbi,
-        functionName: "getRounds",
-      },
-      {
-        address: factoryAddress,
-        abi: roundFactoryAbi,
-        functionName: "owner",
-      },
-    ],
-    query: {
-      enabled: Boolean(factoryAddress),
-      refetchInterval: 5000,
-    },
+  const { factoryData, isFactoryLoading, isFactoryError, refetchFactory } = useFactoryRounds();
+  const allRounds = useMemo(() => (factoryData?.[0]?.result as Address[] | undefined) ?? [], [factoryData]);
+  const factoryOwner = factoryData?.[1]?.result as Address | undefined;
+  const roundAddress = customRoundAddress && customRoundAddress !== "0x0000000000000000000000000000000000000000"
+    ? customRoundAddress : allRounds.at(-1);
+  const client = usePublicClient({ chainId: TARGET_CHAIN_ID });
+  const { data: fields, isLoading: isRoundLoading, isError: isRoundError, error: roundError, refetch: refetchRound } = useQuery({
+    queryKey: ["round-fields", TARGET_CHAIN_ID, roundAddress?.toLowerCase()],
+    enabled: Boolean(roundAddress && client),
+    queryFn: () => loadRoundFields(contracts => client!.multicall({ contracts, allowFailure: true }), roundAddress!, capabilities),
+    refetchInterval: 15000,
+    ...roundReadRetry,
   });
-
-  const allRounds = useMemo(() => {
-    return (factoryData?.[0]?.result as Address[] | undefined) ?? [];
-  }, [factoryData]);
-
-  const factoryOwner = useMemo(() => {
-    return factoryData?.[1]?.result as Address | undefined;
-  }, [factoryData]);
-
-  // If customRoundAddress is provided and valid, use it; otherwise use the latest round
-  const roundAddress: Address | undefined = useMemo(() => {
-    if (customRoundAddress && customRoundAddress !== "0x0000000000000000000000000000000000000000") {
-      return customRoundAddress;
-    }
-    if (allRounds.length > 0) {
-      return allRounds[allRounds.length - 1];
-    }
-    return undefined;
-  }, [customRoundAddress, allRounds]);
-
-  // 2. Read round details multicall
-  const {
-    data: roundData,
-    isLoading: isRoundLoading,
-    isError: isRoundError,
-    refetch: refetchRound,
-  } = useReadContracts({
-    contracts: [
-      { address: roundAddress, abi: qfRoundAbi, functionName: "admin" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "token" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "startTime" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "endTime" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "minDonation" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "maxDonation" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "maxMatchBps" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "pool" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "finalized" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "leftover" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "leftoverWithdrawn" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "projectCount" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "name" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "organizer" },
-      { address: roundAddress, abi: qfRoundAbi, functionName: "maxPerRound" },
-    ],
-    query: {
-      enabled: Boolean(roundAddress),
-      refetchInterval: 5000,
-    },
-  });
-
+  const roundData = fields?.results;
+  const coreFailure = roundData?.slice(0, 12).some(result => result.status === "failure") ?? false;
+  const readFailureKind = isVersionReadError(roundError) || roundData?.some(result => result.status === "failure" && isVersionReadError(result.error)) ? "version" as const : "rpc" as const;
   const admin = roundData?.[0]?.result as Address | undefined;
   const token = roundData?.[1]?.result as Address | undefined;
   const startTime = roundData?.[2]?.result as bigint | undefined;
@@ -97,45 +57,24 @@ export function useRound(customRoundAddress?: Address) {
   const leftover = roundData?.[9]?.result as bigint | undefined;
   const leftoverWithdrawn = Boolean(roundData?.[10]?.result);
   const projectCount = roundData?.[11]?.result as bigint | undefined;
-  const rawName = roundData?.[12]?.status === "success" ? (roundData[12].result as string) : undefined;
-  const rawOrganizer = roundData?.[13]?.status === "success" ? (roundData[13].result as string) : undefined;
-  const name = rawName && rawName.trim().length > 0 ? rawName.trim() : undefined;
-  const organizer = rawOrganizer && rawOrganizer.trim().length > 0 ? rawOrganizer.trim() : undefined;
-
+  const rawName = roundData?.[12]?.status === "success" ? roundData[12].result as string : undefined;
+  const rawOrganizer = roundData?.[13]?.status === "success" ? roundData[13].result as string : undefined;
+  const name = rawName?.trim() || undefined;
+  const organizer = rawOrganizer?.trim() || undefined;
   const status: RoundStatus = useMemo(() => {
     if (finalized) return "finalized";
-    if (!startTime || !endTime) return "open";
-    if (nowSec > 0 && BigInt(nowSec) >= endTime) return "closed";
+    if (startTime && endTime && nowSec > 0 && BigInt(nowSec) >= endTime) return "closed";
     return "open";
   }, [finalized, startTime, endTime, nowSec]);
-
-  const refetch = () => {
-    refetchFactory();
-    if (roundAddress) refetchRound();
-  };
-
+  const refetch = useCallback(() => { void refetchFactory(); if (roundAddress) void refetchRound(); }, [refetchFactory, roundAddress, refetchRound]);
   return {
-    roundAddress,
-    allRounds,
-    factoryOwner,
-    admin,
-    token,
-    name,
-    organizer,
-    startTime,
-    endTime,
-    minDonation,
-    maxDonation,
-    maxPerRound: roundData?.[14]?.result as bigint | undefined,
-    maxMatchBps,
-    pool: pool ?? 0n,
-    finalized,
-    leftover: leftover ?? 0n,
-    leftoverWithdrawn,
-    projectCount: projectCount ?? 0n,
-    status,
-    isLoading: isFactoryLoading || (Boolean(roundAddress) && isRoundLoading),
-    isError: isFactoryError || isRoundError || Boolean(factoryData?.some(result => result.status === "failure")) || Boolean(roundData?.some((result, index) => (index < 12 || index === 14) && result.status === "failure")),
+    roundAddress, allRounds, factoryOwner, admin, token, name, organizer, startTime, endTime,
+    minDonation, maxDonation, maxMatchBps, maxPerRound: roundData?.[14]?.result as bigint | undefined,
+    pool: pool ?? 0n, finalized, leftover: leftover ?? 0n, leftoverWithdrawn,
+    projectCount: projectCount ?? 0n, status,
+    roundVersion: fields?.version, studentRegistry: fields?.registry, readFailureKind,
+    isLoading: (!customRoundAddress && isFactoryLoading) || (Boolean(roundAddress) && isRoundLoading),
+    isError: (!customRoundAddress && (isFactoryError || Boolean(factoryData?.some(result => result.status === "failure")))) || isRoundError || coreFailure,
     refetch,
   };
 }

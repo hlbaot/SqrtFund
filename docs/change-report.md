@@ -4,7 +4,7 @@
 
 Luồng cuối là email trường → OTP → attestation → StudentRegistry.verifyStudent → Student dùng chung. Không lấy danh tính theo round.
 
-Lỗi 503 ban đầu xảy ra trước bước SMTP: log do người dùng cung cấp và kiểm tra RPC chỉ đọc trước đó cho thấy round cũ gọi `attester()` revert trong khi `admin()` có kết quả. Đây là bytecode không hỗ trợ hàm mà signer cũ gọi, không chứng minh lỗi Gmail/Supabase. Code mới kiểm tra registry tại `src/app/api/verify/request-otp/route.ts:30`, chỉ gửi thư ở dòng 54. `src/lib/verify/signer.ts:17` lấy địa chỉ registry cấu hình; dòng 27 đọc attester; dòng 38 so với signer backend. `contracts/deployments/fuji.json` hiện chưa có registry mới. Không kiểm tra hay thay giá trị `.env.local`; chưa đủ bằng chứng kết luận cấu hình SMTP thực tế đúng/sai.
+Lỗi 503 ban đầu xảy ra trước bước SMTP: log do người dùng cung cấp và kiểm tra RPC chỉ đọc trước đó cho thấy round cũ gọi `attester()` revert trong khi `admin()` có kết quả. Đây là bytecode không hỗ trợ hàm mà signer cũ gọi, không chứng minh lỗi Gmail/Supabase. Code mới kiểm tra registry tại `src/app/api/verify/request-otp/route.ts:30`, chỉ gửi thư ở dòng 54. `src/lib/verify/signer.ts:17` lấy địa chỉ registry cấu hình; dòng 27 đọc attester; dòng 38 so với signer backend. Manifest hiện đã có registry/factory mới và đã đối chiếu getter qua RPC trong lần sửa /round; xem docs/round-loading-fuji.md. Không kiểm tra hay thay giá trị `.env.local`; chưa đủ bằng chứng kết luận cấu hình SMTP thực tế đúng/sai.
 
 ## Tệp đã sửa/tạo theo chức năng
 
@@ -91,7 +91,7 @@ Lỗi 503 ban đầu xảy ra trước bước SMTP: log do người dùng cung 
 4. Kiến trúc: bảng bốn contract, route/lib/UI và migration duy nhất; bỏ mô hình queue cũ.
 5. Deployment: token/factory đọc từ manifest; ghi registry cần deploy và factory cần redeploy, không giả địa chỉ mới.
 6. Cài đặt: bảng từng env khớp .env.example, reset/SQL, Gmail 2FA/App Password, sender, attester riêng, script thật, Vercel Sensitive/redeploy.
-7. Kiểm thử/gas: 67 Foundry, 195 Vitest pass/12 skip; finalize bounded O(N), 50 dự án chưa đo; bỏ số liệu cũ.
+7. Kiểm thử/gas: 67 Foundry, 204 Vitest pass/13 skip; finalize bounded O(N), 50 dự án chưa đo; bỏ số liệu cũ.
 8. Pitch/pháp lý: giải thích quyền và tiền on-chain, lựa chọn EVM/Fuji, nguồn pool/donations; giới hạn demo testnet và nguồn Công báo cần đối chiếu trước vận hành thật.
 9. Bonus: cap matching và backend attestation đã làm; không gọi là ZK email.
 10. Limitations: trusted signer, nhiều email, ảnh hưởng tài chính/collusion, duyệt dự án, pool động, dịch vụ ngoài/quota mail, audit và roadmap chưa làm.
@@ -101,11 +101,11 @@ Lỗi 503 ban đầu xảy ra trước bước SMTP: log do người dùng cung 
 ## Kiểm tra thực tế
 
 - TypeScript, ESLint, production build: exit 0. Build có warning dependency động ox/viem.
-- Vitest: 195 passed, 12 skipped; 23 file pass, 1 file integration skip.
+- Vitest hiện tại: 204 passed, 13 skipped; 25 file pass, 2 file integration skip. Test Fuji chỉ đọc đã chạy riêng và pass.
 - Foundry: 67 passed, 0 failed, 0 skipped.
 - ABI: đồng bộ đủ 4 contract.
 - Migration: chạy trên Postgres WASM cục bộ, kiểm tra đủ reserve statuses, OTP một lần/5 sai, unique, RLS/REVOKE. Không chạy vào Supabase thật.
-- RPC Fuji read-only: chain ID 43113. Chưa có registry mới để kiểm tra getter deployment mới.
+- RPC Fuji read-only: đã kiểm tra registry attester, factory cũ/mới và từng getter round; factory mới chưa có round.
 - Script mail: kiểm tra nhánh usage không recipient, import thật thành công, exit 1 đúng dự kiến. Chưa gửi SMTP thật trong lần sửa.
 - Gas finalize 50 dự án chưa đo. Chưa audit; không claim end-to-end với ví/mail thật đã pass.
 
@@ -113,13 +113,17 @@ Lỗi 503 ban đầu xảy ra trước bước SMTP: log do người dùng cung 
 
 1. Trên project Supabase rỗng đã chọn: chạy SQL reset comment, rồi migration 0001 duy nhất.
 2. Điền env bắt buộc, chọn policy email (mặc định mở .edu/.edu.vn), Gmail App Password và sender khớp; dùng attester riêng khác deployer/admin.
-3. Theo `docs/redeploy-fuji.md`: deploy StudentRegistry một lần, factory mới dùng registry đó; giữ MockUSDC hiện có; tạo round mới với ngân sách hợp lệ. Không cần deploy token lại cho luồng này.
+3. Theo `docs/round-loading-fuji.md`: ưu tiên registry/factory mới hiện đã có trong manifest; đổi public env và tạo round mới với ngân sách hợp lệ. Nếu chọn deploy factory khác thì dùng keystore deployer như hướng dẫn, giữ token/registry hiện có.
 4. Đối chiếu broadcast/getter on-chain, cập nhật manifest và địa chỉ public env, chạy pnpm abi; cập nhật bảng deployment README với địa chỉ mới thật.
 5. Restart dev server, hoặc thêm env Sensitive phù hợp và redeploy Vercel.
 6. Chạy script test-mail tới hộp thư kiểm soát; kiểm tra Inbox/Spam. Sau đó kiểm tra luồng /verify với mail trường thật, receipt verifyStudent, register/donate và cùng ví ở hai round.
 
-Chưa thể điền địa chỉ registry/factory mới, xác nhận mail trường nhận thư, hoặc xác nhận dữ liệu Supabase/giao dịch thật vì các bước đó chưa được thực hiện. Không dùng private key hay tự deploy trong lần sửa này.
+Địa chỉ registry/factory mới đã có trong manifest và đã kiểm tra chỉ đọc. Chưa xác nhận mail trường nhận thư, dữ liệu Supabase thật hay giao dịch tạo round/donate mới. Không dùng private key hay tự deploy trong lần sửa này.
 
 ## Cập nhật policy email nhiều trường
 
 ALLOWED_EMAIL_DOMAINS và BLOCKED_EMAIL_DOMAINS đều tùy chọn. Không đặt allowlist sẽ dùng chế độ open-edu, chỉ kiểm tra đuôi .edu hoặc .edu.vn; không xác minh cơ quan cấp mail. Blocklist chặn cả subdomain và ưu tiên hơn allowlist. GET công khai chỉ trả mode/allowedDomains/blockedDomains để UI dùng cùng quy tắc với POST. Có allowlist thì .ac.uk cũng được chấp nhận nếu liệt kê tường minh. Email thiếu/nhiều @, khoảng trắng bên trong, tên miền giả mạo và edu.vn trần bị từ chối; khoảng trắng bao ngoài được trim.
+
+## Cập nhật lỗi danh sách /round
+
+Chẩn đoán đầy đủ, từng kết quả cast, file/dòng trước sửa, số getter và lệnh vận hành hiện có trong `docs/round-loading-fuji.md`. Loader nhận diện legacy, multicall allowFailure, lỗi từng thẻ, batch/retry/fallback. ABI QFRound/RoundFactory khớp artifacts đã compile; không thay contract hay ABI cho sửa lỗi UI này. Manifest đã có thay đổi trước lượt sửa này và được giữ nguyên.
