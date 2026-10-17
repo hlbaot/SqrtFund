@@ -5,6 +5,7 @@ import { useTxFlow } from "@/hooks/useTxFlow";
 import React, { useState } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { roundFactoryAbi } from "@/lib/contracts/abis";
+import { parseUsdc } from "@/lib/format";
 import { factoryAddress, usdcAddress } from "@/lib/contracts/addresses";
 import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
@@ -53,6 +54,7 @@ export function CreateRoundForm() {
   });
   const [minDonationUsdc, setMinDonationUsdc] = useState("1");
   const [maxDonationUsdc, setMaxDonationUsdc] = useState("5");
+  const [maxPerRoundUsdc, setMaxPerRoundUsdc] = useState("10");
   const [maxMatchPercent, setMaxMatchPercent] = useState("30");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -125,8 +127,16 @@ export function CreateRoundForm() {
       return;
     }
 
-    const minDonation = BigInt(Math.round(parseFloat(minDonationUsdc) * 1_000_000));
-    const maxDonation = BigInt(Math.round(parseFloat(maxDonationUsdc) * 1_000_000));
+    const minParsed = parseUsdc(minDonationUsdc), maxParsed = parseUsdc(maxDonationUsdc);
+    if (!minParsed.success || !maxParsed.success || minParsed.amount > maxParsed.amount) {
+      flow.toast.error("create-round", t.admin.maxPerRoundLabel, t.admin.invalidRoundBudget); flow.finish(); return;
+    }
+    const minDonation = minParsed.amount, maxDonation = maxParsed.amount;
+    const parsedBudget = parseUsdc(maxPerRoundUsdc);
+    if (!parsedBudget.success || parsedBudget.amount < maxDonation || parsedBudget.amount < minDonation) {
+      flow.toast.error("create-round", t.admin.maxPerRoundLabel, t.admin.invalidRoundBudget); flow.finish(); return;
+    }
+    const maxPerRound = parsedBudget.amount;
     const maxMatchBps = BigInt(Math.round(parseFloat(maxMatchPercent) * 100));
 
     setIsSubmitting(true);
@@ -150,6 +160,7 @@ export function CreateRoundForm() {
           minDonation,
           maxDonation,
           maxMatchBps,
+          maxPerRound,
         ],
       }));
 
@@ -301,6 +312,10 @@ export function CreateRoundForm() {
             required
           />
         </div>
+
+        <Input label={t.admin.maxPerRoundLabel} type="number" min={maxDonationUsdc} step="0.000001"
+          value={maxPerRoundUsdc} onChange={event => setMaxPerRoundUsdc(event.target.value)} suffixElement="USDC"
+          helperText={t.admin.invalidRoundBudget} required />
 
         <div className="pt-2">
           <Button

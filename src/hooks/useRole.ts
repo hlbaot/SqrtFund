@@ -1,10 +1,13 @@
 "use client";
 
+import type { Address } from "viem";
+import { studentCanParticipate } from "@/lib/studentAccess";
 import { useMemo } from "react";
 import { useAccount, useChainId, useReadContracts } from "wagmi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
-import { TARGET_CHAIN_ID, ZERO_ADDRESS } from "@/lib/contracts/addresses";
+import { TARGET_CHAIN_ID, ZERO_ADDRESS, studentRegistryAddress } from "@/lib/contracts/addresses";
 import { useRound } from "@/hooks/useRound";
+import { useStudentStatus } from "@/hooks/useStudentStatus";
 import { useProjects } from "@/hooks/useProjects";
 
 export type WalletRole = "admin" | "student" | "owner" | "guest";
@@ -13,7 +16,7 @@ export type WalletRole = "admin" | "student" | "owner" | "guest";
 const isNonZero = (addr: string | undefined): addr is string =>
   Boolean(addr && addr.toLowerCase() !== ZERO_ADDRESS.toLowerCase());
 
-export function useRole() {
+export function useRole(customRound?: Address) {
   const { address, isConnected, chainId: accountChainId } = useAccount();
   const configChainId = useChainId();
   const chainId = accountChainId ?? configChainId;
@@ -21,26 +24,14 @@ export function useRole() {
     roundAddress,
     admin,
     factoryOwner,
-    isLoading: isRoundLoading,
-    isError: isRoundError,
-  } = useRound();
-  const { projects, isLoading: isProjectsLoading, isError: isProjectsError } = useProjects(roundAddress);
+  } = useRound(customRound);
+  const { projects } = useProjects(roundAddress);
+  const student = useStudentStatus();
   const isTargetChain = chainId === TARGET_CHAIN_ID;
 
-  const { data, isLoading: isWhitelistLoading, isError: isWhitelistError } = useReadContracts({
+  const { data } = useReadContracts({
     contracts: [
-      {
-        address: roundAddress,
-        abi: qfRoundAbi,
-        functionName: "isWhitelisted",
-        args: address ? [address] : undefined,
-      },
-      {
-        address: roundAddress,
-        abi: qfRoundAbi,
-        functionName: "requested",
-        args: address ? [address] : undefined,
-      },
+      { address: roundAddress, abi: qfRoundAbi, functionName: "studentRegistry" },
     ],
     query: {
       enabled: Boolean(roundAddress && address && isConnected && isTargetChain),
@@ -50,8 +41,7 @@ export function useRole() {
   });
 
   const hasConnectedTargetAccount = Boolean(address && isConnected && isTargetChain);
-  const isWhitelisted = hasConnectedTargetAccount && Boolean(data?.[0]?.result);
-  const hasRequested = hasConnectedTargetAccount && Boolean(data?.[1]?.result);
+  const canParticipate = studentCanParticipate(hasConnectedTargetAccount, student.isStudent, String(data?.[0]?.result ?? "").toLowerCase() === studentRegistryAddress.toLowerCase());
 
   const ownerForCheck = factoryOwner;
 
@@ -68,7 +58,7 @@ export function useRole() {
     return address.toLowerCase() === ownerForCheck.toLowerCase();
   }, [address, ownerForCheck, hasConnectedTargetAccount]);
 
-  const isStudent = isWhitelisted;
+  const isStudent = student.isStudent;
 
   const myProjects = useMemo(() => {
     if (!hasConnectedTargetAccount || !address) return [];
@@ -82,9 +72,9 @@ export function useRole() {
 
   const isProjectOwner = myProjects.length > 0;
 
-  const isLoading = hasConnectedTargetAccount && (isRoundLoading || isWhitelistLoading || isProjectsLoading);
-  const isError = hasConnectedTargetAccount && (isRoundError || isWhitelistError || isProjectsError ||
-    Boolean(roundAddress && data?.some(result => result.status === "failure")));
+  // Round/project failures affect participation, not the global identity badge.
+  const isLoading = student.isLoading;
+  const isError = student.isError;
   const role: WalletRole = !isLoading && !isError && isAdmin ? "admin"
     : isProjectOwner ? "owner" : isStudent ? "student" : "guest";
 
@@ -94,7 +84,7 @@ export function useRole() {
     isAdmin,
     isFactoryOwner,
     isStudent,
-    hasRequested,
+    canParticipate,
     isProjectOwner,
     myProjectIds,
     myProjects,

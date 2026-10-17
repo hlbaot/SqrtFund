@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { draw, effect, frame, init, sampler, storage, surface, target, uniforms } from 'vgpu';
 
 export interface AeroShardsProps {
@@ -1039,7 +1039,6 @@ export default function AeroShards({
 }: AeroShardsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
 
   const settings = {
     shard: parseColor(shardColor, [0.54, 0.42, 0.74]) ?? [0.54, 0.42, 0.74],
@@ -1070,7 +1069,10 @@ export default function AeroShards({
     dpr: Math.max(0.5, dpr)
   };
   const settingsRef = useRef(settings);
-  settingsRef.current = settings;
+  useLayoutEffect(() => {
+    onErrorRef.current = onError;
+    settingsRef.current = settings;
+  });
 
   useEffect(() => {
     const container = containerRef.current;

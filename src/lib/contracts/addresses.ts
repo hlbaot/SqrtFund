@@ -1,8 +1,11 @@
-import type { Address } from "viem";
+import { isAddress, type Address } from "viem";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 export const USDC_DECIMALS = 6;
 export const TARGET_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 43113);
+
+export const studentRegistryAddress = (process.env.NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS ?? "") as Address;
+export const isStudentRegistryConfigured = isAddress(studentRegistryAddress) && studentRegistryAddress.toLowerCase() !== ZERO_ADDRESS;
 
 export const factoryAddress = (process.env.NEXT_PUBLIC_FACTORY_ADDRESS ?? "") as Address;
 export const usdcAddress = (process.env.NEXT_PUBLIC_USDC_ADDRESS ?? "") as Address;

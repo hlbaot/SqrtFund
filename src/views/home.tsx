@@ -1,4 +1,5 @@
 "use client";
+import { VerificationStats } from "@/components/verify/VerificationStats";
 
 import { AOSInit } from "@/components/common/AOSInit";
 
@@ -8,13 +9,10 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
-import { useRole } from "@/hooks/useRole";
-import { formatNumber, formatUsdc } from "@/lib/format";
 import { RoundCard } from "@/components/round/RoundCard";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
-import { Frame } from "@/components/ui/Frame";
 import { GradientBorder } from "@/components/ui/GradientBorder";
 import { MonoLabel } from "@/components/ui/MonoLabel";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -22,9 +20,7 @@ import { Container } from "@/components/layout/Container";
 import type { Round } from "@/types";
 import {
   ArrowRight,
-  Coins,
   Rocket,
-  Users,
 } from "lucide-react";
 import { WalletConstellation } from "@/components/home/WalletConstellation";
 import { HowItWorksTimeline } from "@/components/home/HowItWorksTimeline";
@@ -36,7 +32,6 @@ import { ChainLatticeBackground } from "@/components/background/ChainLatticeBack
 export function HomeView() {
   const router = useRouter();
   const { t } = useLocale();
-  const { isAdmin } = useRole();
   const {
     roundAddress,
     allRounds,
@@ -344,6 +339,7 @@ export function HomeView() {
         <ChainLatticeBackground variant="dense" />
         <Container className="py-[clamp(2.5rem,5vw,4.5rem)]" data-aos="fade-up" data-aos-duration="600">
           <NetworkStats />
+          <VerificationStats />
         </Container>
       </section>
 

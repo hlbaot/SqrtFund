@@ -8,10 +8,15 @@ import {QFRound} from "./QFRound.sol";
 /// @notice Factory contract to deploy and track QFRounds on Avalanche Fuji.
 contract RoundFactory is Ownable {
     address[] public rounds;
+    address public immutable studentRegistry;
+    error InvalidRegistry();
 
     event RoundCreated(address indexed roundAddress, address indexed admin, address token, string name);
 
-    constructor() Ownable(msg.sender) {}
+    constructor(address registry) Ownable(msg.sender) {
+        if (registry == address(0) || registry.code.length == 0) revert InvalidRegistry();
+        studentRegistry = registry;
+    }
 
     /// @notice Deploys a new QFRound with admin = msg.sender. Callable only by the factory owner.
     function createRound(
@@ -22,7 +27,8 @@ contract RoundFactory is Ownable {
         uint256 endTime,
         uint256 minDonation,
         uint256 maxDonation,
-        uint256 maxMatchBps
+        uint256 maxMatchBps,
+        uint256 maxPerRound
     ) external onlyOwner returns (address roundAddress) {
         QFRound round = new QFRound(
             name,
@@ -33,7 +39,9 @@ contract RoundFactory is Ownable {
             endTime,
             minDonation,
             maxDonation,
-            maxMatchBps
+            maxMatchBps,
+            maxPerRound,
+            studentRegistry
         );
 
         roundAddress = address(round);

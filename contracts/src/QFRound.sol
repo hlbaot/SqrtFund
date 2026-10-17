@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {StudentRegistry} from "./StudentRegistry.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @title QFRound
@@ -13,9 +14,9 @@ contract QFRound is ReentrancyGuard {
 
     uint256 public constant SCALE = 1e12;
     uint256 public constant MAX_PROJECTS = 50;
-    uint256 public constant MAX_REQUESTERS = 500;
-    uint256 public constant MAX_BATCH_SIZE = 50;
     uint256 public constant FINALIZE_GRACE = 1 days;
+
+    StudentRegistry public immutable studentRegistry;
 
     string public name;
     string public organizer;
@@ -25,6 +26,8 @@ contract QFRound is ReentrancyGuard {
     uint256 public immutable endTime;
     uint256 public immutable minDonation;
     uint256 public immutable maxDonation;
+    uint256 public immutable maxPerRound;
+    mapping(address => uint256) public spentInRound;
     uint256 public immutable maxMatchBps;
 
     uint256 public pool;
@@ -66,12 +69,6 @@ contract QFRound is ReentrancyGuard {
     // donor => projectId => total donated
     mapping(address => mapping(uint256 => uint256)) public donationOf;
 
-    // Whitelist & pending verification
-    mapping(address => bool) public isWhitelisted;
-    mapping(address => bool) public requested;
-    address[] private _requesters;
-    mapping(address => uint256) private _requesterIndex; // 1-indexed
-
     // Final distribution results
     mapping(uint256 => uint256) public payoutOf;
 
@@ -81,12 +78,9 @@ contract QFRound is ReentrancyGuard {
     error InvalidDonationBounds();
     error InvalidMaxMatchBps();
     error NotAdmin();
-    error NotWhitelisted();
-    error AlreadyWhitelisted();
-    error AlreadyRequested();
-    error MaxRequestersReached();
-    error BatchTooLarge();
-    error BatchLengthMismatch();
+    error NotStudent();
+    error InvalidRoundBudget();
+    error RoundBudgetExceeded();
     error RoundNotActive();
     error RoundEnded();
     error RoundNotEnded();
@@ -111,8 +105,6 @@ contract QFRound is ReentrancyGuard {
     error ZeroAmount();
 
     // Events
-    event VerificationRequested(address indexed requester);
-    event WhitelistUpdated(address indexed account, bool status);
     event ProjectRegistered(uint256 indexed id, address indexed owner, string name);
     event ProjectApproved(uint256 indexed id);
     event PoolDeposited(address indexed depositor, uint256 amount, uint256 totalPool);
@@ -135,7 +127,9 @@ contract QFRound is ReentrancyGuard {
         uint256 _endTime,
         uint256 _minDonation,
         uint256 _maxDonation,
-        uint256 _maxMatchBps
+        uint256 _maxMatchBps,
+        uint256 _maxPerRound,
+        address _studentRegistry
     ) {
         uint256 nameLen = bytes(_name).length;
         if (nameLen == 0 || nameLen > 60) revert RoundNameInvalid();
@@ -143,8 +137,11 @@ contract QFRound is ReentrancyGuard {
         if (_admin == address(0) || _token == address(0)) revert ZeroAddress();
         if (_endTime <= _startTime) revert InvalidTimeRange();
         if (_minDonation == 0 || _minDonation > _maxDonation) revert InvalidDonationBounds();
+        if (_maxPerRound < _maxDonation) revert InvalidRoundBudget();
         if (_maxMatchBps > 10000) revert InvalidMaxMatchBps();
 
+        if (_studentRegistry == address(0) || _studentRegistry.code.length == 0) revert ZeroAddress();
+        studentRegistry = StudentRegistry(_studentRegistry);
         name = _name;
         organizer = _organizer;
         admin = _admin;
@@ -153,72 +150,29 @@ contract QFRound is ReentrancyGuard {
         endTime = _endTime;
         minDonation = _minDonation;
         maxDonation = _maxDonation;
+        maxPerRound = _maxPerRound;
         maxMatchBps = _maxMatchBps;
     }
 
-    // --- Whitelist Management ---
-
-    /// @notice Request student wallet verification. Bounded to max 500 pending requesters.
-    function requestVerification() external {
-        if (isWhitelisted[msg.sender]) revert AlreadyWhitelisted();
-        if (requested[msg.sender]) revert AlreadyRequested();
-        if (_requesters.length >= MAX_REQUESTERS) revert MaxRequestersReached();
-
-        requested[msg.sender] = true;
-        _requesters.push(msg.sender);
-        _requesterIndex[msg.sender] = _requesters.length;
-
-        emit VerificationRequested(msg.sender);
+    /// @notice Compatibility view; StudentRegistry is the only source of student rights.
+    function isWhitelisted(address account) public view returns (bool) {
+        return studentRegistry.isStudent(account);
     }
 
-    /// @notice Admin approves or rejects student wallet. Both outcomes remove address from pending queue.
-    function setWhitelist(address account, bool status) public onlyAdmin {
-        if (account == address(0)) revert ZeroAddress();
-
-        isWhitelisted[account] = status;
-
-        if (requested[account]) {
-            _removeRequester(account);
-        }
-
-        emit WhitelistUpdated(account, status);
-    }
-
-    /// @notice Batch whitelist approval/rejection up to 50 addresses per call.
-    function setWhitelistBatch(address[] calldata accounts, bool[] calldata statuses) external onlyAdmin {
-        if (accounts.length > MAX_BATCH_SIZE) revert BatchTooLarge();
-        if (accounts.length != statuses.length) revert BatchLengthMismatch();
-
-        for (uint256 i = 0; i < accounts.length; i++) {
-            setWhitelist(accounts[i], statuses[i]);
-        }
-    }
-
-    function _removeRequester(address account) internal {
-        uint256 idx = _requesterIndex[account];
-        if (idx != 0) {
-            uint256 lastIdx = _requesters.length;
-            if (idx != lastIdx) {
-                address lastAccount = _requesters[lastIdx - 1];
-                _requesters[idx - 1] = lastAccount;
-                _requesterIndex[lastAccount] = idx;
-            }
-            _requesters.pop();
-            delete _requesterIndex[account];
-            requested[account] = false;
-        }
+    function remainingBudget(address account) external view returns (uint256) {
+        return maxPerRound - spentInRound[account];
     }
 
     // --- Project Registration ---
 
-    /// @notice Whitelisted student registers a project before round endTime (max 50 projects).
+    /// @notice Globally verified student registers a project before round endTime (max 50 projects).
     function registerProject(
         string calldata name,
         string calldata description,
         string calldata imageUrl,
         string calldata link
     ) external returns (uint256 projectId) {
-        if (!isWhitelisted[msg.sender]) revert NotWhitelisted();
+        if (!studentRegistry.isStudent(msg.sender)) revert NotStudent();
         if (block.timestamp >= endTime) revert RoundEnded();
         if (bytes(name).length == 0 || bytes(name).length > 60) revert NameLengthInvalid();
         if (bytes(description).length == 0 || bytes(description).length > 280) revert DescriptionLengthInvalid();
@@ -272,11 +226,11 @@ contract QFRound is ReentrancyGuard {
 
     // --- Student Donations ---
 
-    /// @notice Whitelisted student donates minDonation..maxDonation to an approved project.
+    /// @notice Globally verified student donates minDonation..maxDonation to an approved project.
     function donate(uint256 projectId, uint256 amount) external nonReentrant {
         if (block.timestamp < startTime || block.timestamp >= endTime) revert RoundNotActive();
         if (finalized) revert AlreadyFinalized();
-        if (!isWhitelisted[msg.sender]) revert NotWhitelisted();
+        if (!studentRegistry.isStudent(msg.sender)) revert NotStudent();
         if (projectId == 0 || projectId > projectCount || !_projects[projectId].approved) revert ProjectNotApproved();
 
         Project storage proj = _projects[projectId];
@@ -286,6 +240,9 @@ contract QFRound is ReentrancyGuard {
         uint256 oldTotal = donationOf[msg.sender][projectId];
         uint256 newTotal = oldTotal + amount;
         if (newTotal > maxDonation) revert DonationExceedsMax();
+        uint256 newSpent = spentInRound[msg.sender] + amount;
+        if (newSpent > maxPerRound) revert RoundBudgetExceeded();
+        spentInRound[msg.sender] = newSpent;
 
         if (oldTotal == 0) {
             proj.donorCount++;
@@ -498,25 +455,4 @@ contract QFRound is ReentrancyGuard {
         }
     }
 
-    function getRequesters(uint256 offset, uint256 limit)
-        external
-        view
-        returns (address[] memory items, uint256 total)
-    {
-        total = _requesters.length;
-        if (offset >= total || limit == 0) {
-            return (new address[](0), total);
-        }
-
-        uint256 end = offset + limit;
-        if (end > total) {
-            end = total;
-        }
-        uint256 count = end - offset;
-
-        items = new address[](count);
-        for (uint256 i = 0; i < count; i++) {
-            items[i] = _requesters[offset + i];
-        }
-    }
 }

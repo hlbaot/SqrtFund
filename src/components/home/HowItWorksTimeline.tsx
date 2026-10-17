@@ -81,8 +81,8 @@ export function HowItWorksTimeline() {
   const [typedCommand, setTypedCommand] = useState("");
   useEffect(() => {
     if (!activeStep1) {
-      setTypedCommand("");
-      return;
+      const frame = requestAnimationFrame(() => setTypedCommand(""));
+      return () => cancelAnimationFrame(frame);
     }
     const fullText = "submit_project(\"UniDAO\")";
     let curr = 0;
@@ -96,7 +96,6 @@ export function HowItWorksTimeline() {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setPrefersReducedMotion(mediaQuery.matches);
 
     const handleMediaChange = (e: MediaQueryListEvent) => {
       setPrefersReducedMotion(e.matches);
@@ -119,9 +118,13 @@ export function HowItWorksTimeline() {
 
     window.addEventListener("scroll", updateHeaderAndScroll, { passive: true });
     window.addEventListener("resize", updateHeaderAndScroll);
-    updateHeaderAndScroll();
+    const initialFrame = requestAnimationFrame(() => {
+      setPrefersReducedMotion(mediaQuery.matches);
+      updateHeaderAndScroll();
+    });
 
     return () => {
+      cancelAnimationFrame(initialFrame);
       mediaQuery.removeEventListener("change", handleMediaChange);
       window.removeEventListener("scroll", updateHeaderAndScroll);
       window.removeEventListener("resize", updateHeaderAndScroll);

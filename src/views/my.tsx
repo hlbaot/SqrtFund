@@ -1,4 +1,5 @@
 "use client";
+import { StudentVerifyBox } from "@/components/verify/StudentVerifyBox";
 
 import { AOSInit } from "@/components/common/AOSInit";
 
@@ -41,7 +42,7 @@ export function MyView() {
 
   const { roundAddress, finalized, isLoading: isRoundLoading } = useRound();
   const { projects, isLoading: isProjectsLoading, refetch: refetchProjects } = useProjects();
-  const { isStudent, hasRequested } = useRole();
+  const { isStudent } = useRole();
   const {
     canClaim,
     nextClaimAt,
@@ -133,6 +134,8 @@ export function MyView() {
   if (isRoundLoading || isProjectsLoading) {
     return (
       <Container className="py-8 sm:py-10">
+        <AOSInit />
+        <StudentVerifyBox />
         <MyActivitySkeleton />
       </Container>
     );
@@ -141,6 +144,7 @@ export function MyView() {
   return (
     <Container className="py-8 sm:py-10 space-y-8">
       <AOSInit />
+      <StudentVerifyBox />
       {/* User Profile Header with Change Avatar Feature */}
       <div
         className="border border-line bg-surface p-6"
@@ -175,10 +179,6 @@ export function MyView() {
                   <Badge variant="accent" className="gap-1 font-semibold text-xs">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     <span>{t.common.verifiedStudent}</span>
-                  </Badge>
-                ) : hasRequested ? (
-                  <Badge variant="warning" className="text-xs">
-                    {t.common.verificationPending}
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="text-xs">

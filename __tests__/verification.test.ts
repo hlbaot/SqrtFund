@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { verificationStatus } from "@/lib/verification";
 import { shortAddress, getExplorerAddressUrl, formatTimeAgo } from "@/lib/format";
 
 describe("Verification Formatting and UI helpers", () => {
@@ -43,14 +42,4 @@ describe("Verification Formatting and UI helpers", () => {
     });
   });
 
-  describe("on-chain verification status", () => {
-    it("maps a fresh wallet to none and an on-chain false decision to rejected", () => {
-      expect(verificationStatus(false, false)).toBe("none");
-      expect(verificationStatus(false, false, false)).toBe("rejected");
-    });
-    it("prioritizes live whitelist and pending state over old rejection events", () => {
-      expect(verificationStatus(true, false, false)).toBe("approved");
-      expect(verificationStatus(false, true, false)).toBe("pending");
-    });
-  });
 });

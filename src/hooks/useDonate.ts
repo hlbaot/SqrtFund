@@ -2,6 +2,7 @@
 
 import { useTxFlow } from "@/hooks/useTxFlow";
 
+import type { Address } from "viem";
 import { useState } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { mockUsdcAbi, qfRoundAbi } from "@/lib/contracts/abis";
@@ -11,13 +12,13 @@ import { useRound } from "@/hooks/useRound";
 
 export type DonationStep = "idle" | "approving" | "donating" | "success" | "error";
 
-export function useDonate() {
+export function useDonate(customRound?: Address) {
   const beginFlow = useTxFlow();
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { locale } = useLocale();
-  const { roundAddress, token } = useRound();
+  const { roundAddress, token } = useRound(customRound);
 
   const [step, setStep] = useState<DonationStep>("idle");
   const [activeTxHash, setActiveTxHash] = useState<string | undefined>();

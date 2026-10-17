@@ -17,24 +17,14 @@ function useCountUp(target: number, duration: number = 800, active: boolean = tr
   const prevTargetRef = useRef(target);
 
   useEffect(() => {
-    if (!active) {
-      setValue(target);
-      return;
-    }
-
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setValue(target);
-      return;
-    }
-
     let start: number | null = null;
     const startVal = prevTargetRef.current;
     prevTargetRef.current = target;
     const diff = target - startVal;
-
-    if (diff === 0) {
-      setValue(target);
-      return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!active || reducedMotion || diff === 0) {
+      const frame = requestAnimationFrame(() => setValue(target));
+      return () => cancelAnimationFrame(frame);
     }
 
     let rafId: number;
@@ -102,11 +92,11 @@ export function NetworkStats() {
 
   // Track seconds elapsed since last on-chain block update
   useEffect(() => {
-    setSecondsAgo(0);
+    const resetFrame = requestAnimationFrame(() => setSecondsAgo(0));
     const interval = setInterval(() => {
       setSecondsAgo((s) => s + 1);
     }, 1000);
-    return () => clearInterval(interval);
+    return () => { cancelAnimationFrame(resetFrame); clearInterval(interval); };
   }, [blockNumber]);
 
   // Derived metrics
@@ -133,9 +123,9 @@ export function NetworkStats() {
   const [tick, setTick] = useState(false);
   useEffect(() => {
     if (inView) {
-      setTick(true);
+      const frame = requestAnimationFrame(() => setTick(true));
       const timer = setTimeout(() => setTick(false), 250);
-      return () => clearTimeout(timer);
+      return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
     }
   }, [totalSupporters, poolUsdc, approvedProjects.length, inView]);
 

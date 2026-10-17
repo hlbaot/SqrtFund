@@ -47,6 +47,16 @@ export const qfRoundAbi = [
         "name": "_maxMatchBps",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "_maxPerRound",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_studentRegistry",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
@@ -66,33 +76,7 @@ export const qfRoundAbi = [
   },
   {
     "type": "function",
-    "name": "MAX_BATCH_SIZE",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "MAX_PROJECTS",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "MAX_REQUESTERS",
     "inputs": [],
     "outputs": [
       {
@@ -414,39 +398,10 @@ export const qfRoundAbi = [
   },
   {
     "type": "function",
-    "name": "getRequesters",
-    "inputs": [
-      {
-        "name": "offset",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "limit",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "items",
-        "type": "address[]",
-        "internalType": "address[]"
-      },
-      {
-        "name": "total",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "isWhitelisted",
     "inputs": [
       {
-        "name": "",
+        "name": "account",
         "type": "address",
         "internalType": "address"
       }
@@ -502,6 +457,19 @@ export const qfRoundAbi = [
   {
     "type": "function",
     "name": "maxMatchBps",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "maxPerRound",
     "inputs": [],
     "outputs": [
       {
@@ -650,14 +618,26 @@ export const qfRoundAbi = [
   },
   {
     "type": "function",
-    "name": "requestVerification",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "name": "remainingBudget",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "requested",
+    "name": "spentInRound",
     "inputs": [
       {
         "name": "",
@@ -668,47 +648,11 @@ export const qfRoundAbi = [
     "outputs": [
       {
         "name": "",
-        "type": "bool",
-        "internalType": "bool"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "setWhitelist",
-    "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "status",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setWhitelistBatch",
-    "inputs": [
-      {
-        "name": "accounts",
-        "type": "address[]",
-        "internalType": "address[]"
-      },
-      {
-        "name": "statuses",
-        "type": "bool[]",
-        "internalType": "bool[]"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -719,6 +663,19 @@ export const qfRoundAbi = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "studentRegistry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract StudentRegistry"
       }
     ],
     "stateMutability": "view"
@@ -901,38 +858,6 @@ export const qfRoundAbi = [
     "anonymous": false
   },
   {
-    "type": "event",
-    "name": "VerificationRequested",
-    "inputs": [
-      {
-        "name": "requester",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "WhitelistUpdated",
-    "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "status",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      }
-    ],
-    "anonymous": false
-  },
-  {
     "type": "error",
     "name": "AlreadyClaimed",
     "inputs": []
@@ -940,26 +865,6 @@ export const qfRoundAbi = [
   {
     "type": "error",
     "name": "AlreadyFinalized",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "AlreadyRequested",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "AlreadyWhitelisted",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "BatchLengthMismatch",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "BatchTooLarge",
     "inputs": []
   },
   {
@@ -994,6 +899,11 @@ export const qfRoundAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidRoundBudget",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidTimeRange",
     "inputs": []
   },
@@ -1005,11 +915,6 @@ export const qfRoundAbi = [
   {
     "type": "error",
     "name": "MaxProjectsReached",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "MaxRequestersReached",
     "inputs": []
   },
   {
@@ -1034,7 +939,7 @@ export const qfRoundAbi = [
   },
   {
     "type": "error",
-    "name": "NotWhitelisted",
+    "name": "NotStudent",
     "inputs": []
   },
   {
@@ -1060,6 +965,11 @@ export const qfRoundAbi = [
   {
     "type": "error",
     "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RoundBudgetExceeded",
     "inputs": []
   },
   {

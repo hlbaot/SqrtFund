@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { useToast } from "@/lib/context/toast";
 import { useLocale } from "@/lib/context/locale";
 import { CheckCircle2, AlertCircle, Info, Loader2, X, ExternalLink } from "lucide-react";
@@ -10,13 +11,13 @@ export function ToastContainer() {
   const { toasts, removeToast } = useToast();
   const { t } = useLocale();
 
-  if (toasts.length === 0) return null;
+  if (toasts.length === 0 || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       aria-live="polite"
       aria-atomic="true"
-      className="fixed bottom-4 left-4 z-50 flex flex-col gap-2 pointer-events-none w-[calc(100vw-2rem)] max-w-sm"
+      className="fixed bottom-4 left-4 z-[2147483647] flex flex-col gap-2 pointer-events-none w-[calc(100vw-2rem)] max-w-sm"
     >
       {toasts.map((toast) => {
         const isSuccess = toast.type === "success";
@@ -75,6 +76,6 @@ export function ToastContainer() {
           </div>
         );
       })}
-    </div>
+    </div>, document.body
   );
 }

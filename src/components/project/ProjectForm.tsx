@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import type { Project, ProjectCategory } from "@/types";
+import { StudentAccessGate } from "@/components/verify/StudentAccessGate";
 import { useRole } from "@/hooks/useRole";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
@@ -23,7 +24,7 @@ export function ProjectForm() {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { roundAddress, status: roundStatus } = useRound();
-  const { isStudent, hasRequested } = useRole();
+  const { isStudent, canParticipate } = useRole();
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState<ProjectCategory>("technology");
@@ -65,6 +66,7 @@ export function ProjectForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     const flow = beginFlow();
     e.preventDefault();
+    if (!isStudent || !canParticipate) { flow.toast.error("register-project", t.verification.title, t.verification.roundNotEligible); flow.finish(); return; }
     if (!validate()) return;
 
     const toastId = "register-project";
@@ -192,6 +194,8 @@ export function ProjectForm() {
     );
   }
 
+  if (!isStudent) return <StudentAccessGate />;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       {/* Form area */}
@@ -204,17 +208,15 @@ export function ProjectForm() {
           {t.register.formTitle}
         </h2>
 
-        {!isStudent && (
+        {!canParticipate && (
           <div className="mb-4 border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200 flex items-start gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
             <div>
               <span className="font-bold block text-amber-300 mb-0.5">
-                {t.register.verificationRequired}
+                {isStudent ? t.verification.roundNotEligible : t.register.verificationRequired}
               </span>
               <span>
-                {hasRequested
-                  ? t.register.verificationPendingMsg
-                  : t.register.verificationNotRequestedMsg}
+                {isStudent ? t.verification.roundNotEligible : t.register.verificationNotRequestedMsg}
               </span>
             </div>
           </div>
@@ -299,11 +301,11 @@ export function ProjectForm() {
               type="submit"
               variant="primary"
               fullWidth
-              disabled={isSubmitting || roundStatus === "closed" || roundStatus === "finalized" || !isStudent}
+              disabled={isSubmitting || roundStatus === "closed" || roundStatus === "finalized" || !canParticipate}
               isLoading={isSubmitting}
               className="py-3 font-bold"
             >
-              {!isStudent
+              {!canParticipate
                 ? t.register.studentVerificationRequired
                 : isSubmitting
                   ? t.register.registeringOnFuji

@@ -4,12 +4,14 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {MockUSDC} from "../src/MockUSDC.sol";
 import {QFRound} from "../src/QFRound.sol";
+import {StudentRegistry} from "../src/StudentRegistry.sol";
 import {RoundFactory} from "../src/RoundFactory.sol";
 
 contract QFRoundTest is Test {
     MockUSDC public usdc;
     RoundFactory public factory;
     QFRound public round;
+    StudentRegistry public registry;
 
     address public admin = address(0xAA);
     address public sponsor = address(0xBB);
@@ -21,6 +23,7 @@ contract QFRoundTest is Test {
     uint256 public startTime;
     uint256 public endTime;
     uint256 public minDonation = 1 * 10 ** 6; // 1 USDC
+    uint256 public maxPerRound = 10 * 10 ** 6;
     uint256 public maxDonation = 5 * 10 ** 6; // 5 USDC
     uint256 public maxMatchBps = 3000; // 30%
 
@@ -30,7 +33,9 @@ contract QFRoundTest is Test {
 
         usdc = new MockUSDC();
         vm.prank(admin);
-        factory = new RoundFactory();
+        registry = new StudentRegistry(vm.addr(0xA771));
+        vm.prank(admin);
+        factory = new RoundFactory(address(registry));
 
         vm.prank(admin);
         address roundAddr = factory.createRound(
@@ -42,19 +47,27 @@ contract QFRoundTest is Test {
             minDonation,
             maxDonation,
             maxMatchBps
-        );
+        , maxPerRound);
         round = QFRound(roundAddr);
     }
 
     // --- Helper Utilities ---
 
-    function _whitelistUser(address user) internal {
-        vm.prank(admin);
-        round.setWhitelist(user, true);
+    function _verifyUser(address user) internal {
+        if (registry.isStudent(user)) return;
+        bytes32 email = keccak256(abi.encode(user));
+        uint256 expiry = block.timestamp + 365 days;
+        bytes32 domain = keccak256(abi.encode(
+            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+            keccak256("SqrtFundStudentRegistry"), keccak256("1"), block.chainid, address(registry)
+        ));
+        bytes32 value = keccak256(abi.encode(registry.STUDENT_VERIFICATION_TYPEHASH(), user, email, expiry));
+        (uint8 v, bytes32 r, bytes32 sigS) = vm.sign(0xA771, keccak256(abi.encodePacked("\x19\x01", domain, value)));
+        vm.prank(user); registry.verifyStudent(email, expiry, abi.encodePacked(r, sigS, v));
     }
 
     function _registerAndApproveProject(address owner, string memory name) internal returns (uint256 pId) {
-        _whitelistUser(owner);
+        _verifyUser(owner);
         vm.prank(owner);
         pId = round.registerProject(name, "Project Description", "https://img.png", "https://project.org");
         vm.prank(admin);
@@ -114,7 +127,7 @@ contract QFRoundTest is Test {
 
         for (uint160 i = 1; i <= 300; i++) {
             address d = address(uint160(0x1000 + i));
-            _whitelistUser(d);
+            _verifyUser(d);
             _fundAndApprove(d, 1 * 10 ** 6);
             vm.prank(d);
             round.donate(p1, 1 * 10 ** 6);
@@ -122,7 +135,7 @@ contract QFRoundTest is Test {
 
         for (uint160 i = 1; i <= 60; i++) {
             address d = address(uint160(0x2000 + i));
-            _whitelistUser(d);
+            _verifyUser(d);
             _fundAndApprove(d, 5 * 10 ** 6);
             vm.prank(d);
             round.donate(p2, 5 * 10 ** 6);
@@ -151,7 +164,7 @@ contract QFRoundTest is Test {
         uint256 p1 = _registerAndApproveProject(projectOwner1, "Single Donor");
         vm.warp(startTime + 1);
 
-        _whitelistUser(donor1);
+        _verifyUser(donor1);
         _fundAndApprove(donor1, 3 * 10 ** 6);
 
         // Donor gives 1 + 1 + 1 to the same project
@@ -180,7 +193,7 @@ contract QFRoundTest is Test {
         uint256 p2 = _registerAndApproveProject(projectOwner2, "Project 2");
 
         vm.warp(startTime + 1);
-        _whitelistUser(donor1);
+        _verifyUser(donor1);
         _fundAndApprove(donor1, 15 * 10 ** 6);
 
         // Giving 3 USDC
@@ -217,13 +230,11 @@ contract QFRoundTest is Test {
             minDonation,
             maxDonation,
             10000
-        );
+        , maxPerRound);
         QFRound uncapRound = QFRound(rAddr);
 
-        vm.prank(admin);
-        uncapRound.setWhitelist(projectOwner1, true);
-        vm.prank(admin);
-        uncapRound.setWhitelist(projectOwner2, true);
+        _verifyUser(projectOwner1);
+        _verifyUser(projectOwner2);
 
         vm.prank(projectOwner1);
         uint256 p1 = uncapRound.registerProject("P1", "Desc", "url", "url");
@@ -235,10 +246,8 @@ contract QFRoundTest is Test {
         uncapRound.approveProject(p2);
 
         vm.warp(startTime + 1);
-        vm.prank(admin);
-        uncapRound.setWhitelist(donor1, true);
-        vm.prank(admin);
-        uncapRound.setWhitelist(donor2, true);
+        _verifyUser(donor1);
+        _verifyUser(donor2);
 
         _fundAndApprove(donor1, 10 * 10 ** 6);
         _fundAndApprove(donor2, 10 * 10 ** 6);
@@ -287,8 +296,8 @@ contract QFRoundTest is Test {
         uint256 p1 = _registerAndApproveProject(projectOwner1, "P1");
 
         vm.warp(startTime + 1);
-        _whitelistUser(donor1);
-        _whitelistUser(donor2);
+        _verifyUser(donor1);
+        _verifyUser(donor2);
         _fundAndApprove(donor1, 5 * 10 ** 6);
         _fundAndApprove(donor2, 5 * 10 ** 6);
 
@@ -317,8 +326,8 @@ contract QFRoundTest is Test {
         uint256 p1 = _registerAndApproveProject(projectOwner1, "P1");
 
         vm.warp(startTime + 1);
-        _whitelistUser(donor1);
-        _whitelistUser(donor2);
+        _verifyUser(donor1);
+        _verifyUser(donor2);
         _fundAndApprove(donor1, 1 * 10 ** 6);
         _fundAndApprove(donor2, 1 * 10 ** 6);
 
@@ -358,8 +367,8 @@ contract QFRoundTest is Test {
         uint256 p2 = _registerAndApproveProject(projectOwner2, "P2");
 
         vm.warp(startTime + 1);
-        _whitelistUser(donor1);
-        _whitelistUser(donor2);
+        _verifyUser(donor1);
+        _verifyUser(donor2);
         _fundAndApprove(donor1, 5 * 10 ** 6);
         _fundAndApprove(donor2, 5 * 10 ** 6);
 
@@ -387,128 +396,15 @@ contract QFRoundTest is Test {
 
     // --- Whitelist & Verification Flow ---
 
-    function test_VerificationFlow() public {
-        address student = address(0x777);
 
-        // Request verification
-        vm.prank(student);
-        round.requestVerification();
-        assertTrue(round.requested(student));
-        assertFalse(round.isWhitelisted(student));
 
-        (address[] memory requesters, uint256 count) = round.getRequesters(0, 10);
-        assertEq(count, 1);
-        assertEq(requesters[0], student);
 
-        // Cannot request again while pending
-        vm.prank(student);
-        vm.expectRevert(QFRound.AlreadyRequested.selector);
-        round.requestVerification();
 
-        // Admin approves student
-        vm.prank(admin);
-        round.setWhitelist(student, true);
-        assertTrue(round.isWhitelisted(student));
-        assertFalse(round.requested(student));
 
-        (, count) = round.getRequesters(0, 10);
-        assertEq(count, 0);
-
-        // Cannot request if already whitelisted
-        vm.prank(student);
-        vm.expectRevert(QFRound.AlreadyWhitelisted.selector);
-        round.requestVerification();
-
-        // Test rejection flow
-        address rejectedStudent = address(0x888);
-        vm.prank(rejectedStudent);
-        round.requestVerification();
-        assertTrue(round.requested(rejectedStudent));
-
-        vm.prank(admin);
-        round.setWhitelist(rejectedStudent, false);
-        assertFalse(round.isWhitelisted(rejectedStudent));
-        assertFalse(round.requested(rejectedStudent));
-
-        // Rejected student can request verification again
-        vm.prank(rejectedStudent);
-        round.requestVerification();
-        assertTrue(round.requested(rejectedStudent));
-    }
-
-    function test_NonAdmin_CannotSetWhitelist() public {
-        address nonAdmin = address(0x999);
-        address student = address(0x777);
-
-        vm.prank(student);
-        round.requestVerification();
-
-        // Non-admin cannot approve
-        vm.prank(nonAdmin);
-        vm.expectRevert();
-        round.setWhitelist(student, true);
-
-        // Non-admin cannot reject
-        vm.prank(nonAdmin);
-        vm.expectRevert();
-        round.setWhitelist(student, false);
-
-        // Non-admin cannot batch approve
-        address[] memory users = new address[](1);
-        users[0] = student;
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-
-        vm.prank(nonAdmin);
-        vm.expectRevert();
-        round.setWhitelistBatch(users, statuses);
-    }
-
-    function test_RejectedVerificationCanRetryImmediately() public {
-        // The existing contract deliberately has no retry cooldown.
-        address student = address(0x888);
-        vm.prank(student);
-        round.requestVerification();
-        vm.prank(admin);
-        round.setWhitelist(student, false);
-        assertFalse(round.requested(student));
-        assertFalse(round.isWhitelisted(student));
-        (, uint256 count) = round.getRequesters(0, 20);
-        assertEq(count, 0);
-        vm.prank(student);
-        round.requestVerification();
-        assertTrue(round.requested(student));
-        (address[] memory requests, uint256 newCount) = round.getRequesters(0, 20);
-        assertEq(newCount, 1);
-        assertEq(requests[0], student);
-    }
 
     // --- Batch Whitelist ---
 
-    function test_BatchWhitelist() public {
-        address[] memory users = new address[](3);
-        bool[] memory statuses = new bool[](3);
-        users[0] = address(0x101);
-        users[1] = address(0x102);
-        users[2] = address(0x103);
-        statuses[0] = true;
-        statuses[1] = true;
-        statuses[2] = false;
 
-        vm.prank(admin);
-        round.setWhitelistBatch(users, statuses);
-
-        assertTrue(round.isWhitelisted(users[0]));
-        assertTrue(round.isWhitelisted(users[1]));
-        assertFalse(round.isWhitelisted(users[2]));
-
-        // Batch > 50 reverts
-        address[] memory largeBatch = new address[](51);
-        bool[] memory largeStatuses = new bool[](51);
-        vm.prank(admin);
-        vm.expectRevert(QFRound.BatchTooLarge.selector);
-        round.setWhitelistBatch(largeBatch, largeStatuses);
-    }
 
     // --- Claim Flow ---
 
@@ -516,7 +412,7 @@ contract QFRoundTest is Test {
         uint256 p1 = _registerAndApproveProject(projectOwner1, "Project 1");
 
         vm.warp(startTime + 1);
-        _whitelistUser(donor1);
+        _verifyUser(donor1);
         _fundAndApprove(donor1, 5 * 10 ** 6);
         vm.prank(donor1);
         round.donate(p1, 5 * 10 ** 6);
@@ -556,7 +452,7 @@ contract QFRoundTest is Test {
     function test_Reverts() public {
         // Owner donating to own project reverts
         uint256 p1 = _registerAndApproveProject(projectOwner1, "P1");
-        _whitelistUser(projectOwner1);
+        _verifyUser(projectOwner1);
         _fundAndApprove(projectOwner1, 2 * 10 ** 6);
         vm.warp(startTime + 1);
         vm.prank(projectOwner1);
@@ -566,14 +462,14 @@ contract QFRoundTest is Test {
         // Non-whitelisted donate reverts
         _fundAndApprove(donor1, 2 * 10 ** 6);
         vm.prank(donor1);
-        vm.expectRevert(QFRound.NotWhitelisted.selector);
+        vm.expectRevert(QFRound.NotStudent.selector);
         round.donate(p1, 2 * 10 ** 6);
 
         // Donate to unapproved project reverts
-        _whitelistUser(projectOwner2);
+        _verifyUser(projectOwner2);
         vm.prank(projectOwner2);
         uint256 unapprovedP = round.registerProject("Unapproved", "Desc", "url", "url");
-        _whitelistUser(donor1);
+        _verifyUser(donor1);
         vm.prank(donor1);
         vm.expectRevert(QFRound.ProjectNotApproved.selector);
         round.donate(unapprovedP, 2 * 10 ** 6);
@@ -620,7 +516,7 @@ contract QFRoundTest is Test {
     // --- Boundary Tests (Max Projects & Max Requesters) ---
 
     function test_MaxProjectsBoundary() public {
-        _whitelistUser(address(this));
+        _verifyUser(address(this));
         for (uint256 i = 0; i < 50; i++) {
             round.registerProject("Project", "Desc", "https://img", "https://site");
         }
@@ -631,19 +527,7 @@ contract QFRoundTest is Test {
         round.registerProject("51st", "Desc", "https://img", "https://site");
     }
 
-    function test_MaxRequestersBoundary() public {
-        for (uint160 i = 1; i <= 500; i++) {
-            address req = address(uint160(0x9000 + i));
-            vm.prank(req);
-            round.requestVerification();
-        }
 
-        // 501st requester reverts
-        address extra = address(0x9999);
-        vm.prank(extra);
-        vm.expectRevert(QFRound.MaxRequestersReached.selector);
-        round.requestVerification();
-    }
 
     // --- Accounting Invariant Test ---
 
@@ -652,8 +536,8 @@ contract QFRoundTest is Test {
         uint256 p2 = _registerAndApproveProject(projectOwner2, "P2");
 
         vm.warp(startTime + 1);
-        _whitelistUser(donor1);
-        _whitelistUser(donor2);
+        _verifyUser(donor1);
+        _verifyUser(donor2);
         _fundAndApprove(donor1, 10 * 10 ** 6);
         _fundAndApprove(donor2, 10 * 10 ** 6);
 
@@ -697,8 +581,8 @@ contract QFRoundTest is Test {
         uint256 p2 = _registerAndApproveProject(projectOwner2, "P2");
 
         vm.warp(startTime + 1);
-        _whitelistUser(donor1);
-        _whitelistUser(donor2);
+        _verifyUser(donor1);
+        _verifyUser(donor2);
         _fundAndApprove(donor1, don1 + don2);
         _fundAndApprove(donor2, don1 + don2);
 
@@ -785,7 +669,7 @@ contract QFRoundTest is Test {
     }
 
     function test_ApproveProject_RevertsAfterEndTimeOrFinalize() public {
-        _whitelistUser(projectOwner1);
+        _verifyUser(projectOwner1);
         vm.prank(projectOwner1);
         uint256 p1 = round.registerProject("P1", "Desc", "url", "url");
 
@@ -810,12 +694,12 @@ contract QFRoundTest is Test {
         round.depositPool(0);
     }
 
-    function test_RegisterProject_NonWhitelistedReverts() public {
+    function test_RegisterProject_UnverifiedReverts() public {
         address unverified = address(0x789);
         assertFalse(round.isWhitelisted(unverified));
 
         vm.prank(unverified);
-        vm.expectRevert(QFRound.NotWhitelisted.selector);
+        vm.expectRevert(QFRound.NotStudent.selector);
         round.registerProject("P", "Desc", "https://img", "https://url");
     }
 
@@ -823,13 +707,13 @@ contract QFRoundTest is Test {
         address stranger = address(0x123);
         vm.prank(stranger);
         vm.expectRevert();
-        factory.createRound("R1", "Org1", address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+        factory.createRound("R1", "Org1", address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound);
 
         // Admin creates round 2 and round 3
         vm.prank(admin);
-        address r2 = factory.createRound("R2", "Org2", address(usdc), startTime + 10 days, endTime + 10 days, minDonation, maxDonation, maxMatchBps);
+        address r2 = factory.createRound("R2", "Org2", address(usdc), startTime + 10 days, endTime + 10 days, minDonation, maxDonation, maxMatchBps, maxPerRound);
         vm.prank(admin);
-        address r3 = factory.createRound("R3", "Org3", address(usdc), startTime + 20 days, endTime + 20 days, minDonation, maxDonation, maxMatchBps);
+        address r3 = factory.createRound("R3", "Org3", address(usdc), startTime + 20 days, endTime + 20 days, minDonation, maxDonation, maxMatchBps, maxPerRound);
 
         assertEq(factory.roundCount(), 3);
         address[] memory all = factory.getRounds();
@@ -841,27 +725,27 @@ contract QFRoundTest is Test {
     function test_QFRound_ConstructorValidation() public {
         // endTime <= startTime
         vm.expectRevert(QFRound.InvalidTimeRange.selector);
-        new QFRound("Round 1", "Org 1", admin, address(usdc), endTime, startTime, minDonation, maxDonation, maxMatchBps);
+        new QFRound("Round 1", "Org 1", admin, address(usdc), endTime, startTime, minDonation, maxDonation, maxMatchBps, maxPerRound, address(registry));
 
         // minDonation == 0
         vm.expectRevert(QFRound.InvalidDonationBounds.selector);
-        new QFRound("Round 1", "Org 1", admin, address(usdc), startTime, endTime, 0, maxDonation, maxMatchBps);
+        new QFRound("Round 1", "Org 1", admin, address(usdc), startTime, endTime, 0, maxDonation, maxMatchBps, maxPerRound, address(registry));
 
         // minDonation > maxDonation
         vm.expectRevert(QFRound.InvalidDonationBounds.selector);
-        new QFRound("Round 1", "Org 1", admin, address(usdc), startTime, endTime, 10 * 10 ** 6, 5 * 10 ** 6, maxMatchBps);
+        new QFRound("Round 1", "Org 1", admin, address(usdc), startTime, endTime, 10 * 10 ** 6, 5 * 10 ** 6, maxMatchBps, maxPerRound, address(registry));
 
         // maxMatchBps > 10000
         vm.expectRevert(QFRound.InvalidMaxMatchBps.selector);
-        new QFRound("Round 1", "Org 1", admin, address(usdc), startTime, endTime, minDonation, maxDonation, 10001);
+        new QFRound("Round 1", "Org 1", admin, address(usdc), startTime, endTime, minDonation, maxDonation, 10001, maxPerRound, address(registry));
 
         // zero address admin
         vm.expectRevert(QFRound.ZeroAddress.selector);
-        new QFRound("Round 1", "Org 1", address(0), address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+        new QFRound("Round 1", "Org 1", address(0), address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound, address(registry));
 
         // zero address token
         vm.expectRevert(QFRound.ZeroAddress.selector);
-        new QFRound("Round 1", "Org 1", admin, address(0), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+        new QFRound("Round 1", "Org 1", admin, address(0), startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound, address(registry));
     }
 
     function test_QFRound_NameAndOrganizerValidation() public {
@@ -875,7 +759,8 @@ contract QFRoundTest is Test {
             endTime,
             minDonation,
             maxDonation,
-            maxMatchBps
+            maxMatchBps, maxPerRound,
+            address(registry)
         );
         assertEq(rValid.name(), "Valid Round Name");
         assertEq(rValid.organizer(), "Valid Organizer");
@@ -890,7 +775,8 @@ contract QFRoundTest is Test {
             endTime,
             minDonation,
             maxDonation,
-            maxMatchBps
+            maxMatchBps, maxPerRound,
+            address(registry)
         );
         assertEq(rEmptyOrg.name(), "Round With No Org");
         assertEq(rEmptyOrg.organizer(), "");
@@ -906,7 +792,8 @@ contract QFRoundTest is Test {
             endTime,
             minDonation,
             maxDonation,
-            maxMatchBps
+            maxMatchBps, maxPerRound,
+            address(registry)
         );
 
         // Name too long (> 60 bytes) reverts
@@ -921,7 +808,8 @@ contract QFRoundTest is Test {
             endTime,
             minDonation,
             maxDonation,
-            maxMatchBps
+            maxMatchBps, maxPerRound,
+            address(registry)
         );
 
         // Organizer too long (> 60 bytes) reverts
@@ -936,12 +824,13 @@ contract QFRoundTest is Test {
             endTime,
             minDonation,
             maxDonation,
-            maxMatchBps
+            maxMatchBps, maxPerRound,
+            address(registry)
         );
     }
 
     function test_RegisterProject_LengthLimits() public {
-        _whitelistUser(projectOwner1);
+        _verifyUser(projectOwner1);
 
         // Name empty
         vm.prank(projectOwner1);
@@ -979,20 +868,7 @@ contract QFRoundTest is Test {
         round.registerProject("Valid name", "Valid description", "https://img", string(longUrlBytes));
     }
 
-    function test_BatchWhitelist_LengthMismatch() public {
-        address[] memory accs = new address[](2);
-        accs[0] = address(0x1);
-        accs[1] = address(0x2);
 
-        bool[] memory statuses = new bool[](3);
-        statuses[0] = true;
-        statuses[1] = true;
-        statuses[2] = true;
-
-        vm.prank(admin);
-        vm.expectRevert(QFRound.BatchLengthMismatch.selector);
-        round.setWhitelistBatch(accs, statuses);
-    }
 
     function test_Finalize_ZeroApprovedProjectsAndZeroPool() public {
         // Round with 0 approved projects and 0 pool
@@ -1004,7 +880,7 @@ contract QFRoundTest is Test {
 
         // Test with pool > 0 and 0 approved projects
         vm.prank(admin);
-        address rAddr = factory.createRound("Empty Round", "Org", address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps);
+        address rAddr = factory.createRound("Empty Round", "Org", address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound);
         QFRound r2 = QFRound(rAddr);
 
         deal(address(usdc), admin, 100 * 10 ** 6);
@@ -1037,13 +913,11 @@ contract QFRoundTest is Test {
             minDonation,
             maxDonation,
             10000
-        );
+        , maxPerRound);
         QFRound uncapRound = QFRound(rAddr);
 
-        vm.prank(admin);
-        uncapRound.setWhitelist(projectOwner1, true);
-        vm.prank(admin);
-        uncapRound.setWhitelist(projectOwner2, true);
+        _verifyUser(projectOwner1);
+        _verifyUser(projectOwner2);
 
         vm.prank(projectOwner1);
         uint256 p1 = uncapRound.registerProject("P1 300x1", "Desc", "url", "url");
@@ -1059,8 +933,7 @@ contract QFRoundTest is Test {
 
         for (uint160 i = 1; i <= 300; i++) {
             address d = address(uint160(0x3000 + i));
-            vm.prank(admin);
-            uncapRound.setWhitelist(d, true);
+            _verifyUser(d);
             deal(address(usdc), d, 1 * 10 ** 6);
             vm.prank(d);
             usdc.approve(address(uncapRound), 1 * 10 ** 6);
@@ -1070,8 +943,7 @@ contract QFRoundTest is Test {
 
         for (uint160 i = 1; i <= 60; i++) {
             address d = address(uint160(0x4000 + i));
-            vm.prank(admin);
-            uncapRound.setWhitelist(d, true);
+            _verifyUser(d);
             deal(address(usdc), d, 5 * 10 ** 6);
             vm.prank(d);
             usdc.approve(address(uncapRound), 5 * 10 ** 6);
@@ -1134,7 +1006,7 @@ contract QFRoundTest is Test {
         // 10 student donors donate to p1, p2, p3
         for (uint160 i = 1; i <= 10; i++) {
             address d = address(uint160(0x5000 + i));
-            _whitelistUser(d);
+            _verifyUser(d);
             _fundAndApprove(d, 15 * 10 ** 6);
 
             vm.prank(d);

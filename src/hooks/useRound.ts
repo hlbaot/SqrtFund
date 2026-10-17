@@ -77,6 +77,7 @@ export function useRound(customRoundAddress?: Address) {
       { address: roundAddress, abi: qfRoundAbi, functionName: "projectCount" },
       { address: roundAddress, abi: qfRoundAbi, functionName: "name" },
       { address: roundAddress, abi: qfRoundAbi, functionName: "organizer" },
+      { address: roundAddress, abi: qfRoundAbi, functionName: "maxPerRound" },
     ],
     query: {
       enabled: Boolean(roundAddress),
@@ -125,6 +126,7 @@ export function useRound(customRoundAddress?: Address) {
     endTime,
     minDonation,
     maxDonation,
+    maxPerRound: roundData?.[14]?.result as bigint | undefined,
     maxMatchBps,
     pool: pool ?? 0n,
     finalized,
@@ -133,7 +135,7 @@ export function useRound(customRoundAddress?: Address) {
     projectCount: projectCount ?? 0n,
     status,
     isLoading: isFactoryLoading || (Boolean(roundAddress) && isRoundLoading),
-    isError: isFactoryError || isRoundError || Boolean(factoryData?.some(result => result.status === "failure")) || Boolean(roundData?.some((result, index) => index < 12 && result.status === "failure")),
+    isError: isFactoryError || isRoundError || Boolean(factoryData?.some(result => result.status === "failure")) || Boolean(roundData?.some((result, index) => (index < 12 || index === 14) && result.status === "failure")),
     refetch,
   };
 }

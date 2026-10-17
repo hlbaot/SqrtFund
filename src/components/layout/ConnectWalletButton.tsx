@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAccount, useConnect, useDisconnect, useBalance, useReadContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatUnits } from "viem";
-import { Wallet, LogOut, ChevronDown, Check, Copy, Loader2, Pencil, AlertCircle } from "lucide-react";
+import { Wallet, LogOut, ChevronDown, Check, Copy, Loader2, Pencil } from "lucide-react";
 import { AvatarPickerDialog } from "./AvatarPickerDialog";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAvatar } from "@/hooks/useAvatar";
@@ -14,7 +14,6 @@ import { shortAddress, formatCooldown, formatUsdcFixed } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
 import { useNotificationCounts } from "@/hooks/useNotificationCounts";
-import { useVerificationRequest } from "@/hooks/useVerificationRequest";
 import { useClaim } from "@/hooks/useClaim";
 import { TARGET_CHAIN_ID, usdcAddress } from "@/lib/contracts/addresses";
 import { mockUsdcAbi } from "@/lib/contracts/abis";
@@ -26,7 +25,6 @@ import { Badge } from "@/components/ui/Badge";
 import { GradientBorder } from "@/components/ui/GradientBorder";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { NotificationBadge } from "@/components/ui/NotificationBadge";
-import { Dialog } from "@/components/ui/Dialog";
 
 export function ConnectWalletButton() {
   const { address, isConnected, chainId } = useAccount();
@@ -34,13 +32,11 @@ export function ConnectWalletButton() {
   const { disconnectAsync } = useDisconnect();
   const queryClient = useQueryClient();
   const { t, locale } = useLocale();
-  const { role, isReady } = useRole();
+  const { role, isReady, isStudent } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
   const { canClaim, remainingSeconds } = useClaim();
-  const { status: verifyStatus, isSubmitting: isSubmittingVerify, submit: submitVerify } = useVerificationRequest();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const { avatar } = useAvatar(address);
   const [copied, setCopied] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -52,10 +48,6 @@ export function ConnectWalletButton() {
   const menuId = useId();
   const closeAvatarPicker = useCallback(() => {
     setAvatarPickerOpen(false);
-    window.requestAnimationFrame(() => trigger.current?.focus());
-  }, []);
-  const closeVerificationDialog = useCallback(() => {
-    setIsConfirmDialogOpen(false);
     window.requestAnimationFrame(() => trigger.current?.focus());
   }, []);
   const openAvatarPicker = () => {
@@ -162,7 +154,6 @@ export function ConnectWalletButton() {
         <span>{shortAddress(address, 4)}</span>
         <ChevronDown className={`h-3.5 w-3.5 text-muted transition-transform ${dropdownOpen ? "rotate-180" : ""}`} aria-hidden="true" />
         {counts.total > 0 && <span aria-label={t.wallet.notifications} className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-bg" />}
-        {verifyStatus === "pending" && <span aria-label={t.verification.pendingChip} className="absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-bg animate-pulse" />}
       </button>
       {dropdownOpen && createPortal(
         <div ref={panel} style={{ "--profile-top": `${position.top}px`, "--profile-right": `${position.right}px` } as React.CSSProperties}
@@ -193,58 +184,19 @@ export function ConnectWalletButton() {
           </div>}
 
           {/* Student Verification section for non-admin, non-student wallets */}
-          {isReady && role !== "admin" && role !== "student" && verifyStatus !== "approved" && (
+          {!isStudent && (
             <div className="mb-3 space-y-2 border-b border-line pb-3">
               <span className="role-label text-muted block">
                 {t.verification.title}
               </span>
 
-              {verifyStatus === "none" && (
-                <GradientBorder className="w-full rounded-sm">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    fullWidth
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      setIsConfirmDialogOpen(true);
-                    }}
-                    disabled={!isFuji || isSubmittingVerify}
-                    className="text-xs font-bold text-foreground"
-                  >
-                    {t.verification.requestBtn}
-                  </Button>
-                </GradientBorder>
-              )}
-
-              {verifyStatus === "pending" && (
-                <div className="flex items-center gap-2 border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-400">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                  <span className="role-label font-bold">{t.verification.pendingChip}</span>
-                </div>
-              )}
-
-              {verifyStatus === "rejected" && (
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs text-primary">
-                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                    <span className="role-label font-bold">{t.verification.rejectedChip}</span>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    fullWidth
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      setIsConfirmDialogOpen(true);
-                    }}
-                    disabled={!isFuji || isSubmittingVerify}
-                    className="text-xs font-bold"
-                  >
-                    {t.verification.requestAgainBtn}
-                  </Button>
-                </div>
-              )}
+              <Link
+                href="/verify"
+                onClick={() => setDropdownOpen(false)}
+                className="mono-label block border border-primary p-3 text-center font-bold hover:bg-primary/10 transition-colors"
+              >
+                {locale === "vi" ? "Xác thực bằng email trường" : "Verify university email"}
+              </Link>
             </div>
           )}
 
@@ -274,49 +226,6 @@ export function ConnectWalletButton() {
         </div>, document.body
       )}
       {avatarPickerOpen && <AvatarPickerDialog key={address.toLowerCase()} address={address} onClose={closeAvatarPicker} />}
-      {isConfirmDialogOpen && (
-        <Dialog
-          isOpen={isConfirmDialogOpen}
-          onClose={closeVerificationDialog}
-          title={t.verification.title}
-          description={t.verification.confirmDesc}
-        >
-          <div className="space-y-4 pt-2">
-            <div className="border border-line bg-surface p-3 space-y-1">
-              <Avatar address={address} size={48} avatarId={avatar} />
-              <span className="role-label text-muted block">
-                {t.verification.addressToVerify}
-              </span>
-              <p className="font-mono text-xs break-all text-foreground select-all">
-                {address}
-              </p>
-            </div>
-            <div className="flex justify-end gap-2 pt-2 border-t border-line">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsConfirmDialogOpen(false)}
-                disabled={isSubmittingVerify}
-              >
-                {t.verification.cancel}
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                isLoading={isSubmittingVerify}
-                disabled={isSubmittingVerify}
-                onClick={async () => {
-                  const ok = await submitVerify();
-                  if (ok) setIsConfirmDialogOpen(false);
-                }}
-                className="font-bold"
-              >
-                {t.verification.send}
-              </Button>
-            </div>
-          </div>
-        </Dialog>
-      )}
     </div>
   );
 }

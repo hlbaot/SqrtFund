@@ -1,4 +1,6 @@
 "use client";
+import { StudentAccessGate } from "@/components/verify/StudentAccessGate";
+import { useStudentStatus } from "@/hooks/useStudentStatus";
 
 import { AOSInit } from "@/components/common/AOSInit";
 
@@ -9,6 +11,7 @@ import { Container } from "@/components/layout/Container";
 
 export function RegisterView() {
   const { t } = useLocale();
+  const { isStudent, isLoading } = useStudentStatus();
 
   return (
     <Container className="py-8 sm:py-10 space-y-8">
@@ -22,7 +25,7 @@ export function RegisterView() {
         </p>
       </div>
 
-      <ProjectForm />
+      {isLoading ? <p role="status">{t.common.loading}</p> : isStudent ? <ProjectForm /> : <StudentAccessGate />}
     </Container>
   );
 }

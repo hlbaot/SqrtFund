@@ -17,7 +17,6 @@ import { formatUsdcFixed, formatCount } from "@/lib/format";
 import { CreateRoundForm } from "@/components/admin/CreateRoundForm";
 import { DepositPoolForm } from "@/components/admin/DepositPoolForm";
 import { MintTestUsdcForm } from "@/components/admin/MintTestUsdcForm";
-import { WhitelistTable } from "@/components/admin/WhitelistTable";
 import { FinalizeButton } from "@/components/admin/FinalizeButton";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
@@ -345,11 +344,6 @@ export function AdminView() {
           </div>
         )}
       </section>
-
-      {/* Whitelist Student Approvals */}
-      <div data-aos="fade-up" data-aos-duration="600">
-        <WhitelistTable />
-      </div>
 
       {/* Forms Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-aos="fade-up" data-aos-duration="600">

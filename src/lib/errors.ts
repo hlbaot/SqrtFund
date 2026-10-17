@@ -15,6 +15,9 @@ export const ERROR_SELECTORS: Record<string, string> = {
   "0x118cdaa7": "OwnableUnauthorizedAccount",
   "0x1e4fbdf7": "OwnableInvalidOwner",
 
+  "0x971730a9": "NotStudent",
+  "0x47a11b8d": "InvalidRoundBudget",
+  "0x17144e75": "RoundBudgetExceeded",
   // QFRound & MockUSDC custom errors
   "0xd92e233d": "ZeroAddress",
   "0x536a71af": "InvalidTimeRange",
@@ -66,6 +69,9 @@ export const ERROR_MESSAGES_EN: Record<string, string> = {
   OwnableUnauthorizedAccount: "Unauthorized: only the contract owner can perform this action.",
   OwnableInvalidOwner: "Invalid owner address provided.",
 
+  NotStudent: "Verify your university email at /verify before participating.",
+  InvalidRoundBudget: "The round budget must be at least the per-project limit.",
+  RoundBudgetExceeded: "This donation exceeds your remaining round budget.",
   // Round errors
   NotAdmin: "Only the round administrator can perform this action.",
   NotWhitelisted: "Your wallet is not whitelisted. Please request student verification first.",
@@ -118,6 +124,9 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
   OwnableUnauthorizedAccount: "Chỉ người sở hữu hợp đồng (Owner) mới có quyền thực hiện thao tác này.",
   OwnableInvalidOwner: "Địa chỉ Owner không hợp lệ.",
 
+  NotStudent: "Xác thực email trường tại /verify trước khi tham gia.",
+  InvalidRoundBudget: "Trần tổng mỗi round phải lớn hơn hoặc bằng trần mỗi dự án.",
+  RoundBudgetExceeded: "Khoản ủng hộ vượt ngân sách còn lại của bạn trong round.",
   // Round errors
   NotAdmin: "Chỉ có Admin của vòng mới có quyền thực hiện thao tác này.",
   NotWhitelisted: "Ví của bạn chưa được duyệt Whitelist sinh viên. Vui lòng gửi yêu cầu xác thực trước.",

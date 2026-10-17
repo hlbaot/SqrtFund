@@ -16,7 +16,7 @@ contract DeployFactory is Script {
         console2.log("Reusing existing MockUSDC at:", mockUsdcAddress);
 
         vm.startBroadcast();
-        RoundFactory factory = new RoundFactory();
+        RoundFactory factory = new RoundFactory(vm.envAddress("STUDENT_REGISTRY_ADDRESS"));
         vm.stopBroadcast();
 
         address factoryAddress = address(factory);
@@ -26,7 +26,8 @@ contract DeployFactory is Script {
             "{\n",
             '  "chainId": 43113,\n',
             '  "mockUsdc": "', vm.toString(mockUsdcAddress), '",\n',
-            '  "roundFactory": "', vm.toString(factoryAddress), '"\n',
+            '  "roundFactory": "', vm.toString(factoryAddress), '",\n',
+            '  "studentRegistry": "', vm.toString(factory.studentRegistry()), '"\n',
             "}\n"
         );
 

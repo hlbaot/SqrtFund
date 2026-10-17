@@ -1,11 +1,12 @@
 "use client";
+import { StudentVerifyBox } from "@/components/verify/StudentVerifyBox";
 
-import { useTxFlow } from "@/hooks/useTxFlow";
-
+import type { Address } from "viem";
+import { donationLimit } from "@/lib/studentAccess";
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import type { Project } from "@/types";
-import { useAccount, useReadContract, useWriteContract, usePublicClient } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import { qfRoundAbi, mockUsdcAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
@@ -13,14 +14,14 @@ import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
 import { useDonate } from "@/hooks/useDonate";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatUsdcFixed } from "@/lib/format";
+import { formatUsdcFixed, parseUsdc } from "@/lib/format";
 import { fmt } from "@/lib/copy";
 import { simulateDonationImpact } from "@/lib/qf";
 import { Stepper, StepItem } from "@/components/tx/Stepper";
 import { TxStatusDisplay } from "@/components/tx/TxStatusToast";
 import { Button } from "@/components/ui/Button";
 import { Frame } from "@/components/ui/Frame";
-import { AlertCircle, Sparkles, ShieldCheck, Check } from "lucide-react";
+import { AlertCircle, Sparkles, Check } from "lucide-react";
 
 export interface DonateBoxProps {
   project: Project & {
@@ -29,25 +30,21 @@ export interface DonateBoxProps {
     contractId?: bigint;
   };
   className?: string;
+  roundAddress?: Address;
 }
 
-export function DonateBox({ project, className = "" }: DonateBoxProps) {
-  const beginFlow = useTxFlow();
-  const { t, locale } = useLocale();
+export function DonateBox({ project, className = "", roundAddress: customRound }: DonateBoxProps) {
+  const { t } = useLocale();
   const { address, isConnected } = useAccount();
-  const publicClient = usePublicClient();
-  const { writeContractAsync } = useWriteContract();
 
   const queryClient = useQueryClient();
-  const { roundAddress, token, status: roundStatus, pool, maxDonation = 5_000_000n, maxMatchBps = 3000n, refetch: refetchRound } = useRound();
+  const { roundAddress, token, status: roundStatus, pool, minDonation = 1_000_000n, maxPerRound, maxDonation = 5_000_000n, maxMatchBps = 3000n, refetch: refetchRound } = useRound(customRound);
   const { projects, refetch: refetchProjects } = useProjects(roundAddress);
-  const { isStudent, hasRequested } = useRole();
-  const { donate, step: donationStep, isPending: isDonatePending, activeTxHash, reset: resetDonate } = useDonate();
+  const { isStudent, canParticipate } = useRole(customRound);
+  const { donate, step: donationStep, isPending: isDonatePending, activeTxHash, reset: resetDonate } = useDonate(customRound);
 
   const [amount, setAmount] = useState<number>(1);
   const [inputValue, setInputValue] = useState<string>("1");
-  const [error, setError] = useState<string>("");
-  const [isRequestingVerification, setIsRequestingVerification] = useState(false);
 
   // Read how much current user has already donated to this project
   const projectIdBigInt = BigInt(project.id || "1");
@@ -83,32 +80,24 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
   const usdcBalanceUsdc = Number(usdcBalanceBigInt) / 1_000_000;
   const hasInsufficientBalance = isConnected && isStudent && usdcBalanceUsdc < amount;
 
-  // Validation
-  const handleAmountChange = (valStr: string) => {
-    setInputValue(valStr);
-    const num = parseFloat(valStr);
-    if (isNaN(num)) {
-      setError(t.donateBox.minMaxError);
-      return;
-    }
-    if (num < 1 || num > 5) {
-      setError(t.donateBox.minMaxError);
-      return;
-    }
-    if (num > remainingAllowanceUsdc) {
-      setError(fmt(t.donateBox.exceedsLimit, { remaining: remainingAllowanceUsdc }));
-      return;
-    }
-    setError("");
-    setAmount(num);
+  const { data: roundRemaining, refetch: refetchBudget } = useReadContract({ address: roundAddress, abi: qfRoundAbi,
+    functionName: "remainingBudget", args: address ? [address] : undefined,
+    query: { enabled: Boolean(roundAddress && address), refetchInterval: 5000 },
+  });
+  const budgetReady = typeof roundRemaining === "bigint" && typeof maxPerRound === "bigint";
+  const roundRemainingUsdc = Number(roundRemaining ?? 0n) / 1_000_000;
+  const minDonationUsdc = Number(minDonation) / 1_000_000;
+  const roundBudgetExhausted = budgetReady && roundRemaining < minDonation;
+  const parsedInput = parseUsdc(inputValue);
+  const limit = parsedInput.success && budgetReady ? donationLimit(parsedInput.amount, minDonation, maxDonation, userDonatedBigInt, roundRemaining) : null;
+  const error = !parsedInput.success || limit === "minimum" ? fmt(t.donateBox.minMaxBounds, { min: minDonationUsdc, max: maxDonationUsdc })
+    : limit === "project" ? fmt(t.donateBox.exceedsLimit, { remaining: remainingAllowanceUsdc })
+    : limit === "round" ? fmt(t.donateBox.exceedsRoundBudget, { remaining: formatUsdcFixed(roundRemainingUsdc) }) : "";
+  const handleAmountChange = (value: string) => {
+    setInputValue(value); const parsed = parseUsdc(value);
+    if (parsed.success) setAmount(Number(parsed.amount) / 1_000_000);
   };
-
-  const handleQuickSelect = (val: number) => {
-    const selected = Math.min(val, remainingAllowanceUsdc);
-    setInputValue(selected.toString());
-    setAmount(selected);
-    setError("");
-  };
+  const handleQuickSelect = (value: number) => handleAmountChange(value.toString());
 
   // Convert all approved round projects to ProjectMathInput format
   const allProjects = useMemo(() => {
@@ -132,7 +121,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
 
   // QF Impact preview calculated with BigInt math matching smart contracts
   const impact = useMemo(() => {
-    const donationAmountBigInt = BigInt(Math.max(1, Math.round(amount))) * 1_000_000n;
+    const donationAmountBigInt = BigInt(Math.max(0, Math.round(amount * 1_000_000)));
     const currentSumSqrt = project.sumSqrtRaw ?? 0n;
     const currentTotalDonated = project.totalDonatedRaw ?? 0n;
 
@@ -152,59 +141,6 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
 
     return { nextMatching, increase };
   }, [project, amount, userDonatedBigInt, pool, allProjects, maxMatchBps]);
-
-  // Request Student Verification
-  const handleRequestVerification = async () => {
-    const flow = beginFlow();
-    if (!roundAddress || !publicClient) return;
-    const toastId = "request-verification";
-    setIsRequestingVerification(true);
-    try {
-      flow.toast.pending(
-        toastId,
-        t.toasts.requestVerifyTitle,
-        t.toasts.requestVerifyDesc
-      );
-
-      const hash = await flow.wait(() => writeContractAsync({
-        address: roundAddress,
-        abi: qfRoundAbi,
-        functionName: "requestVerification",
-      }));
-
-      flow.toast.pending(
-        toastId,
-        t.toasts.requestVerifyConfirm,
-        t.toasts.requestVerifyConfirmDesc,
-        hash
-      );
-
-      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
-      if (receipt.status !== "success") {
-        throw new Error("requestVerification transaction reverted.");
-      }
-
-      flow.toast.success(
-        toastId,
-        t.toasts.requestVerifySuccess,
-        t.toasts.requestVerifySuccessDesc,
-        hash
-      );
-    } catch (err: unknown) {
-      if (flow.cancelled) return false;
-      flow.error(
-        toastId,
-        err,
-        t.toasts.requestVerifyFailed,
-        locale
-      );
-    } finally {
-      flow.finish();
-      if (!flow.cancelled) {
-        setIsRequestingVerification(false);
-      }
-    }
-  };
 
   // Stepper definition
   const steps: StepItem[] = [
@@ -228,10 +164,12 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
   ];
 
   const handleExecuteDonate = async () => {
-    const donationAmountBigInt = BigInt(Math.round(amount)) * 1_000_000n;
+    if (!parsedInput.success || !budgetReady || !canParticipate || error) return;
+    const donationAmountBigInt = parsedInput.amount;
     const ok = await donate(projectIdBigInt, donationAmountBigInt);
     if (ok) {
       refetchDonation();
+      refetchBudget();
       refetchProjects();
       refetchRound();
       queryClient.invalidateQueries();
@@ -252,7 +190,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
           <p className="text-xs text-muted">{t.donateBox.subtitle}</p>
         </div>
         <span className="mono-label border border-money/30 bg-money/10 px-2.5 py-1 text-money">
-          1 - 5 USDC
+          {minDonationUsdc} - {maxDonationUsdc} USDC
         </span>
       </div>
 
@@ -277,34 +215,10 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
         </div>
       )}
 
-      {/* Student Verification Banner */}
-      {isConnected && !isStudent && !isRoundClosed && (
-        <div className="my-4 border border-line-strong bg-surface-2 p-3 text-xs text-muted space-y-2">
-          <div className="flex items-center gap-1.5 font-semibold text-foreground">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            <span>
-              {hasRequested ? t.donateBox.waitingApprovalTitle : t.donateBox.notVerifiedTitle}
-            </span>
-          </div>
-          <p className="leading-relaxed">
-            {hasRequested
-              ? t.donateBox.waitingApprovalDesc
-              : t.donateBox.notVerifiedDesc}
-          </p>
-          {!hasRequested && (
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={handleRequestVerification}
-              disabled={isRequestingVerification}
-              isLoading={isRequestingVerification}
-              className="text-xs font-bold"
-            >
-              {t.donateBox.getVerifiedCta}
-            </Button>
-          )}
-        </div>
-      )}
+      <StudentVerifyBox />
+      {isStudent && <div className="my-4 border border-line bg-bg p-3 text-sm">
+        {fmt(t.donateBox.roundBudgetRemaining, { remaining: budgetReady ? formatUsdcFixed(roundRemainingUsdc) : "—", max: maxPerRound === undefined ? "—" : formatUsdcFixed(Number(maxPerRound) / 1_000_000) })}
+      </div>}
 
       {/* Max allowance reached alert */}
       {isConnected && isMaxAllowanceReached && !isRoundClosed && (
@@ -344,7 +258,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
                   max={remainingAllowanceUsdc}
                   step="1"
                   value={inputValue}
-                  disabled={isDonatePending || isRoundClosed || isOwner || isMaxAllowanceReached || !isStudent}
+                  disabled={isDonatePending || isRoundClosed || isOwner || isMaxAllowanceReached || !canParticipate || !budgetReady || roundBudgetExhausted}
                   onChange={(e) => handleAmountChange(e.target.value)}
                   className="w-full border border-line-strong bg-bg px-3 py-2 text-base font-bold text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                 />
@@ -356,7 +270,7 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
               {/* Quick Buttons capped at remaining allowance */}
               <div className="flex gap-1.5">
                 {[1, 2, 5].map((val) => {
-                  const isDisabled = val > remainingAllowanceUsdc || isDonatePending || isRoundClosed || isOwner || !isStudent;
+                  const isDisabled = val < minDonationUsdc || val > Math.min(remainingAllowanceUsdc, roundRemainingUsdc) || isDonatePending || isRoundClosed || isOwner || !canParticipate || !budgetReady || roundBudgetExhausted;
                   return (
                     <button
                       key={val}
@@ -456,9 +370,13 @@ export function DonateBox({ project, className = "" }: DonateBoxProps) {
                 {t.donateBox.ownerBtn}
               </Button>
             ) : !isStudent ? (
+              <Link href="/verify" className="gradient-border flex justify-center p-3 text-sm font-bold">{t.donateBox.verificationRequired}</Link>
+            ) : !canParticipate ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
-                {hasRequested ? t.donateBox.waitingApprovalTitle : t.donateBox.verificationRequired}
+                {isStudent ? t.verification.roundNotEligible : t.donateBox.verificationRequired}
               </Button>
+            ) : !budgetReady || roundBudgetExhausted ? (
+              <Button variant="secondary" fullWidth disabled>{budgetReady ? t.donateBox.roundBudgetExhausted : t.common.loading}</Button>
             ) : isMaxAllowanceReached ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
                 {fmt(t.donateBox.maxReachedBtn, { max: maxDonationUsdc })}

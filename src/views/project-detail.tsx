@@ -202,7 +202,7 @@ export function ProjectDetailView() {
           data-aos="fade-left"
           data-aos-duration="700"
         >
-          <DonateBox project={project} />
+          <DonateBox project={project} roundAddress={roundAddress} />
         </div>
       </div>
 
@@ -230,7 +230,7 @@ export function ProjectDetailView() {
 
         {mobileDrawerOpen && (
           <div className="mt-4 pt-4 border-t border-line max-h-[75vh] overflow-y-auto">
-            <DonateBox project={project} />
+            <DonateBox project={project} roundAddress={roundAddress} />
           </div>
         )}
       </div>

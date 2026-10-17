@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {MockUSDC} from "../src/MockUSDC.sol";
+import {StudentRegistry} from "../src/StudentRegistry.sol";
 import {RoundFactory} from "../src/RoundFactory.sol";
 
 /// @title Deploy
@@ -12,7 +13,8 @@ contract Deploy is Script {
         vm.startBroadcast();
 
         MockUSDC usdc = new MockUSDC();
-        RoundFactory factory = new RoundFactory();
+        StudentRegistry registry = new StudentRegistry(vm.envAddress("ATTESTER_ADDRESS"));
+        RoundFactory factory = new RoundFactory(address(registry));
 
         vm.stopBroadcast();
 
@@ -22,12 +24,14 @@ contract Deploy is Script {
         console2.log("=== SqrtFund Deployment ===");
         console2.log("MockUSDC deployed at:", usdcAddress);
         console2.log("RoundFactory deployed at:", factoryAddress);
+        console2.log("StudentRegistry deployed at:", address(registry));
 
         string memory jsonOutput = string.concat(
             "{\n",
             '  "chainId": 43113,\n',
             '  "mockUsdc": "', vm.toString(usdcAddress), '",\n',
-            '  "roundFactory": "', vm.toString(factoryAddress), '"\n',
+            '  "roundFactory": "', vm.toString(factoryAddress), '",\n',
+            '  "studentRegistry": "', vm.toString(address(registry)), '"\n',
             "}\n"
         );
 

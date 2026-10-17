@@ -2,7 +2,13 @@
 export const roundFactoryAbi = [
   {
     "type": "constructor",
-    "inputs": [],
+    "inputs": [
+      {
+        "name": "registry",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -46,6 +52,11 @@ export const roundFactoryAbi = [
       },
       {
         "name": "maxMatchBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxPerRound",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -126,6 +137,19 @@ export const roundFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "studentRegistry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "transferOwnership",
     "inputs": [
       {
@@ -186,6 +210,11 @@ export const roundFactoryAbi = [
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "InvalidRegistry",
+    "inputs": []
   },
   {
     "type": "error",
