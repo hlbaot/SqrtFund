@@ -1,4 +1,5 @@
 "use client";
+import { isPublicProject } from "@/lib/projectVisibility";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Address } from "viem";
@@ -20,7 +21,7 @@ function RoundData({ address, number, onData, retry }: { address: Address; numbe
   const now = useCurrentTimestamp();
   const upcoming = source.status === "open" && now > 0 && Number(source.startTime ?? 0n) > now;
   const data = useMemo<LoadedRound>(() => {
-    const approved = projects.filter(project => project.approved);
+    const approved = projects.filter(isPublicProject);
     return { round: {
       id: address, number, version: source.roundVersion,
       readError: source.isError || isError ? (source.readFailureKind === "version" || projectFailure === "version" ? "version" : "rpc") : undefined,

@@ -6,14 +6,22 @@ import { AOSInit } from "@/components/common/AOSInit";
 import { useTxFlow } from "@/hooks/useTxFlow";
 
 import { useRouter } from "next/navigation";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { txToast } from "@/lib/txToast";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
 import { useRound } from "@/hooks/useRound";
-import { useProjects } from "@/hooks/useProjects";
+import { useProjects, type EnrichedProject } from "@/hooks/useProjects";
+import { isPublicProject } from "@/lib/projectVisibility";
+import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { ProjectReviewList } from "@/components/admin/ProjectReviewList";
+import { ProjectModerationDialog } from "@/components/admin/ProjectModerationDialog";
+import { projectModerationState, type ModerationAction } from "@/lib/projectModeration";
+import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
+import { getContractErrorMessage, isUserRejected } from "@/lib/errors";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatUsdcFixed, formatCount } from "@/lib/format";
 import { CreateRoundForm } from "@/components/admin/CreateRoundForm";
 import { DepositPoolForm } from "@/components/admin/DepositPoolForm";
@@ -24,25 +32,30 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { AdminSkeleton } from "@/components/common/PageSkeletons";
 import { Container } from "@/components/layout/Container";
-import { Check, Award, ArrowDownLeft } from "lucide-react";
+import { Award, ArrowDownLeft } from "lucide-react";
 
 export function AdminView() {
   const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
-  const { isConnected, status: accountStatus } = useAccount();
+  const { address, chainId, isConnected, status: accountStatus } = useAccount();
   const { role, isLoading: isRoleLoading, isReady } = useRole();
   const isAdmin = isReady && role === "admin";
   const router = useRouter();
   const {
     roundAddress,
+    admin: roundAdmin,
+    name: roundName,
+    endTime,
+    isCancelled,
     finalized,
     leftover,
     leftoverWithdrawn,
     refetch: refetchRound,
     isLoading: isRoundLoading,
   } = useRound();
-  const { projects, refetch: refetchProjects } = useProjects();
-  const publicClient = usePublicClient();
+  const { projects, supportsRejection, refetch: refetchProjects, isLoading: isProjectsLoading, isError: isProjectsError } = useProjects();
+  const publicClient = usePublicClient({ chainId: TARGET_CHAIN_ID });
+  const queries = useQueryClient();
   const { writeContractAsync } = useWriteContract();
 
   useEffect(() => {
@@ -55,64 +68,56 @@ export function AdminView() {
 
   const [busyProjectId, setBusyProjectId] = useState<bigint | null>(null);
   const [isWithdrawingLeftover, setIsWithdrawingLeftover] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState<{ project: EnrichedProject; action: ModerationAction } | null>(null);
+  const [reviewError, setReviewError] = useState<string>();
+  const [reviewPhase, setReviewPhase] = useState<"idle" | "signing" | "confirming">("idle");
+  const reviewBusy = useRef(false);
+  const now = useCurrentTimestamp();
+  const moderationRound = { admin: roundAdmin, endTime, finalized, isCancelled, supportsRejection };
+  const viewer = isConnected && chainId === TARGET_CHAIN_ID ? address : undefined;
 
-  // Approve project on chain
-  const handleApproveProject = async (projectId: bigint, projectName: string) => {
-    const flow = beginFlow("approve-project");
-    if (!roundAddress || !publicClient) return;
+  useEffect(() => { setReviewTarget(null); setReviewError(undefined); }, [roundAddress, viewer]);
+  const currentTarget = projects.find(project => project.id === reviewTarget?.project.id && project.roundId === reviewTarget?.project.roundId);
+  const targetState = currentTarget ? projectModerationState(currentTarget, moderationRound, viewer, now) : undefined;
+  const blockedReason = !reviewTarget ? undefined
+    : !currentTarget || reviewTarget.project.roundId.toLowerCase() !== roundAddress?.toLowerCase() ? t.moderation.changed
+    : !targetState?.showActions ? t.moderation[targetState!.reason!]
+    : reviewTarget.action === "reject" && !targetState.canReject ? t.moderation.legacy : undefined;
 
-    const toastId = `approve-project-${projectId}`;
-    setBusyProjectId(projectId);
+  function openReview(project: EnrichedProject, action: ModerationAction) {
+    const state = projectModerationState(project, moderationRound, viewer, now);
+    if (reviewBusy.current || !state.showActions || (action === "reject" && !state.canReject)) return;
+    setReviewError(undefined); setReviewPhase("idle"); setReviewTarget({ project, action });
+  }
+
+  async function confirmReview() {
+    if (reviewBusy.current || !reviewTarget || !currentTarget || !roundAddress || !publicClient) return;
+    const state = projectModerationState(currentTarget, moderationRound, viewer, Math.floor(Date.now() / 1000));
+    if (reviewTarget.project.roundId.toLowerCase() !== roundAddress.toLowerCase()) { setReviewError(t.moderation.changed); return; }
+    if (!state.showActions || (reviewTarget.action === "reject" && !state.canReject)) { setReviewError(t.moderation[state.reason || "legacy"]); return; }
+    reviewBusy.current = true; setBusyProjectId(currentTarget.contractId); setReviewError(undefined); setReviewPhase("signing");
+    const { action } = reviewTarget;
+    const flow = beginFlow("project-review");
+    const toastId = `${action}-project-${currentTarget.id}`;
+    const title = action === "approve" ? t.toasts.approvingProjectTitle : t.rejection.pending;
     try {
-      flow.toast.pending(
-        toastId,
-        t.toasts.approvingProjectTitle,
-        t.toasts.approvingProjectDesc.replace("{name}", projectName)
-      );
-
-      const hash = await flow.wait(() => writeContractAsync({
-        address: roundAddress,
-        abi: qfRoundAbi,
-        functionName: "approveProject",
-        args: [projectId],
-      }));
-
-      flow.toast.pending(
-        toastId,
-        t.toasts.confirmingApprovalTitle,
-        t.toasts.confirmingApprovalDesc,
-        hash
-      );
-
+      flow.toast.pending(toastId, title, t.toasts.confirmInWallet);
+      const hash = await flow.wait(() => writeContractAsync({ address: roundAddress, abi: qfRoundAbi, functionName: action === "approve" ? "approveProject" : "rejectProject", args: [currentTarget.contractId], chainId: TARGET_CHAIN_ID }));
+      setReviewPhase("confirming"); flow.toast.pending(toastId, title, t.transactions.confirming, hash);
       const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
-      if (receipt.status !== "success") {
-        throw new Error("Approval transaction reverted.");
-      }
-
-      flow.toast.success(
-        toastId,
-        t.toasts.projectApprovedTitle,
-        t.toasts.projectApprovedDesc.replace("{name}", projectName),
-        hash
-      );
-
-      refetchProjects();
-      refetchRound();
-    } catch (err: unknown) {
-      if (flow.cancelled) return false;
-      flow.error(
-        toastId,
-        err,
-        t.toasts.approvalFailed,
-        locale
-      );
-    } finally {
-      flow.finish();
+      if (receipt.status !== "success") throw new Error(t.moderation.reverted);
+      flow.toast.success(toastId, action === "approve" ? t.toasts.projectApprovedTitle : t.rejection.success, currentTarget.name, hash);
+      setReviewTarget(null);
+      await refetchProjects(); refetchRound(); await queries.invalidateQueries();
+    } catch (error) {
       if (!flow.cancelled) {
-        setBusyProjectId(null);
+        setReviewError(isUserRejected(error) ? t.transactions.rejectedDescription : getContractErrorMessage(error, locale));
+        flow.error(toastId, error, action === "approve" ? t.toasts.approvalFailed : t.rejection.failed, locale);
       }
+    } finally {
+      flow.finish(); reviewBusy.current = false; setBusyProjectId(null); setReviewPhase("idle");
     }
-  };
+  }
 
   // Withdraw unallocated leftover funds
   const handleWithdrawLeftover = async () => {
@@ -180,8 +185,7 @@ export function AdminView() {
 
   if (!isConnected || !isAdmin) return null;
 
-  const pendingProjects = projects.filter((p) => !p.approved);
-  const approvedProjects = projects.filter((p) => p.approved);
+  const approvedProjects = projects.filter(isPublicProject);
   const leftoverUsdc = Number(leftover) / 1_000_000;
 
   return (
@@ -210,7 +214,7 @@ export function AdminView() {
         </div>
       </div>
 
-      <RoundCancellationPanel roundAddress={roundAddress} adminControls />
+      <RoundCancellationPanel projectNames={Object.fromEntries(projects.map(project => [project.id, project.name]))} roundAddress={roundAddress} adminControls />
 
       {/* Finalized Round Distribution Results Table */}
       {finalized && (
@@ -285,68 +289,15 @@ export function AdminView() {
         </section>
       )}
 
+      {reviewTarget && <ProjectModerationDialog key={`${reviewTarget.project.roundId}:${reviewTarget.project.id}:${reviewTarget.action}`}
+        project={reviewTarget.project} action={reviewTarget.action} roundName={roundName} roundAddress={roundAddress}
+        pending={busyProjectId !== null} phase={reviewPhase} blockedReason={blockedReason} error={reviewError}
+        onClose={() => { if (!reviewBusy.current) { setReviewTarget(null); setReviewError(undefined); } }} onConfirm={() => void confirmReview()} />}
+
       {/* Project Proposals Approval Queue */}
-      <section
-        className="border border-line bg-surface p-6 space-y-4"
-        data-aos="fade-up"
-        data-aos-duration="600"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-foreground">
-            {t.admin.projectsQueueTitle}
-          </h2>
-          <span className="font-mono text-xs text-muted">
-            {t.admin.pendingProjectsCount.replace("{count}", String(pendingProjects.length))}
-          </span>
-        </div>
-
-        {pendingProjects.length === 0 ? (
-          <div className="border border-line bg-bg p-6 text-center text-xs text-muted">
-            {t.admin.noPendingProjects}
-          </div>
-        ) : (
-          <div className="divide-y divide-line">
-            {pendingProjects.map((proj) => {
-              const isBusy = busyProjectId === proj.contractId;
-              return (
-                <div
-                  key={proj.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-foreground text-sm">
-                        {proj.name}
-                      </h3>
-                      <Badge variant="warning">{t.admin.pendingReviewBadge}</Badge>
-                    </div>
-                    <p className="text-xs text-muted max-w-lg">
-                      {proj.description}
-                    </p>
-                    <p className="text-xs font-mono text-muted">
-                      {t.admin.ownerLabel}: {proj.ownerAddress} | {t.admin.linkLabel}: {proj.contactUrl}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="accent"
-                      disabled={Boolean(busyProjectId)}
-                      isLoading={isBusy}
-                      onClick={() => handleApproveProject(proj.contractId, proj.name)}
-                      className="h-8 text-xs font-bold"
-                    >
-                      <Check className="h-3.5 w-3.5 mr-1" />
-                      {t.admin.approveBtn}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <ProjectReviewList key={roundAddress || "no-round"} projects={projects} round={moderationRound} viewer={viewer} now={now}
+        pending={busyProjectId !== null} isLoading={isProjectsLoading} isError={isProjectsError} onRetry={() => void refetchProjects()}
+        onAction={(project, action) => { const current = projects.find(item => item.id === project.id); if (current) openReview(current, action); }} />
 
       {/* Forms Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-aos="fade-up" data-aos-duration="600">

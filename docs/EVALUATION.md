@@ -11,6 +11,8 @@ Vòng online chấm Technical Implementation và Avalanche Integration (50 đi�
 | Presentation & Pitching | Finals 10 | **Partial** | [Ví dụ chạy bằng code và pitch](#presentation-pitching) | Slide và video: **Not done** |
 | UI/UX & Demo | Finals 10 | **Partial** | [Input preview, fee, OTP](#ui-ux-demo) | Có code/test nhưng chưa kiểm thử trình duyệt + Core + email thật |
 
+**Bổ sung source — từ chối dự án:** Admin round có `rejectProject`, event và trạng thái rejected cuối tuple; giữ quota và không có lý do on-chain. Source có UI xác nhận, toast receipt, nhãn cho admin/chủ dự án; chưa deploy hoặc demo Fuji tính năng này. Xem [test và hướng dẫn triển khai thủ công](project-rejection.md). Các số liệu/snapshot dưới đây là bằng chứng lịch sử, không phải benchmark của bản thay đổi này.
+
 Ngày kiểm tra: **17/10/2026, Asia/Ho_Chi_Minh**. Snapshot workspace có thay đổi chưa commit, base commit `23d264873ccdf7e49b368895972fceccc207f92e`; kết quả không đại diện riêng cho commit đó. Không đọc/in/sửa giá trị bí mật trong `.env.local`, không deploy, không gửi giao dịch hoặc email. Build Next.js dùng cơ chế nạp môi trường sẵn có; không trích xuất môi trường vào báo cáo. Không thêm tính năng sản phẩm trong tác vụ này.
 
 <a id="evidence-run"></a>
@@ -167,7 +169,7 @@ Nguồn: [gas-report.log](evidence/2026-10-17/gas-report.log). Min/avg gồm l�
 | Dùng thử ngay | UI quản lý round, duyệt dự án, deposit, donate, finalize/claim; cần deployment đúng và dịch vụ OTP cấu hình | [CreateRoundForm.tsx](../src/components/admin/CreateRoundForm.tsx), [DepositPoolForm.tsx](../src/components/admin/DepositPoolForm.tsx), [FinalizeButton.tsx](../src/components/admin/FinalizeButton.tsx) | `pnpm dev`; thực hiện checklist dưới đây (chưa chạy E2E) |
 | Phạm vi Việt Nam | Demo Fuji và MockUSDC; hướng đến minh bạch quỹ tài trợ, không chào bán đầu tư/yield | [MockUSDC.sol](../contracts/src/MockUSDC.sol), [manifest](../contracts/deployments/fuji.json) | `cast call 0x38efb1BA71C7CDB8Dd44e860A0A5cADE864d3205 'decimals()(uint8)' --rpc-url https://api.avax-test.network/ext/bc/C/rpc` |
 
-**Một CLB chạy thử một round:** (1) Đơn vị vận hành là factory owner tạo round với thời gian, bounds và budget, sponsor cung cấp matching pool qua admin. (2) Thành viên kết nối Fuji, có test AVAX, xác thực email và nhận MockUSDC faucet. (3) CLB đăng ký project; admin approve. (4) Sinh viên nhập 1–5 token theo bounds round, xem preview, approve ERC20 nếu cần, donate/batch. (5) Sau endTime admin finalize; sau grace 1 ngày ai cũng có thể finalize; owner claim direct + matching, admin rút leftover. Nếu admin hủy trước finalize, donor tự refund và admin rút pool. **Đây là quy trình dựa trên source; chưa xác nhận hoàn tất trên deployment manifest có factory rounds rỗng.** Không phải mọi CLB tự tạo round được: `createRound` là `onlyOwner`.
+**Một CLB chạy thử một round:** (1) Đơn vị vận hành là factory owner tạo round với thời gian, bounds và budget, sponsor cung cấp matching pool qua admin. (2) Thành viên kết nối Fuji, có test AVAX, xác thực email và nhận MockUSDC faucet. (3) CLB đăng ký project; admin approve hoặc reject on-chain trên phiên bản mới. Rejected không được donate/matching/claim, không giải phóng quota và không có lý do từ chối on-chain. (4) Sinh viên nhập 1–5 token theo bounds round, xem preview, approve ERC20 nếu cần, donate/batch. (5) Sau endTime admin finalize; sau grace 1 ngày ai cũng có thể finalize; owner claim direct + matching, admin rút leftover. Nếu admin hủy trước finalize, donor tự refund và admin rút pool. **Đây là quy trình dựa trên source; chưa xác nhận hoàn tất trên deployment manifest có factory rounds rỗng.** Không phải mọi CLB tự tạo round được: `createRound` là `onlyOwner`.
 
 “Cấp quỹ theo quan hệ” là giả thuyết vấn đề cần phỏng vấn/pilot, không phải kết quả khảo sát đã có. On-chain cho thấy phân bổ/chuyển token; **chưa theo dõi CLB chi tiêu tiền sau claim**. QF có cap/scaling nên không bảo đảm luôn ưu tiên tuyệt đối dự án nhiều supporter.
 
@@ -206,7 +208,7 @@ Raw demand tổng **11,799.999999**, lớn hơn pool 10,000 nên phải proporti
 **Why on-chain?**  
 QF trong `_computeMatching` và sổ góp nằm trong contract, ai cũng có thể đối chiếu.  
 Sau finalize, owner claim direct donation + matching theo state đã chốt.  
-Admin vẫn duyệt/hủy round trước finalize; minh bạch công thức không xóa quyền quản trị đó.
+Admin vẫn duyệt/từ chối dự án và hủy round trước finalize; minh bạch công thức không xóa quyền quản trị đó.
 
 **Why Avalanche?**  
 Dự án cấu hình Fuji C-Chain 43113, dùng EVM contracts và giao dịch góp nhỏ theo bounds round.  
@@ -242,7 +244,7 @@ Preview là ước tính dựa trên snapshot RPC; các ví khác có thể dona
 
 1. **Một người có nhiều email trường thì sao?** Registry/DB chỉ đảm bảo 1 email ↔ 1 ví, không đảm bảo 1 người. Alias được normalize nhưng nhiều email hợp lệ vẫn là Sybil gap; [StudentRegistry.sol](../contracts/src/StudentRegistry.sol), [domain.ts](../src/lib/verify/domain.ts). Chống danh tính đa email: **Not done**.
 2. **Nhóm bạn thỏa thuận góp chéo để lấy pool?** Budget, self-donation ban và aggregate-before-sqrt hạn chế một số hành vi; không phát hiện collusion giữa các ví. Pairwise penalty/reputation: **Not done**; [_recordDonation](../contracts/src/QFRound.sol).
-3. **Admin có kiểm duyệt/cancel được không?** Có. `approveProject`/`cancelRound` là `onlyAdmin`, cancel trước finalize; factory create là `onlyOwner`. Donor được pull-refund sau cancel, không có quyền buộc admin approve; [QFRound.sol](../contracts/src/QFRound.sol), [RoundFactory.sol](../contracts/src/RoundFactory.sol).
+3. **Admin có kiểm duyệt/cancel được không?** Có. `approveProject`/`rejectProject`/`cancelRound` là `onlyAdmin`, cancel trước finalize; factory create là `onlyOwner`. Donor được pull-refund sau cancel, không có quyền buộc admin approve; [QFRound.sol](../contracts/src/QFRound.sol), [RoundFactory.sol](../contracts/src/RoundFactory.sol).
 4. **Backend attester là điểm tin cậy tập trung?** Đúng. Chữ ký chứng minh attester cấp quyền, không tự chứng minh email ở chain. Owner có thể đổi attester; `isStudent` cũ không tự bị revoke; [StudentRegistry.sol](../contracts/src/StudentRegistry.sol), [signer.ts](../src/lib/verify/signer.ts). ZK/DKIM proof: **Not done**.
 5. **MockUSDC có phải USDC thật, yield từ đâu?** Không. Token test có faucet và owner mint, không giá trị; không có yield. Sponsor funding thực tế chưa có; [MockUSDC.sol](../contracts/src/MockUSDC.sol), `depositPool` trong [QFRound.sol](../contracts/src/QFRound.sol).
 6. **Finalize có tăng gas theo dự án, ai trả gas?** Có: bounded O(N), N ≤ 50; fixture local đo call 1,583,871 gas, chưa có receipt Fuji. Người gọi trả gas; admin được finalize trong 1 ngày grace, sau đó permissionless; [test benchmark](../contracts/test/RoundPhase2.t.sol), [finalize log](evidence/2026-10-17/finalize50.log).

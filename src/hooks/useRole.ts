@@ -63,9 +63,11 @@ export function useRole(customRound?: Address) {
   const isProjectOwner = myProjects.length > 0;
 
   // Round/project failures affect participation, not the global identity badge.
-  const isLoading = student.isLoading;
-  const isError = student.isError;
-  const role: WalletRole = !isLoading && !isError && isAdmin ? "admin"
+  // Factory/round authority is independent of student verification. A slow or
+  // failed registry read must not hide an already established admin identity.
+  const isLoading = !isAdmin && student.isLoading;
+  const isError = !isAdmin && student.isError;
+  const role: WalletRole = isAdmin ? "admin"
     : isProjectOwner ? "owner" : isStudent ? "student" : "guest";
 
   return {

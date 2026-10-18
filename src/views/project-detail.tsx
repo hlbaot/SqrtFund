@@ -38,7 +38,7 @@ export function ProjectDetailView() {
   const customRoundAddress = rawRoundId.startsWith("0x") ? (rawRoundId as Address) : undefined;
 
   const { t } = useLocale();
-  const { roundAddress, isLoading: isRoundLoading, isError: isRoundError } = useRound(customRoundAddress);
+  const { roundAddress, isCancelled, isLoading: isRoundLoading, isError: isRoundError } = useRound(customRoundAddress);
   const { projects, isLoading: isProjectsLoading, isError: isProjectsError, refetch } = useProjects(roundAddress);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -113,7 +113,7 @@ export function ProjectDetailView() {
               </div>
 
               {!project.approved && (
-                <Badge variant="warning">{t.myActivity.statusPending}</Badge>
+                <Badge variant={project.rejected ? "primary" : "warning"}>{project.rejected ? t.rejection.status : t.myActivity.statusPending}</Badge>
               )}
             </div>
 
@@ -225,7 +225,7 @@ export function ProjectDetailView() {
             onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
             className="flex items-center gap-1.5 border border-primary bg-primary px-4 py-2 text-xs font-bold text-foreground"
           >
-            <span>{mobileDrawerOpen ? t.projectDetail.closeDrawer : t.donateBox.title}</span>
+            <span>{isCancelled ? t.cancellation.banner : mobileDrawerOpen ? t.projectDetail.closeDrawer : t.donateBox.title}</span>
             {mobileDrawerOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
         </div>

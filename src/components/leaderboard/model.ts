@@ -1,3 +1,4 @@
+import { isPublicProject } from "@/lib/projectVisibility";
 import type { Project, Round } from "@/types";
 import type { Locale } from "@/lib/copy";
 
@@ -20,7 +21,7 @@ export function matchingValue(project: LeaderboardProject, finalized: boolean) {
 }
 // Competition ranks remain based on supporters, regardless of the display sort.
 export function rankProjects(projects: readonly LeaderboardProject[]): RankedProject[] {
-  const sorted = [...projects].sort((a, b) => b.supporterCount - a.supporterCount || a.id.localeCompare(b.id, undefined, { numeric: true }));
+  const sorted = projects.filter(isPublicProject).sort((a, b) => b.supporterCount - a.supporterCount || a.id.localeCompare(b.id, undefined, { numeric: true }));
   let rank = 0;
   const counts = new Map<number, number>();
   for (const project of sorted) counts.set(project.supporterCount, (counts.get(project.supporterCount) ?? 0) + 1);
@@ -31,5 +32,5 @@ export function rankProjects(projects: readonly LeaderboardProject[]): RankedPro
 }
 export function sortProjects(projects: RankedProject[], sort: LeaderboardSort, finalized: boolean) {
   const score = (p: RankedProject) => sort === "direct" ? p.totalDonated : sort === "matching" ? matchingValue(p, finalized) ?? -1 : p.supporterCount;
-  return [...projects].sort((a, b) => score(b) - score(a) || a.supporterRank - b.supporterRank || a.id.localeCompare(b.id, undefined, { numeric: true }));
+  return projects.filter(isPublicProject).sort((a, b) => score(b) - score(a) || a.supporterRank - b.supporterRank || a.id.localeCompare(b.id, undefined, { numeric: true }));
 }

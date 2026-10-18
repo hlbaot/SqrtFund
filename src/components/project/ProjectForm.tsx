@@ -23,7 +23,7 @@ export function ProjectForm() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
-  const { roundAddress, status: roundStatus } = useRound();
+  const { roundAddress, status: roundStatus, isCancelled } = useRound();
   const { isStudent, canParticipate } = useRole();
 
   const [name, setName] = useState("");
@@ -155,6 +155,8 @@ export function ProjectForm() {
     estimatedMatching: 0,
     status: "pending",
   };
+
+  if (isCancelled) return <p role="status" className="border border-primary/40 bg-surface p-4 text-sm text-primary">{t.cancellation.banner}</p>;
 
   if (isSubmitted) {
     return (

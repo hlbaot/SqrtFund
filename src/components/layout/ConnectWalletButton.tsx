@@ -36,7 +36,7 @@ export function ConnectWalletButton() {
   }, [status, address, connector]);
   const queryClient = useQueryClient();
   const { t, locale } = useLocale();
-  const { role, isReady, isStudent } = useRole();
+  const { role, isReady, isStudent, isAdmin } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
   const { canClaim, remainingSeconds } = useClaim();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -221,7 +221,7 @@ export function ConnectWalletButton() {
           )}
 
           <div className="space-y-1">
-            {isReady && role === "admin" && <Link href="/admin" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.nav.admin}<NotificationBadge count={counts.admin} /></Link>}
+            {isAdmin && <Link href="/admin" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.nav.admin}<NotificationBadge count={counts.admin} /></Link>}
             <Link href="/my" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.wallet.myProjects}<NotificationBadge count={counts.owner} /></Link>
             {isReady && role === "student" && (
               <Link

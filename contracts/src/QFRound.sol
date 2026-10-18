@@ -65,10 +65,12 @@ contract QFRound is ReentrancyGuard {
         uint256 sumSqrt;
         uint256 totalDonated;
         uint256 donorCount;
+        bool rejected;
     }
 
     mapping(uint256 => Project) private _projects;
     uint256[] public approvedProjectIds;
+    mapping(uint256 => bool) public rejected;
 
     // donor => projectId => total donated
     mapping(address => mapping(uint256 => uint256)) public donationOf;
@@ -99,6 +101,7 @@ contract QFRound is ReentrancyGuard {
     error NotFinalized();
     error ProjectNotApproved();
     error ProjectAlreadyApproved();
+    error ProjectAlreadyRejected();
     error ProjectNotFound();
     error MaxProjectsReached();
     error OwnerProjectLimit();
@@ -122,6 +125,7 @@ contract QFRound is ReentrancyGuard {
     event CancelledPoolWithdrawn(address indexed admin, uint256 amount);
     event ProjectRegistered(uint256 indexed id, address indexed owner, string name);
     event ProjectApproved(uint256 indexed id);
+    event ProjectRejected(uint256 indexed id);
     event PoolDeposited(address indexed depositor, uint256 amount, uint256 totalPool);
     event Donated(address indexed donor, uint256 indexed projectId, uint256 amount, uint256 newTotal);
     event PoolUnderfunded(uint256 pool, uint256 totalRaw);
@@ -227,11 +231,26 @@ contract QFRound is ReentrancyGuard {
         if (block.timestamp >= endTime) revert RoundEnded();
         if (id == 0 || id > projectCount) revert ProjectNotFound();
         if (_projects[id].approved) revert ProjectAlreadyApproved();
+        if (rejected[id]) revert ProjectAlreadyRejected();
 
         _projects[id].approved = true;
         approvedProjectIds.push(id);
 
         emit ProjectApproved(id);
+    }
+
+    /// @notice Permanently reject an unapproved project without deleting its record.
+    /// @dev Rejection never frees MAX_PROJECTS or MAX_PROJECTS_PER_OWNER capacity:
+    ///      projectCount and projectsOf remain unchanged to prevent registration spam.
+    ///      Approved/rejected are mutually exclusive, so rejected IDs never enter
+    ///      approvedProjectIds and cannot donate, match, or claim.
+    function rejectProject(uint256 id) external onlyAdmin notCancelled {
+        if (finalized) revert AlreadyFinalized();
+        if (id == 0 || id > projectCount) revert ProjectNotFound();
+        if (_projects[id].approved) revert ProjectAlreadyApproved();
+        if (rejected[id]) revert ProjectAlreadyRejected();
+        rejected[id] = true;
+        emit ProjectRejected(id);
     }
 
     // --- Sponsor Matching Pool ---
@@ -500,7 +519,8 @@ contract QFRound is ReentrancyGuard {
             bool claimed,
             uint256 sumSqrt,
             uint256 totalDonated,
-            uint256 donorCount
+            uint256 donorCount,
+            bool isRejected
         )
     {
         if (id == 0 || id > projectCount) revert ProjectNotFound();
@@ -515,7 +535,8 @@ contract QFRound is ReentrancyGuard {
             proj.claimed,
             proj.sumSqrt,
             proj.totalDonated,
-            proj.donorCount
+            proj.donorCount,
+            rejected[id]
         );
     }
 
@@ -550,7 +571,8 @@ contract QFRound is ReentrancyGuard {
                 claimed: proj.claimed,
                 sumSqrt: proj.sumSqrt,
                 totalDonated: proj.totalDonated,
-                donorCount: proj.donorCount
+                donorCount: proj.donorCount,
+                rejected: rejected[id]
             });
         }
     }

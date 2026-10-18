@@ -47,14 +47,14 @@ Where $d_i$ is the micro-donation from verified student $i$. Projects loved by h
 | :--- | :--- |
 | **Verified Student** | Verifies university email once; receives global student role; donates 1–5 USDC individually or via batch allocation across projects within round budget limits. |
 | **Club / Project Lead** | Must be a verified student; submits project proposals (title, description, links, banner); tracks real-time expected matching; claims principal + matching upon finalization. |
-| **Round Sponsor / Admin** | Deploys round via `RoundFactory`; deposits matching pool; approves legitimate student projects; monitors health; triggers emergency cancellation & pool withdrawal if compromised. |
+| **Round Sponsor / Admin** | Deploys round via `RoundFactory`; deposits matching pool; approves or rejects student projects on-chain; monitors health; triggers emergency cancellation & pool withdrawal if compromised. |
 
 ### Features Implemented in Current Source
 
 Deployment status is assessed separately in [Evaluation](docs/EVALUATION.md#avalanche-integration); source implementation does not establish a working Fuji round.
 - [x] **Universal Student Attestation:** One-time verification via university email OTP + EIP-712 attestation.
 - [x] **Multi-Round Factory Architecture:** Deploy independent funding rounds with custom timelines, budgets, and matching caps.
-- [x] **Project Registration & Admin Curation:** Verified students register projects; admin approves to prevent phishing.
+- [x] **Project Registration & Admin Curation:** Verified students register projects; the round admin approves or permanently rejects proposals on-chain (`approveProject` / `rejectProject`).
 - [x] **Single & Batch Donations (`donateMany`):** Atomic multi-project donation in a single ERC20 transfer.
 - [x] **Deterministic Real-Time QF Engine:** On-chain integer math with `SCALE = 1e12` and real-time frontend simulation.
 - [x] **Proportional Underfunding Scaling:** Automatically scales subsidies if total raw demand exceeds matching pool.
@@ -138,7 +138,8 @@ sequenceDiagram
 flowchart TD
     A[Admin deploys Round via RoundFactory] --> B[Sponsor deposits matching pool: depositPool]
     B --> C[Verified Student registers project: registerProject]
-    C --> D[Admin approves legitimate project: approveProject]
+    C --> D[Admin approves project: approveProject]
+    C --> R[Admin rejects project: rejectProject]
     D --> E[Verified Students donate: donate / donateMany]
     E --> F{Round End Time reached?}
     F -- No --> E
@@ -200,7 +201,7 @@ For a 10,000-token pool, total raw demand exceeds the pool. With `maxMatchBps = 
 | **Layer 3: Strict Round Budget Caps** | `spentInRound[donor] <= maxPerRound` enforced on-chain. | Limits the damage an attacker can inflict even if they acquire multiple identities. |
 | **Layer 4: Cumulative Donation Aggregation** | Donations from the same wallet to the same project are summed before $\sqrt{\cdot}$ calculation. | Splitting 5 USDC into five 1 USDC transactions yields zero additional matching. |
 | **Layer 5: Server-Side Rate Limiting & Advisory Locks** | PostgreSQL transaction advisory locks (`pg_advisory_xact_lock`) with 4-identity sliding window. | Prevents race condition attacks and SMTP exhaustion across serverless nodes. |
-| **Layer 6: Project Curation Gateway** | Only verified students can submit projects; round admin must explicitly approve. | Provides admin review before participation; does not guarantee project legitimacy or prevent misuse after claims. |
+| **Layer 6: Project Curation Gateway** | Only verified students can submit projects; round admin explicitly approves or permanently rejects each proposal. | Provides admin review before participation; does not guarantee project legitimacy or prevent misuse after claims. |
 
 ### Candid Security Limitations & Residual Risks
 1. **Custodial Attester Signer:** The backend holds `ATTESTER_PRIVATE_KEY` to sign EIP-712 vouchers. If this server key is compromised, an attacker could forge student attestations until the owner rotates the key via `setAttester`.
@@ -358,6 +359,8 @@ Follow these 5 steps to verify the entire live platform in under 3 minutes:
 
 ## 11. Testing & Gas Benchmarks
 
+The historical baseline below predates project rejection. See [current rejection validation](docs/project-rejection.md#validation) for the latest test results; old gas snapshots are not remeasured for this change.
+
 ### Test Suite Execution Summary
 - **Foundry Unit, Fuzz & Invariant Tests:** **113 / 113 PASSED** (0 failures, 0 skips)
   - `QFRound.t.sol`: 27 tests passed.
@@ -383,6 +386,10 @@ Measured on 17/10/2026 with `forge test --gas-report`; this is local test execut
 ---
 
 ## 12. Known Limitations & Roadmap
+
+- **Centralized moderation:** The round admin can approve or reject pending projects on-chain. Rejection is permanent, emits `ProjectRejected(id)`, and stores no on-chain reason or appeal mechanism.
+- **Rejected projects retain capacity:** Records remain readable; `projectCount`, `projectsOf`, `MAX_PROJECTS = 50` and the two-project-per-owner limit are unchanged. Rejection does not free registration slots.
+- **Deployment required:** Rejection exists in the updated source and ABI, not retroactively in existing rounds. The frontend reads old tuple layouts and shows a disabled reject action with an explanation for old contracts. Follow [manual factory redeployment and verification](docs/project-rejection.md#manual-deployment) and create a new sample round. No deployment was performed by this change.
 
 All items below are **Not done**; historical quarter labels are unverified planning targets, not delivery claims. See [current prioritized roadmap and effort estimates](docs/EVALUATION.md#roadmap), including deployment provenance, receipts, slides/video, browser/OTP integration and pilot gaps.
 

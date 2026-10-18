@@ -1,4 +1,5 @@
 "use client";
+import { isPublicProject } from "@/lib/projectVisibility";
 import { MatchingPoolWarning } from "@/components/project/MatchingPoolWarning";
 import { BatchDonationForm } from "@/components/project/BatchDonationForm";
 import { StudentVerifyBox } from "@/components/verify/StudentVerifyBox";
@@ -106,7 +107,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
       ];
     }
     return projects
-      .filter((p) => p.approved)
+      .filter(isPublicProject)
       .map((p) => ({
         id: p.id,
         sumSqrt: p.sumSqrtRaw ?? 0n,
@@ -176,6 +177,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   const isRoundClosed = roundStatus !== "open";
   const isMaxAllowanceReached = remainingAllowanceUsdc <= 0;
 
+  if (project.rejected || project.status === "rejected") return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><p role="status">{t.rejection.blocked}</p><Button disabled fullWidth>{t.rejection.status}</Button></Frame>;
   if (isCancelled) return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><h2 className="font-bold text-primary">{t.phase2.cancelled}</h2><p className="text-sm">{t.phase2.cancelledHint}</p><Link className="underline" href={`/round/${roundAddress}`}>{t.phase2.refund}</Link></Frame>;
   if (batchMode && roundAddress && supportsPhase2) return <Frame className={`bg-surface p-5 ${className}`}><BatchDonationForm roundAddress={roundAddress} onBack={() => setBatchMode(false)} /></Frame>;
   return (

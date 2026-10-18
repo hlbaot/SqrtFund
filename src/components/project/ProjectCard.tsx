@@ -61,8 +61,8 @@ export function ProjectCard({ project, roundId = "1" }: ProjectCardProps) {
           </span>
         </div>
 
-        {project.status === "pending" && (
-          <Badge variant="warning">{t.myActivity.statusPending}</Badge>
+        {(project.status === "pending" || project.status === "rejected") && (
+          <Badge variant={project.status === "rejected" ? "primary" : "warning"}>{project.status === "rejected" ? t.rejection.status : t.myActivity.statusPending}</Badge>
         )}
       </div>
 

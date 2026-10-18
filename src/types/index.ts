@@ -31,7 +31,7 @@ export type Round = {
 
 export type ProjectCategory = "education" | "technology" | "environment" | "arts";
 
-export type ProjectStatus = "approved" | "pending";
+export type ProjectStatus = "approved" | "pending" | "rejected";
 
 export type Project = {
   id: string;
@@ -50,6 +50,7 @@ export type Project = {
   totalDonated: number; // in USDC
   estimatedMatching: number; // in USDC
   status: ProjectStatus;
+  rejected?: boolean;
   rank?: number;
   whySupportersMatter?: string;
   whySupportersMatterVi?: string;

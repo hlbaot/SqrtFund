@@ -1,4 +1,6 @@
 "use client";
+import { isPublicProject } from "@/lib/projectVisibility";
+import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
 import { StudentVerifyBox } from "@/components/verify/StudentVerifyBox";
 
 import { AOSInit } from "@/components/common/AOSInit";
@@ -40,7 +42,7 @@ export function MyView() {
   const { t } = useLocale();
   const { address, isConnected } = useAccount();
 
-  const { roundAddress, finalized, isLoading: isRoundLoading } = useRound();
+  const { roundAddress, finalized, isCancelled, isLoading: isRoundLoading } = useRound();
   const { projects, isLoading: isProjectsLoading, refetch: refetchProjects } = useProjects();
   const { isStudent } = useRole();
   const {
@@ -61,7 +63,7 @@ export function MyView() {
   const handleOpenAvatarDialog = () => setIsAvatarDialogOpen(true);
 
   // Read donations for all projects via multicall
-  const approvedProjects = useMemo(() => projects.filter((p) => p.approved), [projects]);
+  const approvedProjects = useMemo(() => projects.filter(isPublicProject), [projects]);
 
   const donationContracts = useMemo(() => {
     if (!roundAddress || !address) return [];
@@ -260,6 +262,8 @@ export function MyView() {
         </div>
       </div>
 
+      {isCancelled && <RoundCancellationPanel projectNames={Object.fromEntries(projects.map(project => [project.id, project.name]))} roundAddress={roundAddress} />}
+
       {/* Tabs: My Donations & My Projects */}
       <div data-aos="fade-up" data-aos-duration="600">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -270,7 +274,7 @@ export function MyView() {
 
           {/* Tab 1: My Donations */}
           <TabsContent value="donations">
-            {isDonationsLoading ? (
+            {isCancelled ? <p className="text-sm text-muted">{t.cancellation.banner}</p> : isDonationsLoading ? (
               <div className="py-8 text-center text-xs text-muted">{t.common.loadingDonations}</div>
             ) : myDonations.length === 0 ? (
               <EmptyState
@@ -336,7 +340,7 @@ export function MyView() {
               <EmptyState
                 title={t.myActivity.projectsEmptyTitle}
                 description={t.myActivity.projectsEmptyDesc}
-                actionLabel={t.myActivity.projectsEmptyCta}
+                actionLabel={isCancelled ? undefined : t.myActivity.projectsEmptyCta}
                 onAction={() => router.push("/register")}
                 icon={<FolderKanban className="h-6 w-6 text-muted" />}
               />
@@ -366,9 +370,9 @@ export function MyView() {
                               {proj.name}
                             </h3>
                             <Badge
-                              variant={proj.approved ? "accent" : "warning"}
+                              variant={proj.rejected ? "primary" : proj.approved ? "accent" : "warning"}
                             >
-                              {proj.approved
+                              {proj.rejected ? t.rejection.status : proj.approved
                                 ? t.myActivity.statusApproved
                                 : t.myActivity.statusPending}
                             </Badge>
@@ -406,7 +410,7 @@ export function MyView() {
                                 <Button
                                   variant="primary"
                                   size="sm"
-                                  disabled={!finalized || !proj.approved || isClaimPending}
+                                  disabled={isCancelled || proj.rejected || !finalized || !proj.approved || isClaimPending}
                                   isLoading={isClaimPending}
                                   onClick={() => handleClaim(proj.contractId)}
                                   className="font-bold text-xs"

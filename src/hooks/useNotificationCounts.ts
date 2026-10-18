@@ -1,4 +1,5 @@
 "use client";
+import { isPendingProject } from "@/lib/projectVisibility";
 
 import { useAccount } from "wagmi";
 import { useProjects } from "@/hooks/useProjects";
@@ -12,7 +13,7 @@ export function useNotificationCounts(role: WalletRole) {
   const { projects } = useProjects(roundAddress);
   const { claimableUsdc } = useClaim();
   const admin = isConnected && role === "admin"
-    ? projects.filter(p => !p.approved).length : 0;
+    ? projects.filter(isPendingProject).length : 0;
   const student = isConnected && role === "student" ? claimableUsdc : 0;
   const owner = isConnected && role === "owner" && finalized
     ? projects.filter(p => p.ownerAddress.toLowerCase() === address?.toLowerCase() && p.approved && !p.claimed && p.totalDonatedRaw + p.estimatedMatchingRaw > 0n).length : 0;

@@ -18,7 +18,7 @@ import { Container } from "./Container";
 
 export function Navbar() {
   const pathname = usePathname();
-  const { role, isReady, isConnected } = useRole();
+  const { role, isReady, isConnected, isAdmin } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
   const { t } = useLocale();
   const { roundAddress, status } = useRound();
@@ -36,7 +36,7 @@ export function Navbar() {
     { href: "/round", label: t.nav.round },
     { href: "/register", label: t.nav.register },
     { href: "/my", label: t.nav.my },
-    ...(isConnected && isReady && role === "admin" ? [{ href: "/admin", label: t.nav.admin }] : []),
+    ...(isConnected && isAdmin ? [{ href: "/admin", label: t.nav.admin }] : []),
   ];
 
   return (

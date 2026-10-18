@@ -2,8 +2,9 @@
 
 import { useMemo, useEffect } from "react";
 import type { Address } from "viem";
-import { useAccount, useReadContracts } from "wagmi";
+import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { logContractReadFailure, isVersionReadError, roundReadRetry } from "@/lib/contracts/roundReads";
+import { legacyProjectAbi } from "@/lib/contracts/legacyProjectAbi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
 import { canViewProject } from "@/lib/projectVisibility";
@@ -22,6 +23,7 @@ export type ProjectContractItem = {
   sumSqrt: bigint;
   totalDonated: bigint;
   donorCount: bigint;
+  rejected?: boolean;
 };
 
 export type EnrichedProject = Project & {
@@ -31,6 +33,7 @@ export type EnrichedProject = Project & {
   estimatedMatchingRaw: bigint;
   claimed: boolean;
   approved: boolean;
+  rejected: boolean;
 };
 
 export function useProjects(customRoundAddress?: Address) {
@@ -38,6 +41,13 @@ export function useProjects(customRoundAddress?: Address) {
   const { address, isConnected, chainId } = useAccount();
   const viewer = isConnected && chainId === TARGET_CHAIN_ID ? address : undefined;
   const roundAddress = customRoundAddress || defaultRoundAddress;
+  // Old rounds have shorter dynamic project tuples. Probe the getter before decoding.
+  const rejectionProbe = useReadContract({
+    address: roundAddress, abi: qfRoundAbi, functionName: "rejected", args: [0n], chainId: TARGET_CHAIN_ID,
+    query: { enabled: Boolean(roundAddress), staleTime: Infinity, retryOnMount: false, retry: (attempt, error) => !isVersionReadError(error) && attempt < 2 },
+  });
+  const supportsRejection = typeof rejectionProbe.data === "boolean";
+  const probeResolved = supportsRejection || (rejectionProbe.isError && isVersionReadError(rejectionProbe.error));
 
   const {
     data: contractData,
@@ -50,7 +60,8 @@ export function useProjects(customRoundAddress?: Address) {
     contracts: [
       {
         address: roundAddress,
-        abi: qfRoundAbi,
+        abi: supportsRejection ? qfRoundAbi : legacyProjectAbi,
+        chainId: TARGET_CHAIN_ID,
         functionName: "getProjects",
         args: [0n, 50n],
       },
@@ -58,10 +69,11 @@ export function useProjects(customRoundAddress?: Address) {
         address: roundAddress,
         abi: qfRoundAbi,
         functionName: "previewMatching",
+        chainId: TARGET_CHAIN_ID,
       },
     ],
     query: {
-      enabled: Boolean(roundAddress),
+      enabled: Boolean(roundAddress) && probeResolved,
       refetchInterval: 15000,
       ...roundReadRetry,
     },
@@ -118,7 +130,8 @@ export function useProjects(customRoundAddress?: Address) {
         supporterCount: Number(p.donorCount),
         totalDonated: totalDonatedNum,
         estimatedMatching: matchingNum,
-        status: p.approved ? "approved" : "pending",
+        status: p.rejected ? "rejected" : p.approved ? "approved" : "pending",
+        rejected: p.rejected === true,
         rank: index + 1,
         // Raw values for precision
         contractId: p.id,
@@ -135,9 +148,11 @@ export function useProjects(customRoundAddress?: Address) {
 
   return {
     projects: visibleProjects,
+    supportsRejection,
     readFailureKind: contractData?.some(result => result.status === "failure" && isVersionReadError(result.error)) ? "version" as const : "rpc" as const,
-    isLoading: Boolean(roundAddress) && isLoading,
-    isError: isError || contractData?.[0]?.status === "failure",
-    refetch,
+    isLoading: Boolean(roundAddress) && ((!probeResolved && !rejectionProbe.isError) || (probeResolved && isLoading)),
+    isError: (!probeResolved && rejectionProbe.isError) || isError || contractData?.[0]?.status === "failure",
+    // A failed capability probe must be retried before choosing a tuple ABI.
+    refetch: () => probeResolved ? refetch() : rejectionProbe.refetch(),
   };
 }

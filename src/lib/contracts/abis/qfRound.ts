@@ -357,6 +357,11 @@ export const qfRoundAbi = [
         "name": "donorCount",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "isRejected",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -436,6 +441,11 @@ export const qfRoundAbi = [
             "name": "donorCount",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "rejected",
+            "type": "bool",
+            "internalType": "bool"
           }
         ]
       },
@@ -740,6 +750,38 @@ export const qfRoundAbi = [
   },
   {
     "type": "function",
+    "name": "rejectProject",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "rejected",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "remainingBudget",
     "inputs": [
       {
@@ -1026,6 +1068,19 @@ export const qfRoundAbi = [
   },
   {
     "type": "event",
+    "name": "ProjectRejected",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Refunded",
     "inputs": [
       {
@@ -1185,6 +1240,11 @@ export const qfRoundAbi = [
   {
     "type": "error",
     "name": "ProjectAlreadyApproved",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProjectAlreadyRejected",
     "inputs": []
   },
   {

@@ -1,4 +1,5 @@
 "use client";
+import { isPublicProject } from "@/lib/projectVisibility";
 import { VerificationStats } from "@/components/verify/VerificationStats";
 
 import { AOSInit } from "@/components/common/AOSInit";
@@ -120,7 +121,7 @@ export function HomeView() {
 
   const approvedProjects = useMemo(() => {
     return [...projects]
-      .filter((p) => p.approved)
+      .filter(isPublicProject)
       .sort((a, b) => b.estimatedMatching - a.estimatedMatching);
   }, [projects]);
 

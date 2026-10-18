@@ -1,4 +1,5 @@
 "use client";
+import { isPublicProject } from "@/lib/projectVisibility";
 import { MatchingPoolWarning } from "./MatchingPoolWarning";
 import { useMemo, useState } from "react";
 import { formatUnits, type Address } from "viem";
@@ -23,7 +24,7 @@ export function BatchDonationForm({ roundAddress, onBack }: { roundAddress: Addr
   const { canParticipate } = useRole(roundAddress); const query = useQueryClient();
   const { donateMany, isPending } = useDonate(roundAddress);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
-  const approved = useMemo(() => projects.filter(p => p.approved), [projects]);
+  const approved = useMemo(() => projects.filter(isPublicProject), [projects]);
   const donations = useReadContracts({ allowFailure: true,
     contracts: approved.map(p => ({ address: roundAddress, abi: qfRoundAbi, functionName: "donationOf" as const, args: [address!, p.contractId] as const })),
     query: { enabled: Boolean(address && approved.length), refetchInterval: 15000 } });

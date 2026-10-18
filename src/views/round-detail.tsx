@@ -1,4 +1,6 @@
 "use client";
+import { isPublicProject } from "@/lib/projectVisibility";
+import { calculateRoundStats } from "@/lib/roundStats";
 import { MatchingPoolWarning } from "@/components/project/MatchingPoolWarning";
 import { computeRawMatching } from "@/lib/qf";
 import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
@@ -40,14 +42,15 @@ export function RoundDetailView() {
   const { projects, isLoading, isError, refetch } = useProjects(round.roundAddress);
   const [phases, setPhases] = useState<Record<string, RoundPhase>>({});
   const onData = useCallback((id: string, phase: RoundPhase) => { setPhases(current => current[id] === phase ? current : { ...current, [id]: phase }); }, []);
-  const approved = useMemo(() => projects.filter(project => project.approved), [projects]);
+  const approved = useMemo(() => projects.filter(isPublicProject), [projects]);
+  const stats = useMemo(() => calculateRoundStats(projects), [projects]);
   const number = Math.max(1, round.allRounds.findIndex(id => id.toLowerCase() === round.roundAddress?.toLowerCase()) + 1);
   const summary: RoundSummary = {
     id: round.roundAddress ?? "", number, title: round.name ?? "", name: round.name, description: "", sponsorName: "", organizer: round.organizer,
     startTime: new Date(Number(round.startTime ?? 0n) * 1000).toISOString(), endTime: new Date(Number(round.endTime ?? 0n) * 1000).toISOString(), status: round.status,
     phase: round.status === "open" && now > 0 && Number(round.startTime ?? 0n) > now ? "upcoming" : round.status,
-    matchingPool: Number(round.pool) / 1_000_000, projectCount: approved.length,
-    totalDonated: approved.reduce((sum, p) => sum + p.totalDonated, 0), totalSupporters: approved.reduce((sum, p) => sum + p.supporterCount, 0),
+    matchingPool: Number(round.pool) / 1_000_000, projectCount: stats.approvedCount,
+    totalDonated: stats.totalDonated, totalSupporters: stats.totalSupporters,
   };
   const choices: RoundChoice[] = round.allRounds.map((id, index) => ({ id, number: index + 1, phase: phases[id] }));
   const loading = round.isLoading || isLoading;
@@ -56,11 +59,11 @@ export function RoundDetailView() {
   return <Container className="competition-page min-w-0 space-y-8 py-6 sm:py-8">
     {round.allRounds.map(id => <RoundChoiceData key={id} address={id} onData={onData} />)}
     {loading ? <><div role="status" aria-label={t.competition.loading} className="competition-skeleton h-[330px] border border-line bg-surface" /><LeaderboardSkeleton /></> : error ? <PresentationState state="error" onRetry={() => { round.refetch(); void refetch(); }} /> : !exists ? <PresentationState state="empty"><h1>{t.competition.notFound}</h1><p className="mt-2 text-sm text-muted">{t.competition.notFoundHint}</p><Link href="/rounds" className="competition-action mt-5 inline-flex">{t.competition.rounds}</Link></PresentationState> : <>
-      <RoundCancellationPanel roundAddress={round.roundAddress} />
+      <RoundCancellationPanel projectNames={Object.fromEntries(projects.map(project => [project.id, project.name]))} roundAddress={round.roundAddress} />
       <StudentVerifyBox />
       <RoundHeader round={summary} choices={choices.length ? choices : [{ id: summary.id, number: summary.number, phase: summary.phase }]} onRoundChange={id => router.push(`/round/${id}`)} finalPayoutsAvailable={false} />
       {!round.isCancelled && <MatchingPoolWarning totalRaw={approved.reduce((sum, p) => sum + computeRawMatching(p.sumSqrtRaw, p.totalDonatedRaw), 0n)} pool={round.pool} />}
-      <Leaderboard projects={approved} roundId={summary.id} pool={summary.matchingPool} finalized={round.finalized} wallet={address} isAdmin={isReady && role === "admin"} onRetry={() => { round.refetch(); void refetch(); }} />
+      <Leaderboard cancelled={round.isCancelled} projects={approved} roundId={summary.id} pool={summary.matchingPool} finalized={round.finalized} wallet={address} isAdmin={isReady && role === "admin"} onRetry={() => { round.refetch(); void refetch(); }} />
     </>}
   </Container>;
 }
