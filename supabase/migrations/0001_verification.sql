@@ -101,13 +101,3 @@ revoke all on function public.reserve_otp(uuid,text,text,text,text,text,text) fr
 revoke all on function public.verification_stats() from public, anon, authenticated;
 grant execute on function public.consume_otp(uuid,text), public.reserve_otp(uuid,text,text,text,text,text,text), public.verification_stats() to service_role;
 commit;
--- Cleanup runs opportunistically in request-otp; pg_cron is not required.
-
--- MANUAL RESET: run separately BEFORE this migration, only on the intended empty project.
--- drop function if exists public.reserve_otp(uuid,text,text,text,text,text,text);
--- drop function if exists public.consume_otp(uuid,text);
--- drop function if exists public.verification_stats();
--- drop table if exists public.otp_requests cascade;
--- drop table if exists public.verifications cascade;
--- drop table if exists public.legacy_round_otp_requests cascade;
--- drop table if exists public.legacy_round_verifications cascade;
