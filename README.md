@@ -2,7 +2,7 @@
 
 > **Topic 6: Avalanche Hackathon (Team1 Vietnam)**<br>
 > **Network:** Avalanche Fuji Testnet (Chain ID: `43113`)<br>
-> **Live Web Application:** [https://sqrt-fund.vercel.app](https://sqrt-fund.vercel.app)<br>
+> **Live Web Application:** [https://www.sqrtfund.tech/]<br>
 > **Demo Video:** `[Điền link YouTube/Loom demo video tại đây]`<br>
 > **Pitch Deck / Slides:** `[Điền link Google Slides / PDF pitch deck tại đây]`<br>
 
