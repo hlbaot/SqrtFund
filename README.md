@@ -1,7 +1,7 @@
 # SqrtFund — Democratic Quadratic Funding for Student Initiatives
 
 > **Topic 6: Avalanche Hackathon (Team1 Vietnam)**  
-> **Team:** Team 43xTSD  
+> **Team:** 43xTSD  
 > **Network:** Avalanche Fuji Testnet (Chain ID: `43113`)  
 > **Live Web Application:** [https://www.sqrtfund.tech/](https://www.sqrtfund.tech/)  
 > **Demo Video:** [Điền link YouTube/Loom demo video tại đây]  
