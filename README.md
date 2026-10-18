@@ -94,23 +94,23 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A([Admin tạo vòng qua RoundFactory]) --> B[Admin nạp quỹ đối ứng depositPool]
-    B --> C[Sinh viên đã xác minh đăng ký dự án]
-    C --> D{Admin xét duyệt}
-    D -- Từ chối --> E[Dự án bị từ chối vĩnh viễn]
-    D -- Duyệt --> F[Sinh viên đã xác minh góp vốn<br/>donate / donateMany]
+    A(["Admin tạo vòng<br/>qua RoundFactory"]) --> B["Admin nạp quỹ đối ứng<br/>(depositPool)"]
+    B --> C["Sinh viên đã xác minh<br/>đăng ký dự án"]
+    C --> D{"Admin<br/>xét duyệt?"}
+    D -- "Từ chối" --> E["Dự án bị từ chối<br/>vĩnh viễn"]
+    D -- "Duyệt" --> F["Sinh viên góp vốn<br/>(donate / donateMany)"]
 
-    F --> G{Vòng đã kết thúc?}
-    G -- Chưa --> F
-    G -- Hết hạn --> H[Chốt vòng finalize<br/>Admin trong 24h đầu, sau đó ai cũng được]
+    F --> G{"Vòng đã<br/>kết thúc?"}
+    G -- "Chưa" --> F
+    G -- "Hết hạn" --> H["Chốt vòng (finalize)<br/>Admin trong 24h đầu,<br/>sau đó ai cũng được"]
     
-    H --> I[Chủ dự án nhận tiền góp + matching]
-    H --> J[Admin rút phần quỹ còn dư]
+    H --> I["Chủ dự án nhận<br/>tiền góp + matching"]
+    H --> J["Admin rút phần<br/>quỹ còn dư"]
 
-    B -. Admin có thể hủy trước khi chốt .-> K[Vòng bị hủy cancelRound]
-    F -. Admin có thể hủy trước khi chốt .-> K
-    K --> L[Người góp nhận lại 100% số đã góp<br/>refund / refundMany]
-    K --> M[Admin rút lại phần quỹ đã nạp]
+    B -. "Hủy trước khi chốt" .-> K["Vòng bị hủy<br/>(cancelRound)"]
+    F -. "Hủy trước khi chốt" .-> K
+    K --> L["Người góp nhận lại<br/>100% số đã góp<br/>(refund / refundMany)"]
+    K --> M["Admin rút lại<br/>phần quỹ đã nạp"]
 ```
 
 ---
