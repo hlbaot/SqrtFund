@@ -2,6 +2,7 @@ import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { isAddress, type Address, type PublicClient } from "viem";
 import { mockUsdcAbi } from "@/lib/contracts/abis";
 import { TARGET_CHAIN_ID, usdcAddress, ZERO_ADDRESS } from "@/lib/contracts/addresses";
+import { QUERY_STALE_MS, QUERY_GC_MS } from "@/lib/queryPolicy";
 
 export const TOKEN_BALANCE_KEY = ["token-balance", TARGET_CHAIN_ID] as const;
 export function tokenMatchesConfigured(token?: Address) {
@@ -18,6 +19,8 @@ export function tokenBalanceOptions(client: PublicClient | undefined, owner?: Ad
       return client.readContract({ address: usdcAddress, abi: mockUsdcAbi, functionName: "balanceOf", args: [owner] });
     },
     refetchInterval: 15_000,
+    staleTime: QUERY_STALE_MS,
+    gcTime: QUERY_GC_MS,
     retryOnMount: false,
   });
 }

@@ -10,6 +10,7 @@ import { useRound } from "@/hooks/useRound";
 import { canViewProject } from "@/lib/projectVisibility";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import type { Project, ProjectCategory } from "@/types";
+import { QUERY_STALE_MS, QUERY_GC_MS } from "@/lib/queryPolicy";
 
 export type ProjectContractItem = {
   id: bigint;
@@ -36,7 +37,8 @@ export type EnrichedProject = Project & {
   rejected: boolean;
 };
 
-export function useProjects(customRoundAddress?: Address) {
+export function useProjects(customRoundAddress?: Address, options: { enabled?: boolean } = {}) {
+  const enabled = options.enabled !== false;
   const { roundAddress: defaultRoundAddress, admin } = useRound(customRoundAddress);
   const { address, isConnected, chainId } = useAccount();
   const viewer = isConnected && chainId === TARGET_CHAIN_ID ? address : undefined;
@@ -44,7 +46,7 @@ export function useProjects(customRoundAddress?: Address) {
   // Old rounds have shorter dynamic project tuples. Probe the getter before decoding.
   const rejectionProbe = useReadContract({
     address: roundAddress, abi: qfRoundAbi, functionName: "rejected", args: [0n], chainId: TARGET_CHAIN_ID,
-    query: { enabled: Boolean(roundAddress), staleTime: Infinity, retryOnMount: false, retry: (attempt, error) => !isVersionReadError(error) && attempt < 2 },
+    query: { enabled: Boolean(enabled && roundAddress), staleTime: Infinity, gcTime: QUERY_GC_MS, retryOnMount: false, retry: (attempt, error) => !isVersionReadError(error) && attempt < 2 },
   });
   const supportsRejection = typeof rejectionProbe.data === "boolean";
   const probeResolved = supportsRejection || (rejectionProbe.isError && isVersionReadError(rejectionProbe.error));
@@ -73,8 +75,10 @@ export function useProjects(customRoundAddress?: Address) {
       },
     ],
     query: {
-      enabled: Boolean(roundAddress) && probeResolved,
+      enabled: enabled && Boolean(roundAddress) && probeResolved,
       refetchInterval: 15000,
+      staleTime: QUERY_STALE_MS,
+      gcTime: QUERY_GC_MS,
       ...roundReadRetry,
     },
   });
@@ -150,7 +154,7 @@ export function useProjects(customRoundAddress?: Address) {
     projects: visibleProjects,
     supportsRejection,
     readFailureKind: contractData?.some(result => result.status === "failure" && isVersionReadError(result.error)) ? "version" as const : "rpc" as const,
-    isLoading: Boolean(roundAddress) && ((!probeResolved && !rejectionProbe.isError) || (probeResolved && isLoading)),
+    isLoading: enabled && Boolean(roundAddress) && ((!probeResolved && !rejectionProbe.isError) || (probeResolved && isLoading)),
     isError: (!probeResolved && rejectionProbe.isError) || isError || contractData?.[0]?.status === "failure",
     // A failed capability probe must be retried before choosing a tuple ABI.
     refetch: () => probeResolved ? refetch() : rejectionProbe.refetch(),

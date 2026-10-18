@@ -26,8 +26,8 @@ import {
 import { WalletConstellation } from "@/components/home/WalletConstellation";
 import { HowItWorksTimeline } from "@/components/home/HowItWorksTimeline";
 import { NetworkStats } from "@/components/home/NetworkStats";
-import AeroShards from "@/components/ui/AeroShards";
-import { ChainLatticeBackground } from "@/components/background/ChainLatticeBackground";
+import AeroShards from "@/components/home/DeferredAeroShards";
+import { ChainLatticeBackground } from "@/components/background/DeferredLattice";
 
 
 export function HomeView() {
@@ -55,7 +55,7 @@ export function HomeView() {
   } = useProjects();
   const pageRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState("intro");
-  const [headerHeight, setHeaderHeight] = useState(64);
+  const [headerHeight, setHeaderHeight] = useState(102);
   const [hasAeroShardsError, setHasAeroShardsError] = useState(false);
 
   useEffect(() => {

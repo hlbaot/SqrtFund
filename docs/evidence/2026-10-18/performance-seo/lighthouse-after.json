@@ -1,0 +1,93 @@
+{
+  "methodology": "One Lighthouse default mobile navigation audit per route, fresh Chrome profile, no connected wallet. RPC counts include retries/polls captured during that audit, not a fixed-duration steady-state window. INP is not measured by a navigation audit.",
+  "results": [
+    {
+      "route": "/",
+      "score": 0.85,
+      "lcpMs": 4371.465499999998,
+      "cls": 0,
+      "tbtMs": 78.5,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 5,
+      "ethCalls": 4,
+      "runtimeError": null
+    },
+    {
+      "route": "/rounds",
+      "score": 0.91,
+      "lcpMs": 3537.3052,
+      "cls": 0.00020872426841313458,
+      "tbtMs": 46.5,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 4,
+      "ethCalls": 4,
+      "runtimeError": null
+    },
+    {
+      "route": "/round",
+      "score": 0.99,
+      "lcpMs": 2260.80555,
+      "cls": 0.0005356383648983766,
+      "tbtMs": 57,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 4,
+      "ethCalls": 4,
+      "runtimeError": null
+    },
+    {
+      "route": "/round/[id]",
+      "score": 0.82,
+      "lcpMs": 4860.7436,
+      "cls": 0,
+      "tbtMs": 86,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 4,
+      "ethCalls": 4,
+      "runtimeError": null
+    },
+    {
+      "route": "/my",
+      "score": 0.86,
+      "lcpMs": 4079.204999999999,
+      "cls": 0,
+      "tbtMs": 87.1590000000001,
+      "rpcHttpRequests": 4,
+      "rpcMethods": 5,
+      "ethCalls": 5,
+      "runtimeError": null
+    },
+    {
+      "route": "/admin",
+      "score": 0.8,
+      "lcpMs": 5181.966349999999,
+      "cls": 0,
+      "tbtMs": 84,
+      "rpcHttpRequests": 4,
+      "rpcMethods": 5,
+      "ethCalls": 4,
+      "runtimeError": null
+    },
+    {
+      "route": "/register",
+      "score": 0.81,
+      "lcpMs": 4950.165999999999,
+      "cls": 0,
+      "tbtMs": 133,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 3,
+      "ethCalls": 3,
+      "runtimeError": null
+    },
+    {
+      "route": "/verify",
+      "score": 0.82,
+      "lcpMs": 4457.137874999999,
+      "cls": 0,
+      "tbtMs": 170,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 3,
+      "ethCalls": 3,
+      "runtimeError": null
+    }
+  ]
+}

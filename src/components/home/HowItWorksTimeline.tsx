@@ -5,7 +5,7 @@ import { PenLine, HandCoins, Calculator } from "lucide-react";
 import { useLocale } from "@/lib/context/locale";
 import { Container } from "@/components/layout/Container";
 import { MonoLabel } from "@/components/ui/MonoLabel";
-import { ChainLatticeBackground } from "@/components/background/ChainLatticeBackground";
+import { ChainLatticeBackground } from "@/components/background/DeferredLattice";
 
 interface StepData {
   step: string;

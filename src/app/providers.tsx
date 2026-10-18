@@ -10,6 +10,7 @@ import { WalletWatcher } from "@/components/common/WalletWatcher";
 import { ToastContainer } from "@/components/ui/Toast";
 import { isWalletLoggedOut } from "@/lib/walletSession";
 import type { Locale } from "@/lib/copy";
+import { defaultQueryPolicy } from "@/lib/queryPolicy";
 
 export function Providers({
   children,
@@ -33,10 +34,7 @@ export function Providers({
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: {
-            refetchOnWindowFocus: false,
-            staleTime: 5_000,
-          },
+          queries: defaultQueryPolicy,
         },
       }),
   );

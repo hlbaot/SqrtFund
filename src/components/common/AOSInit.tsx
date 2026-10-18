@@ -1,34 +1,22 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import AOS from "aos";
 import "aos/dist/aos.css";
+let initialized = false;
 
 export function AOSInit() {
   const pathname = usePathname();
-  const isInitializedRef = useRef(false);
-
   useEffect(() => {
-    const triggerAOS = () => {
-      if (!isInitializedRef.current) {
-        AOS.init({
-          duration: 700,
-          easing: "ease-out-cubic",
-          once: true,
-          offset: 40,
-          delay: 50,
-        });
-        isInitializedRef.current = true;
-      } else {
-        AOS.refreshHard();
-      }
-    };
-
-    const onIntroFinished = () => { triggerAOS(); };
-    window.addEventListener("splash-intro-finished", onIntroFinished);
-    if (!document.documentElement.classList.contains("splash-active")) triggerAOS();
-    return () => { window.removeEventListener("splash-intro-finished", onIntroFinished); };
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let cancelled = false;
+    void import("aos").then(({ default: AOS }) => {
+      if (cancelled) return;
+      if (!initialized) { AOS.init({ duration: 700, easing: "ease-out-cubic", once: true, offset: 40, delay: 50 }); initialized = true; }
+      else AOS.refreshHard();
+      document.documentElement.classList.add("aos-ready");
+    }).catch(() => { /* Unavailable decoration must never hide the page. */ });
+    return () => { cancelled = true; };
   }, [pathname]);
 
   return null;

@@ -5,6 +5,7 @@ import { useReadContracts } from "wagmi";
 import { useFactoryRounds } from "@/hooks/useRound";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { IMMUTABLE_STALE_MS, QUERY_GC_MS } from "@/lib/queryPolicy";
 
 /** Factory order is creation order; only this wallet's rounds are deposit targets. */
 export function useAdminRounds(admin?: Address) {
@@ -17,7 +18,7 @@ export function useAdminRounds(admin?: Address) {
       { address, abi: qfRoundAbi, functionName: "admin" as const, chainId: TARGET_CHAIN_ID },
       { address, abi: qfRoundAbi, functionName: "name" as const, chainId: TARGET_CHAIN_ID },
     ]),
-    query: { enabled: Boolean(admin && addresses.length), refetchInterval: 15000 },
+    query: { enabled: Boolean(admin && addresses.length), staleTime: IMMUTABLE_STALE_MS, gcTime: QUERY_GC_MS },
   });
   const isError = !isAddress(factoryAddress) || isFactoryError || factoryData?.[0]?.status === "failure" || metadata.isError || Boolean(addresses.length && metadata.data?.some((result, i) => i % 2 === 0 && result.status === "failure"));
   const isLoading = !isError && (isFactoryLoading || !factoryData || Boolean(addresses.length && (!metadata.data || metadata.isPending)));

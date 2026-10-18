@@ -1,0 +1,61 @@
+{
+  "methodology": "Unique modern JS scripts present in initial route HTML; gzip calculated locally. Does not include later lazy chunks or simulate a wallet.",
+  "routes": [
+    {
+      "route": "/",
+      "status": 200,
+      "initialJsBytes": 1269233,
+      "initialJsGzipBytes": 392803,
+      "localHtmlMs": 130
+    },
+    {
+      "route": "/rounds",
+      "status": 200,
+      "initialJsBytes": 1212502,
+      "initialJsGzipBytes": 379054,
+      "localHtmlMs": 38
+    },
+    {
+      "route": "/round",
+      "status": 200,
+      "initialJsBytes": 1212502,
+      "initialJsGzipBytes": 379054,
+      "localHtmlMs": 28
+    },
+    {
+      "route": "/round/[id]",
+      "status": 200,
+      "initialJsBytes": 1253932,
+      "initialJsGzipBytes": 391653,
+      "localHtmlMs": 30
+    },
+    {
+      "route": "/my",
+      "status": 200,
+      "initialJsBytes": 1237232,
+      "initialJsGzipBytes": 387619,
+      "localHtmlMs": 29
+    },
+    {
+      "route": "/admin",
+      "status": 200,
+      "initialJsBytes": 1260758,
+      "initialJsGzipBytes": 392629,
+      "localHtmlMs": 36
+    },
+    {
+      "route": "/register",
+      "status": 200,
+      "initialJsBytes": 1213239,
+      "initialJsGzipBytes": 379067,
+      "localHtmlMs": 31
+    },
+    {
+      "route": "/verify",
+      "status": 200,
+      "initialJsBytes": 1192986,
+      "initialJsGzipBytes": 373018,
+      "localHtmlMs": 33
+    }
+  ]
+}

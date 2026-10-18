@@ -1,7 +1,7 @@
 "use client";
 import { isPublicProject } from "@/lib/projectVisibility";
 import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
-import { StudentVerifyBox } from "@/components/verify/StudentVerifyBox";
+import { StudentVerifyBox } from "@/components/verify/DeferredStudentVerifyBox";
 
 import { AOSInit } from "@/components/common/AOSInit";
 
@@ -20,11 +20,12 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
-import { AvatarPickerDialog } from "@/components/layout/AvatarPickerDialog";
+import dynamic from "next/dynamic";
 import { useAvatar } from "@/hooks/useAvatar";
 import { EmptyState } from "@/components/common/EmptyState";
 import { MyActivitySkeleton } from "@/components/common/PageSkeletons";
 import { Container } from "@/components/layout/Container";
+const AvatarPickerDialog = dynamic(() => import("@/components/layout/AvatarPickerDialog").then(module => module.AvatarPickerDialog), { ssr: false });
 import {
   Check,
   Coins,

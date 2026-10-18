@@ -8,6 +8,8 @@
 
 ---
 
+Đo hiệu năng và SEO local: xem [báo cáo trước/sau, giới hạn phép đo, robots/sitemap và lệnh kiểm tra](docs/PERFORMANCE_SEO.md). Cấu hình domain canonical bằng `NEXT_PUBLIC_SITE_URL` trước khi tự redeploy; báo cáo local không phải kết quả trên Vercel.
+
 ## Evaluation Criteria Self-Assessment
 
 Vòng online chấm Technical Implementation và Avalanche Integration (50 điểm). Xem [bảng Strong / Partial / Missing, evidence theo từng tiêu chí và roadmap](docs/EVALUATION.md). Bằng chứng ngày 17/10/2026: local tests pass; factory Fuji trong manifest chưa có round, factory/token chưa khớp artifact local; demo live và phí AVAX từ receipt còn thiếu.

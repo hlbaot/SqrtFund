@@ -183,7 +183,8 @@ export function AdminView() {
     );
   }
 
-  if (!isConnected || !isAdmin) return null;
+  // Keep the existing reserved layout while the access effect redirects guests.
+  if (!isConnected || !isAdmin) return <Container className="py-8 sm:py-10"><AdminSkeleton /></Container>;
 
   const approvedProjects = projects.filter(isPublicProject);
   const leftoverUsdc = Number(leftover) / 1_000_000;

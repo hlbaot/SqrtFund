@@ -8,6 +8,7 @@ import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { roundFactoryAbi } from "@/lib/contracts/abis";
 import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
 import type { RoundStatus } from "@/types";
+import { QUERY_STALE_MS, QUERY_GC_MS } from "@/lib/queryPolicy";
 
 const capabilities = new Map<string, RoundCapability>(); // Fuji only; immutable QFRound deployments.
 export function useFactoryRounds() {
@@ -17,7 +18,7 @@ export function useFactoryRounds() {
       { address: factoryAddress, abi: roundFactoryAbi, functionName: "getRounds", chainId: TARGET_CHAIN_ID },
       { address: factoryAddress, abi: roundFactoryAbi, functionName: "owner", chainId: TARGET_CHAIN_ID },
     ],
-    query: { enabled: Boolean(factoryAddress), refetchInterval: 15000, ...roundReadRetry },
+    query: { enabled: Boolean(factoryAddress), staleTime: QUERY_STALE_MS, gcTime: QUERY_GC_MS, refetchInterval: 15000, ...roundReadRetry },
   });
   useEffect(() => {
     factoryData?.forEach((result, index) => {
@@ -40,6 +41,8 @@ export function useRound(customRoundAddress?: Address) {
     enabled: Boolean(roundAddress && client),
     queryFn: () => loadRoundFields(contracts => client!.multicall({ contracts, allowFailure: true }), roundAddress!, capabilities),
     refetchInterval: 15000,
+    staleTime: QUERY_STALE_MS,
+    gcTime: QUERY_GC_MS,
     ...roundReadRetry,
   });
   const roundData = fields?.results;

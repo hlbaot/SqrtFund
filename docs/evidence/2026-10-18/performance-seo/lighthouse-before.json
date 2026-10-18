@@ -1,0 +1,93 @@
+{
+  "methodology": "One Lighthouse default mobile navigation audit per route, fresh Chrome profile, no connected wallet. RPC counts include retries/polls captured during that audit, not a fixed-duration steady-state window. INP is not measured by a navigation audit.",
+  "results": [
+    {
+      "route": "/",
+      "score": 0.78,
+      "lcpMs": 5369.5937,
+      "cls": 0,
+      "tbtMs": 30,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 9,
+      "ethCalls": 5,
+      "runtimeError": null
+    },
+    {
+      "route": "/rounds",
+      "score": 0.8,
+      "lcpMs": 4927.521750000001,
+      "cls": 0,
+      "tbtMs": 49,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 8,
+      "ethCalls": 5,
+      "runtimeError": null
+    },
+    {
+      "route": "/round",
+      "score": 0.81,
+      "lcpMs": 4933.437,
+      "cls": 0,
+      "tbtMs": 43,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 8,
+      "ethCalls": 5,
+      "runtimeError": null
+    },
+    {
+      "route": "/round/[id]",
+      "score": 0.8,
+      "lcpMs": 4913.833375,
+      "cls": 0,
+      "tbtMs": 80,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 10,
+      "ethCalls": 7,
+      "runtimeError": null
+    },
+    {
+      "route": "/my",
+      "score": 0.8,
+      "lcpMs": 4865.0461000000005,
+      "cls": 0,
+      "tbtMs": 18,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 9,
+      "ethCalls": 5,
+      "runtimeError": null
+    },
+    {
+      "route": "/admin",
+      "score": 0.77,
+      "lcpMs": 5592.9977,
+      "cls": 0,
+      "tbtMs": 42,
+      "rpcHttpRequests": 4,
+      "rpcMethods": 9,
+      "ethCalls": 5,
+      "runtimeError": null
+    },
+    {
+      "route": "/register",
+      "score": 0.81,
+      "lcpMs": 4873.04195,
+      "cls": 0,
+      "tbtMs": 59,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 8,
+      "ethCalls": 5,
+      "runtimeError": null
+    },
+    {
+      "route": "/verify",
+      "score": 0.81,
+      "lcpMs": 4797.651674999999,
+      "cls": 0,
+      "tbtMs": 35.000000000000455,
+      "rpcHttpRequests": 3,
+      "rpcMethods": 10,
+      "ethCalls": 5,
+      "runtimeError": null
+    }
+  ]
+}

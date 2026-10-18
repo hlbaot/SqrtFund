@@ -26,7 +26,7 @@ export function useRole(customRound?: Address) {
     factoryOwner,
     studentRegistry: roundRegistry,
   } = useRound(customRound);
-  const { projects } = useProjects(roundAddress);
+  const { projects } = useProjects(roundAddress, { enabled: Boolean(address && isConnected && chainId === TARGET_CHAIN_ID) });
   const student = useStudentStatus();
   const isTargetChain = chainId === TARGET_CHAIN_ID;
 

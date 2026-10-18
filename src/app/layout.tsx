@@ -4,10 +4,10 @@ import { Navbar } from "@/components/layout/Navbar";
 import { SplashIntro } from "@/components/layout/SplashIntro";
 import { VISIT_INTRO_BOOTSTRAP } from "@/lib/visitIntro";
 import { Footer } from "@/components/layout/Footer";
-import { SiteChainLatticeBackground } from "@/components/background/ChainLatticeBackground";
+import { SiteChainLatticeBackground } from "@/components/background/DeferredLattice";
 import { Suspense } from "react";
-import { cookies } from "next/headers";
-import type { Locale } from "@/lib/copy";
+import { getRequestLocale, pageMetadata } from "@/lib/seo.server";
+import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -24,20 +24,17 @@ const jetBrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "√Fund | Quadratic Funding for Students",
-  description:
-    "Democratic quadratic funding for student clubs and decentralized university initiatives on Avalanche Fuji testnet.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const metadata = await pageMetadata("home");
+  return { ...metadata, title: { default: `${metadata.title} | SqrtFund`, template: "%s | SqrtFund" } };
+}
 
 export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const rawLocale = cookieStore.get("sqrt-fund-locale")?.value;
-  const initialLocale: Locale = rawLocale === "vi" ? "vi" : "en";
+  const initialLocale = await getRequestLocale();
 
   return (
     // The bootstrap intentionally sets the intro class before React hydrates.
@@ -46,12 +43,13 @@ export default async function RootLayout({
         <script id="visit-intro" dangerouslySetInnerHTML={{ __html: VISIT_INTRO_BOOTSTRAP }} />
       </head>
       <body className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary selection:text-white">
-        <SplashIntro />
+        <SplashIntro initialLocale={initialLocale} />
         <div id="app-content" className="relative isolate flex min-h-screen flex-col">
           <Suspense fallback={null}>
             <SiteChainLatticeBackground />
           </Suspense>
           <Providers initialLocale={initialLocale}>
+            <Suspense fallback={null}><NavigationProgress /></Suspense>
             <Suspense fallback={<header className="h-16 border-b border-line bg-background" />}>
               <Navbar />
             </Suspense>

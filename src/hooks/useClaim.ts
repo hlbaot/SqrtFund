@@ -10,6 +10,7 @@ import { useLocale } from "@/lib/context/locale";
 import { useTxFlow } from "@/hooks/useTxFlow";
 import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
 import { calculateRemainingSeconds, calculateCanClaim } from "@/lib/format";
+import { QUERY_GC_MS } from "@/lib/queryPolicy";
 
 export function useClaim() {
   const beginFlow = useTxFlow();
@@ -91,15 +92,21 @@ export function useClaim() {
   // 2. Calibrate clock skew against latest block once
   useEffect(() => {
     let cancelled = false;
-    if (!publicClient) return;
+    if (!enabled || !publicClient) return;
 
-    publicClient
-      .getBlock({ blockTag: "latest" })
-      .then((block) => {
+    // Navbar, wallet menu and /my share the same sample. Guest visitors have no
+    // faucet countdown to calibrate, so they do not need this RPC at all.
+    queryClient.fetchQuery({
+      queryKey: ["chain-clock", TARGET_CHAIN_ID],
+      queryFn: async () => {
+        const block = await publicClient.getBlock({ blockTag: "latest" });
+        return { timestamp: block.timestamp, sampledAt: Math.floor(Date.now() / 1000) };
+      },
+      staleTime: 30_000,
+      gcTime: QUERY_GC_MS,
+    }).then((sample) => {
         if (cancelled) return;
-        const blockTimestampSec = Number(block.timestamp);
-        const localNowSec = Math.floor(Date.now() / 1000);
-        setClockSkew(blockTimestampSec - localNowSec);
+        setClockSkew(Number(sample.timestamp) - sample.sampledAt);
       })
       .catch(() => {
         // Fallback to local clock
@@ -108,7 +115,7 @@ export function useClaim() {
     return () => {
       cancelled = true;
     };
-  }, [publicClient]);
+  }, [enabled, publicClient, queryClient]);
 
   const currentNowSec = nowSec > 0 ? nowSec + clockSkew : 0;
   const remainingSeconds =

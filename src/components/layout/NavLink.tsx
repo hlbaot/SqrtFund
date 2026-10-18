@@ -18,7 +18,7 @@ export function NavLink({ href, label, pathname, pendingHref, count, mobile, onN
   const selected = pendingHref ? pendingHref === href : current;
   return (
     <GradientBorder className={`nav-border rounded-sm ${selected ? "nav-selected" : ""}`}>
-      <Link href={href} aria-current={current ? "page" : undefined} onClick={event => {
+      <Link href={href} prefetch aria-current={current ? "page" : undefined} onClick={event => {
         if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) onNavigate(href);
       }} className={`mono-label relative flex items-center gap-2 whitespace-nowrap rounded-sm font-medium focus-visible:outline-none ${mobile ? "min-h-11 px-3.5 py-2.5" : "px-4 py-2"} ${selected ? "text-foreground" : "text-muted hover:text-foreground"}`}>
         {label}

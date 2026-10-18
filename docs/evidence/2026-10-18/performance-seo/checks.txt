@@ -1,0 +1,9 @@
+pnpm tsc --noEmit: PASS (exit 0)
+pnpm test: PASS — 39 files passed, 2 skipped; 360 tests passed, 13 skipped
+ANALYZE_BUNDLE=1 pnpm build: PASS (exit 0), Next.js 16.4.0, webpack
+Existing warning: ox/tempo dynamic dependency on the server verification signer import graph.
+curl HTTP localhost:3000/robots.txt: 200
+curl HTTP localhost:3000/sitemap.xml: 200
+Production localhost:3100 head audit: 8 routes, no duplicate selected SEO tags; English and Vietnamese locale checks passed.
+API X-Robots-Tag: noindex, nofollow
+OG PNG: 1200x630

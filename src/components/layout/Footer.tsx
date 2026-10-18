@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useLocale } from "@/lib/context/locale";
 import { Badge } from "@/components/ui/Badge";
-import { ChainLatticeBackground } from "@/components/background/ChainLatticeBackground";
+import { ChainLatticeBackground } from "@/components/background/DeferredLattice";
 
 import { Container } from "./Container";
 

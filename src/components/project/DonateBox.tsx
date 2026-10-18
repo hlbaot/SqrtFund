@@ -2,7 +2,7 @@
 import { isPublicProject } from "@/lib/projectVisibility";
 import { MatchingPoolWarning } from "@/components/project/MatchingPoolWarning";
 import { BatchDonationForm } from "@/components/project/BatchDonationForm";
-import { StudentVerifyBox } from "@/components/verify/StudentVerifyBox";
+import { StudentVerifyBox } from "@/components/verify/DeferredStudentVerifyBox";
 
 import type { Address } from "viem";
 import { donationLimit } from "@/lib/studentAccess";

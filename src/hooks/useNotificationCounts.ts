@@ -10,7 +10,7 @@ import type { WalletRole } from "@/hooks/useRole";
 export function useNotificationCounts(role: WalletRole) {
   const { address, isConnected } = useAccount();
   const { roundAddress, finalized } = useRound();
-  const { projects } = useProjects(roundAddress);
+  const { projects } = useProjects(roundAddress, { enabled: isConnected && (role === "admin" || role === "owner") });
   const { claimableUsdc } = useClaim();
   const admin = isConnected && role === "admin"
     ? projects.filter(isPendingProject).length : 0;

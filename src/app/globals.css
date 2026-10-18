@@ -351,12 +351,15 @@ button:not(:disabled):hover,
 }
 
 .splash-intro {
-  opacity: 1;
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  display: flex;
+  transition: opacity 0.2s ease-out;
 }
 
 html.splash-active .splash-intro {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
 }
 
 .splash-grid {
@@ -385,52 +388,10 @@ html.splash-active .splash-intro {
   animation: splash-tagline-in 3s ease both;
 }
 
-/*
- * Splash Intro Lock & Clean Presentation:
- * While intro is running, lock viewport completely:
- * - No scrollbars (Chromium, Safari, Firefox)
- * - No scrollbar gutter reservation
- * - Block all scrolling on html & body
- * - Hide background content until intro finishes
- */
-#app-content {
-  transition: opacity 0.25s ease-out;
-}
-
-html.splash-active {
-  overflow: hidden !important;
-  scrollbar-gutter: auto !important;
-  height: 100% !important;
-  max-height: 100% !important;
-  touch-action: none !important;
-  overscroll-behavior: none !important;
-}
-
-html.splash-active body {
-  overflow: hidden !important;
-  height: 100% !important;
-  max-height: 100% !important;
-  touch-action: none !important;
-  overscroll-behavior: none !important;
-}
-
-html.splash-active ::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-}
-
-html.splash-active,
-html.splash-active * {
-  scrollbar-width: none !important;
-}
-
-html.splash-active #app-content {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  user-select: none !important;
-}
+/* Decorative scripts never gate the visibility or interaction of content. */
+html:not(.aos-ready) [data-aos] { opacity: 1 !important; transform: none !important; visibility: visible !important; }
+.navigation-progress { animation: navigation-progress 1.2s ease-in-out infinite; }
+@keyframes navigation-progress { from { transform: translateX(-100%); } to { transform: translateX(140%); } }
 
 .qf-bar {
   animation: qf-bar-pulse 2.2s ease-in-out infinite;
@@ -444,9 +405,10 @@ html.splash-active #app-content {
 
 @media (prefers-reduced-motion: reduce) {
   .splash-intro {
-    animation: none !important;
-    opacity: 1;
+    display: none !important;
   }
+  [data-aos] { opacity: 1 !important; transform: none !important; }
+  .navigation-progress { animation: none; width: 100%; }
 
   .splash-grid,
   .splash-logo-wrap,
