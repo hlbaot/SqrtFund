@@ -1,5 +1,6 @@
 "use client";
 import { isPublicProject } from "@/lib/projectVisibility";
+import { ContractExplorerLinks } from "@/components/tx/ContractExplorerLinks";
 import { VerificationStats } from "@/components/verify/VerificationStats";
 
 import { AOSInit } from "@/components/common/AOSInit";
@@ -341,6 +342,14 @@ export function HomeView() {
         <Container className="py-[clamp(2.5rem,5vw,4.5rem)]" data-aos="fade-up" data-aos-duration="600">
           <NetworkStats />
           <VerificationStats />
+        </Container>
+      </section>
+
+      <section aria-labelledby="on-chain-title" className="border-y border-line bg-surface">
+        <Container className="space-y-4 py-8">
+          <h2 id="on-chain-title" className="text-xl font-bold text-foreground">{t.onChain.title}</h2>
+          <p className="text-sm text-muted">{t.onChain.description}</p>
+          <ContractExplorerLinks />
         </Container>
       </section>
 

@@ -1,4 +1,5 @@
 "use client";
+import { ExplorerLink } from "@/components/tx/ExplorerLink";
 import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
 
 import { AOSInit } from "@/components/common/AOSInit";
@@ -124,6 +125,11 @@ export function ProjectDetailView() {
             <p className="text-sm text-muted leading-relaxed">
               {project.description}
             </p>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <ExplorerLink address={project.ownerAddress} label={t.onChain.ownerWallet} />
+              <ExplorerLink address={roundAddress} label={t.onChain.roundContract} />
+            </div>
 
             {/* Quick Metrics */}
             <StatGroup columns={3} className="my-4">

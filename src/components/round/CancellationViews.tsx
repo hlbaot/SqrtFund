@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { explorerAddressUrl } from "@/lib/explorer";
 import { formatUnits } from "viem";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
@@ -66,8 +67,7 @@ export function CancelRoundDialog({
     }
   }
 
-  const explorerBase = process.env.NEXT_PUBLIC_EXPLORER_URL || "https://testnet.snowtrace.io";
-  const targetExplorerUrl = explorerUrl || `${explorerBase}/address/${address}`;
+  const targetExplorerUrl = explorerUrl || explorerAddressUrl(address);
 
   return (
     <Dialog isOpen onClose={close} title={c.confirmTitle}>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Round } from "@/types";
 import { formatUsdc, formatNumber, shortAddress } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
+import { ExplorerLink } from "@/components/tx/ExplorerLink";
 import { CountdownTimer } from "./CountdownTimer";
 import { Badge } from "@/components/ui/Badge";
 import { Frame } from "@/components/ui/Frame";
@@ -56,6 +57,8 @@ export function RoundCard({ round, className = "", adminAddress, roundIndex }: R
                 ? t.roundCard.statusClosed
                 : t.roundCard.statusFinalized}
           </Badge>
+
+          <ExplorerLink address={round.id} iconOnly label={t.onChain.roundContract} />
 
           {adminAddress && (
             <div className="mono-label flex items-center gap-1.5 border border-line bg-surface px-2.5 py-1 text-xs">

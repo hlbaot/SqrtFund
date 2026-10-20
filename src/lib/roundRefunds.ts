@@ -1,3 +1,4 @@
+import { explorerAddressUrl } from "@/lib/explorer";
 import type { Address, PublicClient } from "viem";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 
@@ -295,8 +296,7 @@ export async function loadDonationHistory(
     0n
   );
 
-  const explorerBase = process.env.NEXT_PUBLIC_EXPLORER_URL || "https://testnet.snowtrace.io";
-  const explorerUrl = `${explorerBase}/address/${address}`;
+  const explorerUrl = explorerAddressUrl(address);
 
   return {
     firstBlock,

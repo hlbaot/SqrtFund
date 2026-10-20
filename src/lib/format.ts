@@ -1,4 +1,8 @@
-export const SNOWTRACE_BASE_URL = "https://testnet.snowtrace.io/tx";
+import { explorerBaseUrl } from "@/lib/explorer";
+
+// Preserve existing imports while all explorer URLs use the shared implementation.
+export { explorerTxUrl as getExplorerTxUrl, explorerAddressUrl as getExplorerAddressUrl } from "@/lib/explorer";
+export const SNOWTRACE_BASE_URL = `${explorerBaseUrl}/tx`;
 
 export function shortAddress(addr: string, chars = 4): string {
   if (!addr) return "";
@@ -268,14 +272,6 @@ export function formatTimeLeft(targetDate: string | Date, locale: "en" | "vi" = 
 
   if (days > 0) return `${days}d ${hours}h`;
   return `${hours}h ${minutes}m`;
-}
-
-export function getExplorerTxUrl(txHash: string): string {
-  return `${SNOWTRACE_BASE_URL}/${txHash}`;
-}
-
-export function getExplorerAddressUrl(address: string): string {
-  return `https://testnet.snowtrace.io/address/${address}`;
 }
 
 export function formatTimeAgo(timestampMs: number, locale: "en" | "vi" = "en", now: number = Date.now()): string {

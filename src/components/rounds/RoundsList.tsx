@@ -6,6 +6,7 @@ import { ArrowUpRight } from "lucide-react";
 import { useLocale } from "@/lib/context/locale";
 import { fmt } from "@/lib/copy";
 import { shortAddress, formatCount, formatUsdcFull, formatDateTimeGmt7 } from "@/lib/format";
+import { ExplorerLink } from "@/components/tx/ExplorerLink";
 import { CountdownTimer } from "@/components/round/CountdownTimer";
 import { AnimatedNumber, CopyAddress, StatusChip, MetricBar } from "@/components/leaderboard/Primitives";
 import { displayNumber, type RoundSummary } from "@/components/leaderboard/model";
@@ -33,6 +34,7 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
     <h2 className="font-semibold break-all">{fmt(c.roundReadError, { address: round.id })}</h2>
     <p className="text-sm text-muted">{round.readError === "version" ? c.versionMismatch : c.roundReadHint}</p>
     {(round.version === "legacy" || round.readError === "version") && <span className="mono-label text-xs text-primary">{c.legacyRound}</span>}
+    <ExplorerLink address={round.id} label={t.onChain.roundContract} />
     <button type="button" onClick={onRetry} className="competition-action mt-auto">{c.retry}</button>
   </article>;
   return (
@@ -53,6 +55,7 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
               {shortAddress(round.id)}
             </span>
             <CopyAddress address={round.id} />
+            <ExplorerLink address={round.id} iconOnly label={t.onChain.roundContract} />
           </div>
         </div>
         <StatusChip phase={round.phase} />

@@ -1,4 +1,5 @@
 "use client";
+import { ExplorerLink } from "@/components/tx/ExplorerLink";
 import { isPublicProject } from "@/lib/projectVisibility";
 import { calculateRoundStats } from "@/lib/roundStats";
 import { MatchingPoolWarning } from "@/components/project/MatchingPoolWarning";
@@ -63,6 +64,10 @@ export function RoundDetailView() {
       <RoundCancellationPanel projectNames={Object.fromEntries(projects.map(project => [project.id, project.name]))} roundAddress={round.roundAddress} />
       <StudentVerifyBox />
       <RoundHeader round={summary} choices={choices.length ? choices : [{ id: summary.id, number: summary.number, phase: summary.phase }]} onRoundChange={id => { startRouteProgress(`/round/${id}`); router.push(`/round/${id}`); }} finalPayoutsAvailable={false} />
+      <div className="flex flex-wrap items-center gap-4">
+        <ExplorerLink address={round.roundAddress} label={t.onChain.roundContract} />
+        <ExplorerLink address={round.roundAddress} transactions label={t.onChain.allTransactions} />
+      </div>
       {!round.isCancelled && <MatchingPoolWarning totalRaw={approved.reduce((sum, p) => sum + computeRawMatching(p.sumSqrtRaw, p.totalDonatedRaw), 0n)} pool={round.pool} />}
       <Leaderboard cancelled={round.isCancelled} projects={approved} roundId={summary.id} pool={summary.matchingPool} finalized={round.finalized} wallet={address} isAdmin={isReady && role === "admin"} onRetry={() => { round.refetch(); void refetch(); }} />
     </>}

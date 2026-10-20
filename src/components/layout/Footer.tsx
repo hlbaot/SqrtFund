@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useLocale } from "@/lib/context/locale";
+import { ContractExplorerLinks } from "@/components/tx/ContractExplorerLinks";
 import { Badge } from "@/components/ui/Badge";
 import { ChainLatticeBackground } from "@/components/background/DeferredLattice";
 
@@ -44,6 +45,7 @@ export function Footer() {
           <span>{t.common.testnetBadge}</span>
         </div>
       </Container>
+      <Container className="relative z-10 mt-4"><ContractExplorerLinks /></Container>
     </footer>
   );
 }

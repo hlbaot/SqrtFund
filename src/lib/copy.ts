@@ -5,6 +5,17 @@ export const fmt = (s: string, p: Record<string, string | number> = {}): string 
   s.replace(/\{(\w+)\}/g, (_, k) => String(p[k] ?? `{${k}}`));
 
 const enData = {
+    onChain: {
+      title: "On-chain evidence",
+      description: "Verify contracts, transactions and balances on Avalanche Fuji via Snowtrace.",
+      roundContract: "Round contract",
+      ownerWallet: "Project owner wallet",
+      allTransactions: "View all transactions",
+      viewAddress: "View address {address} on Snowtrace",
+      viewTransaction: "View transaction {hash} on Snowtrace",
+      unavailable: "Not configured",
+    },
+
     competition: {
       cancelled: "Cancelled",
       legacyRound: "Legacy round",
@@ -818,6 +829,17 @@ const enData = {
 export type Translations = typeof enData;
 
 const viData: Translations = {
+    onChain: {
+      title: "Bằng chứng on-chain",
+      description: "Kiểm chứng hợp đồng, giao dịch và số dư trên Avalanche Fuji qua Snowtrace.",
+      roundContract: "Hợp đồng round",
+      ownerWallet: "Ví chủ dự án",
+      allTransactions: "Xem tất cả giao dịch",
+      viewAddress: "Xem địa chỉ {address} trên Snowtrace",
+      viewTransaction: "Xem giao dịch {hash} trên Snowtrace",
+      unavailable: "Chưa cấu hình",
+    },
+
     competition: {
       cancelled: "Đã hủy",
       legacyRound: "Round phiên bản cũ",
