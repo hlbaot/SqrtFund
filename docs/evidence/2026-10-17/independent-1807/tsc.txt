@@ -1,3 +1,0 @@
-Command: pnpm --config.verify-deps-before-run=false tsc --noEmit
-Exit code: 0
-No stdout/stderr.
