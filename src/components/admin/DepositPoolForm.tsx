@@ -355,7 +355,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
         <select className="w-full border border-line bg-bg p-2" value={roundAddress ?? ""} disabled={Boolean(initialRoundAddress) || isPending || selection.isLoading || selection.isError || !selection.rounds.length}
           onChange={event => { selection.selectRound(event.target.value); setIsConfirmOpen(false); }}>
           {!roundAddress && <option value="">{selection.isLoading ? t.tokenBalance.loadingRounds : t.tokenBalance.selectRound}</option>}
-          {initialRoundAddress && !selection.rounds.some(round => round.address.toLowerCase() === initialRoundAddress.toLowerCase()) && <option value={initialRoundAddress}>{roundName || shortAddress(initialRoundAddress)}</option>}
+          {initialRoundAddress && !selection.rounds.some(round => round.address.toLowerCase() === initialRoundAddress.toLowerCase()) && <option key={initialRoundAddress} value={initialRoundAddress}>{roundName || shortAddress(initialRoundAddress)}</option>}
           {selection.rounds.map(round => <option key={round.address} value={round.address}>{round.name || shortAddress(round.address)} · {shortAddress(round.address)}</option>)}
         </select>
       </label>

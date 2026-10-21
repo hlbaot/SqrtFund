@@ -154,13 +154,8 @@ export function AdminView() {
 
       </div>
 
-      <section aria-label={t.roundControls.historyTitle} className="border border-line bg-surface">
-        <RoundHistory addresses={round.allRounds} selected={roundAddress} selectedName={roundName}
-          disabled={roundBusy || busyProjectId !== null} onSelect={setSelectedRound} />
-        {isRoundLoading ? <p role="status" className="p-8 text-center text-sm text-muted">{t.common.loading}</p>
-          : <RoundControls key={roundAddress || "no-round"} round={round} projects={projects}
-            projectsLoading={isProjectsLoading} projectsError={isProjectsError} onBusyChange={setRoundBusy} />}
-      </section>
+      <RoundControls key={`controls:${roundAddress || "no-round"}`} round={round} projects={projects}
+        projectsLoading={isProjectsLoading} projectsError={isProjectsError} onSelectRound={setSelectedRound} />
 
       {/* Finalized Round Distribution Results Table */}
       {!isRoundLoading && finalized && !isCancelled && (
@@ -226,7 +221,7 @@ export function AdminView() {
         onClose={() => { if (!reviewBusy.current) { setReviewTarget(null); setReviewError(undefined); } }} onConfirm={() => void confirmReview()} />}
 
       {/* Project Proposals Approval Queue */}
-      {!isRoundLoading && isAdmin && <ProjectReviewList key={roundAddress || "no-round"} projects={projects} round={moderationRound} viewer={viewer} now={now}
+      {isAdmin && <ProjectReviewList key={`review:${roundAddress || "no-round"}`} projects={projects} round={moderationRound} viewer={viewer} now={now}
         pending={busyProjectId !== null} isLoading={isProjectsLoading} isError={isProjectsError} onRetry={() => void refetchProjects()}
         onAction={(project, action) => { const current = projects.find(item => item.id === project.id); if (current) openReview(current, action); }} />}
 
