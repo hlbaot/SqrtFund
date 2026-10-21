@@ -105,6 +105,6 @@ it("keeps RPC errors distinct from an empty queue", () => {
 });
 
 it.each(["info", "warning", "error", "success"] as const)("renders reusable %s status alert", tone => {
-  const html = render(createElement(StatusAlert, { tone, title: "Status", children: "Details" }));
+  const html = render(createElement(StatusAlert, { tone, title: "Status" }, "Details"));
   expect(html).toContain('role="status"'); expect(html).toContain("Status"); expect(html).toContain("Details");
 });

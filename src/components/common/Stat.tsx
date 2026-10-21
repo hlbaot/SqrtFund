@@ -86,15 +86,34 @@ export function StatGroup({
   bordered = true,
   className = "",
 }: StatGroupProps) {
-  const colClass =
-    columns === 2
-      ? "grid-cols-2"
-      : columns === 4
-      ? "grid-cols-2 sm:grid-cols-4"
-      : "grid-cols-3";
-
   const validChildren = React.Children.toArray(children).filter(Boolean);
   const total = validChildren.length;
+
+  if (columns === 4) {
+    return (
+      <dl
+        className={clsx(
+          "grid grid-cols-2 sm:grid-cols-4 items-start gap-y-3.5 sm:gap-y-0 sm:divide-x divide-line",
+          bordered && "border-y border-line py-3.5",
+          className
+        )}
+      >
+        {validChildren.map((child, index) => (
+          <div
+            key={index}
+            className={clsx(
+              "min-w-0 sm:px-3 sm:first:pl-0 sm:last:pr-0",
+              index % 2 === 0 ? "pr-3 border-r border-line sm:border-r-0" : "pl-3"
+            )}
+          >
+            {child}
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  const colClass = columns === 2 ? "grid-cols-2" : "grid-cols-3";
 
   return (
     <dl

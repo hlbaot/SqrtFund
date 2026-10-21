@@ -88,7 +88,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   const limit = parsedInput.success && budgetReady ? donationLimit(parsedInput.amount, minDonation, maxDonation, userDonatedBigInt, roundRemaining) : null;
   const error = !parsedInput.success || limit === "minimum" ? fmt(t.donateBox.minMaxBounds, { min: minDonationUsdc, max: maxDonationUsdc })
     : limit === "project" ? fmt(t.donateBox.exceedsLimit, { remaining: remainingAllowanceUsdc })
-    : limit === "round" ? fmt(t.donateBox.exceedsRoundBudget, { remaining: formatUsdcFixed(roundRemainingUsdc) }) : "";
+    : limit === "round" ? fmt(t.donateBox.exceedsRoundBudget, { remaining: formatUsdcFixed(roundRemainingUsdc, { includeSymbol: false }) }) : "";
   const handleAmountChange = (value: string) => {
     setInputValue(value); const parsed = parseUsdc(value);
     if (parsed.success) setAmount(Number(parsed.amount) / 1_000_000);
@@ -220,7 +220,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
 
       <StudentVerifyBox />
       {isStudent && <div className="my-4 border border-line bg-bg p-3 text-sm">
-        {fmt(t.donateBox.roundBudgetRemaining, { remaining: budgetReady ? formatUsdcFixed(roundRemainingUsdc) : "—", max: maxPerRound === undefined ? "—" : formatUsdcFixed(Number(maxPerRound) / 1_000_000) })}
+        {fmt(t.donateBox.roundBudgetRemaining, { remaining: budgetReady ? formatUsdcFixed(roundRemainingUsdc, { includeSymbol: false }) : "—", max: maxPerRound === undefined ? "—" : formatUsdcFixed(Number(maxPerRound) / 1_000_000, { includeSymbol: false }) })}
       </div>}
 
       {/* Max allowance reached alert */}
@@ -305,7 +305,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
           <div className="border border-money/30 bg-money/10 p-3 text-xs text-foreground">
             <div className="flex items-center gap-1.5 font-bold text-money">
               <Sparkles className="h-4 w-4" />
-              <span>{t.phase2.expectedMatching}: {formatUsdcFixed(impact.nextMatching)} USDC</span>
+              <span>{t.phase2.expectedMatching}: {formatUsdcFixed(impact.nextMatching)}</span>
             </div>
             <p className="mt-1 leading-relaxed text-foreground">
               {fmt(t.donateBox.impactText, {
@@ -345,7 +345,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
                 </p>
                 <p className="text-muted">
                   {fmt(t.donateBox.insufficientBalanceDesc, {
-                    balance: formatUsdcFixed(usdcBalanceUsdc),
+                    balance: formatUsdcFixed(usdcBalanceUsdc, { includeSymbol: false }),
                     amount: amount,
                   })}
                 </p>
@@ -388,7 +388,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
               </Button>
             ) : hasInsufficientBalance ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-60">
-                {fmt(t.donateBox.insufficientBalanceBtn, { balance: formatUsdcFixed(usdcBalanceUsdc) })}
+                {fmt(t.donateBox.insufficientBalanceBtn, { balance: formatUsdcFixed(usdcBalanceUsdc, { includeSymbol: false }) })}
               </Button>
             ) : (
               <Button

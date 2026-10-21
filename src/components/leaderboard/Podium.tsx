@@ -12,7 +12,8 @@ import type { RankedProject } from "./model";
 export function Podium({ projects, roundId, pool, finalized }: { projects: RankedProject[]; roundId: string; pool: number; finalized: boolean }) {
   const { t } = useLocale();
   const top = projects.slice(0, 3);
-  const markScale = Math.max(5, Math.ceil(Math.max(0, ...top.map(project => project.supporterCount)) / 36 / 5) * 5);
+  const maxSupporters = Math.max(0, ...top.map(project => project.supporterCount));
+  const markScale = maxSupporters <= 25 ? 1 : Math.max(5, Math.ceil(maxSupporters / 36 / 5) * 5);
   if (!top.length) return null;
   return (
     <section className="hidden min-w-0 lg:block" aria-label={t.competition.topProjects}>

@@ -33,29 +33,97 @@ export function CopyAddress({ address }: { address: string }) {
   </span>;
 }
 
-export function InfoTooltip({ label, children }: { label: string; children: React.ReactNode }) {
+export function InfoTooltip({
+  label,
+  children,
+  className = "",
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 16, top: 16 });
   const trigger = useRef<HTMLButtonElement>(null);
+  const closeTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const id = useId();
+
+  const updatePosition = () => {
+    const rect = trigger.current?.getBoundingClientRect();
+    if (!rect) return;
+    const tooltipWidth = Math.min(320, window.innerWidth - 32);
+    const left = Math.max(16, Math.min(rect.left, window.innerWidth - tooltipWidth - 16));
+    const top = rect.bottom + 8 + 180 > window.innerHeight
+      ? Math.max(16, rect.top - 180)
+      : rect.bottom + 8;
+    setPosition({ left, top });
+  };
+
   useEffect(() => {
     if (!open) return;
-    const reposition = () => {
-      const rect = trigger.current?.getBoundingClientRect();
-      if (rect) setPosition({ left: Math.max(16, Math.min(rect.left, window.innerWidth - Math.min(288, window.innerWidth - 32) - 16)), top: Math.max(16, Math.min(rect.bottom + 8, window.innerHeight - 176)) });
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
     };
-    window.addEventListener("scroll", reposition, true);
-    window.addEventListener("resize", reposition);
-    return () => { window.removeEventListener("scroll", reposition, true); window.removeEventListener("resize", reposition); };
   }, [open]);
-  return <span className="relative z-10 inline-flex align-middle" onBlur={() => setOpen(false)}>
-    <button ref={trigger} type="button" className="competition-focus inline-flex h-8 w-8 shrink-0 items-center justify-center text-muted hover:text-foreground" aria-label={label} aria-expanded={open} aria-controls={id} aria-describedby={open ? id : undefined} onClick={event => {
-      const rect = event.currentTarget.getBoundingClientRect();
-      setPosition({ left: Math.max(16, Math.min(rect.left, window.innerWidth - Math.min(288, window.innerWidth - 32) - 16)), top: Math.max(16, Math.min(rect.bottom + 8, window.innerHeight - 176)) });
-      setOpen(value => !value);
-    }} onKeyDown={event => { if (event.key === "Escape") setOpen(false); }}><Info className="h-3.5 w-3.5" aria-hidden="true" /></button>
-    {open && createPortal(<span id={id} role="tooltip" style={position} className="fixed z-[100] block w-[min(18rem,calc(100vw-2rem))] border border-line-strong bg-bg p-4 text-left font-sans text-xs font-normal normal-case leading-relaxed tracking-normal text-foreground shadow-xl">{children}</span>, document.body)}
-  </span>;
+
+  const handleOpen = () => {
+    if (closeTimeout.current) clearTimeout(closeTimeout.current);
+    updatePosition();
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    closeTimeout.current = setTimeout(() => {
+      setOpen(false);
+    }, 120);
+  };
+
+  return (
+    <span
+      className="relative z-10 inline-flex align-middle"
+      onMouseEnter={handleOpen}
+      onMouseLeave={handleClose}
+      onFocus={handleOpen}
+      onBlur={handleClose}
+    >
+      <button
+        ref={trigger}
+        type="button"
+        className={`competition-focus inline-flex shrink-0 items-center justify-center text-muted hover:text-foreground cursor-pointer transition-colors ${className || "h-8 w-8"}`}
+        aria-label={label}
+        aria-expanded={open}
+        aria-controls={id}
+        aria-describedby={open ? id : undefined}
+        onClick={(event) => {
+          event.stopPropagation();
+          updatePosition();
+          setOpen((v) => !v);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setOpen(false);
+        }}
+      >
+        <Info className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+      {open && typeof document !== "undefined" && createPortal(
+        <span
+          id={id}
+          role="tooltip"
+          style={position}
+          className="fixed z-[100] block w-[min(20rem,calc(100vw-2rem))] border border-line-strong bg-surface p-3.5 text-left font-sans text-xs font-normal normal-case leading-relaxed tracking-normal text-foreground shadow-2xl"
+          onMouseEnter={handleOpen}
+          onMouseLeave={handleClose}
+        >
+          {children}
+        </span>,
+        document.body
+      )}
+    </span>
+  );
 }
 
 export function AnimatedNumber({ value, decimals = 6 }: { value: number; decimals?: number }) {

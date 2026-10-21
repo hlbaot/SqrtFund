@@ -12,7 +12,6 @@ import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { DonateBox } from "@/components/project/DonateBox";
-import { SupporterMarks } from "@/components/project/SupporterMarks";
 import { ProjectDetailSkeleton } from "@/components/common/PageSkeletons";
 import { ErrorState } from "@/components/common/ErrorState";
 import { Badge } from "@/components/ui/Badge";
@@ -20,6 +19,7 @@ import { Container } from "@/components/layout/Container";
 import { formatUsdc, formatUsdcFixed, shortAddress } from "@/lib/format";
 import { Stat, StatGroup } from "@/components/common/Stat";
 import { fmt } from "@/lib/copy";
+import { InfoTooltip } from "@/components/leaderboard/Primitives";
 import {
   ArrowLeft,
   ExternalLink,
@@ -28,6 +28,7 @@ import {
   Cpu,
   Leaf,
   Music,
+  User,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
@@ -92,14 +93,14 @@ export function ProjectDetailView() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left column: Project Details */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Header Card */}
-          <div
-            className="border border-line bg-surface p-6 space-y-4"
+        {/* Left column: Single Unified Project Details Card */}
+        <div className="lg:col-span-7">
+          <article
+            className="gradient-border bg-surface p-6 sm:p-7 space-y-6"
             data-aos="fade-right"
             data-aos-duration="600"
           >
+            {/* 1. Header: Rank, Category & Moderation Status */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 {project.rank && (
@@ -114,25 +115,31 @@ export function ProjectDetailView() {
               </div>
 
               {!project.approved && (
-                <Badge variant={project.rejected ? "primary" : "warning"}>{project.rejected ? t.rejection.status : t.myActivity.statusPending}</Badge>
+                <Badge variant={project.rejected ? "primary" : "warning"}>
+                  {project.rejected ? t.rejection.status : t.myActivity.statusPending}
+                </Badge>
               )}
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-              {project.name}
-            </h1>
+            {/* Project Name & Summary */}
+            <div className="space-y-2">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+                {project.name}
+              </h1>
 
-            <p className="text-sm text-muted leading-relaxed">
-              {project.description}
-            </p>
+              <p className="text-sm text-muted leading-relaxed">
+                {project.shortDescription || project.description}
+              </p>
+            </div>
 
+            {/* On-chain Explorer Links */}
             <div className="flex flex-wrap items-center gap-4">
               <ExplorerLink address={project.ownerAddress} label={t.onChain.ownerWallet} />
               <ExplorerLink address={roundAddress} label={t.onChain.roundContract} />
             </div>
 
-            {/* Quick Metrics */}
-            <StatGroup columns={3} className="my-4">
+            {/* 2. Key Metrics Grid (4 columns on desktop, 2 on mobile) */}
+            <StatGroup columns={4} className="my-2">
               <Stat
                 label={t.projectCard.directDonations}
                 value={formatUsdcFixed(project.totalDonated, { includeSymbol: false })}
@@ -148,60 +155,61 @@ export function ProjectDetailView() {
                 title={formatUsdc(project.estimatedMatching)}
               />
               <Stat
+                label={
+                  <span className="inline-flex items-center gap-1">
+                    <span>{t.common.supporters}</span>
+                    <InfoTooltip
+                      label={t.common.supporters}
+                      className="h-4 w-4"
+                    >
+                      {t.projectDetail.qfSupporterTooltip}
+                    </InfoTooltip>
+                  </span>
+                }
+                value={
+                  <span className="inline-flex items-center gap-1.5 text-money">
+                    <User className="h-4 w-4 shrink-0 text-money" aria-hidden="true" />
+                    <span>x{project.supporterCount}</span>
+                  </span>
+                }
+                tone="money"
+                title={`${project.supporterCount} ${t.common.supporters}`}
+              />
+              <Stat
                 label={t.projectDetail.ownerShort}
                 value={shortAddress(project.ownerAddress, 5)}
                 tone="default"
                 title={project.ownerAddress}
               />
             </StatGroup>
-          </div>
 
-          {/* Supporter Marks Breakdown */}
-          <div
-            className="border border-line bg-surface p-6 space-y-3"
-            data-aos="fade-right"
-            data-aos-delay="100"
-            data-aos-duration="600"
-          >
-            <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              {t.projectDetail.qfLessonTitle}
-            </h2>
-            <SupporterMarks count={project.supporterCount} maxMarks={72} scale={3} />
-            <p className="text-xs text-muted leading-relaxed">
-              {t.projectDetail.qfLessonPre}
-              <strong>{t.projectDetail.qfLessonBold}</strong>
-              {t.projectDetail.qfLessonPost}
-            </p>
-          </div>
+            {/* Divider */}
+            <div className="border-t border-line" />
 
-          {/* Project proposal info & Contact link */}
-          <div
-            className="border border-line bg-surface p-6 space-y-4"
-            data-aos="fade-right"
-            data-aos-delay="200"
-            data-aos-duration="600"
-          >
-            <h2 className="text-base font-bold text-foreground">
-              {t.projectDetail.aboutTitle}
-            </h2>
-            <p className="text-xs sm:text-sm text-muted leading-relaxed whitespace-pre-line">
-              {project.description}
-            </p>
+            {/* 3. Detailed Proposal Info & Website / Community Link */}
+            <div className="space-y-4">
+              <h2 className="text-base font-bold text-foreground">
+                {t.projectDetail.aboutTitle}
+              </h2>
+              <p className="text-xs sm:text-sm text-muted leading-relaxed whitespace-pre-line">
+                {project.description}
+              </p>
 
-            {project.contactUrl && (
-              <div className="pt-2">
-                <a
-                  href={project.contactUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mono-label inline-flex items-center gap-1.5 border border-line bg-surface-2 px-3 py-2 text-xs text-muted hover:border-primary hover:text-foreground"
-                >
-                  <span>{t.projectDetail.visitWebsite}</span>
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
-            )}
-          </div>
+              {project.contactUrl && (
+                <div className="pt-2">
+                  <a
+                    href={project.contactUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mono-label inline-flex items-center gap-1.5 border border-line bg-surface-2 px-3 py-2 text-xs text-muted hover:border-primary hover:text-foreground transition-colors"
+                  >
+                    <span>{t.projectDetail.visitWebsite}</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+            </div>
+          </article>
         </div>
 
         {/* Right column: Sticky Donate Box for Desktop */}
