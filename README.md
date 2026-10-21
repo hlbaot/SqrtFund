@@ -365,4 +365,4 @@ SqrtFund/
 
 ## CI và bản build
 
-Workflow GitHub Actions kiểm tra frontend, contract và lưu bản build Next.js để tải về. Xem [hướng dẫn thiết lập CI](docs/ci.md) để cấu hình Variables, chạy workflow và tải artifact. Giai đoạn MVP này chưa có bước deploy tự động.
+Workflow GitHub Actions kiểm tra frontend, contract và lưu bản build Next.js để tải về. Khi cả hai job đạt trên nhánh `main`, CD build và deploy production lên Vercel. Xem [hướng dẫn thiết lập CI](docs/ci.md) và [thiết lập CD Vercel](docs/vercel-cd.md) để cấu hình Variables, Secrets và môi trường Production.

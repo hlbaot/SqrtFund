@@ -1,12 +1,12 @@
 # Thiết lập CI và lưu bản build
 
-Workflow nằm ở [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). Phạm vi MVP hiện tại: kiểm tra code và tạo bản build, chưa tự động deploy website hay contract.
+Workflow nằm ở [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). CI kiểm tra code và lưu bản build. Sau khi frontend và contract đều đạt, job CD trên nhánh `main` deploy website production lên Vercel; xem [thiết lập CD](vercel-cd.md). Workflow không deploy smart contract.
 
 ## Khi nào chạy?
 
 - Push lên nhánh `main`.
 - Pull request vào nhánh `main`.
-- Chạy thủ công trong GitHub → **Actions → CI - Test and Build → Run workflow**.
+- Chạy thủ công trong GitHub → **Actions → CI/CD - Test, Build and Deploy → Run workflow**. Chọn `main` sẽ chạy cả deploy sau khi kiểm tra thành công.
 
 File phải được push lên GitHub trước khi Actions có thể chạy. Việc tạo file ở local không tự kích hoạt workflow trên GitHub.
 
@@ -33,7 +33,7 @@ Có thể thêm `NEXT_PUBLIC_RPC_URL`, `NEXT_PUBLIC_RPC_URL_FALLBACK` và `NEXT_
 
 Nếu chưa có địa chỉ contract, vẫn có thể chạy kiểm tra và build; các chức năng on-chain cần cấu hình đầy đủ khi chạy ứng dụng. Các biến `NEXT_PUBLIC_*` được đưa vào bản build: thay đổi chúng cần build lại.
 
-Workflow không tải `.env.local` từ máy bạn và không cần GitHub Secrets. Không điền private key, seed phrase hoặc thông tin SMTP/Supabase bí mật vào Variables hay các biến `NEXT_PUBLIC_*`.
+Hai job CI không tải `.env.local` từ máy bạn và không cần GitHub Secrets. Job CD cần ba secret Vercel và lấy môi trường Production từ project Vercel. Không điền private key, seed phrase hoặc thông tin SMTP/Supabase bí mật vào Variables hay các biến `NEXT_PUBLIC_*`.
 
 ## Tải bản build
 
