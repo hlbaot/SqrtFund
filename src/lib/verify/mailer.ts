@@ -2,11 +2,11 @@ import "server-only";
 import { mailConfig } from "./config.ts";
 import nodemailer from "nodemailer";
 import { buildVerificationEmail } from "./emailTemplate.ts";
-export async function sendOtp(email: string, otp: string): Promise<void> {
+export async function sendOtp(email: string, otp: string, purpose: "student" | "organizer" = "student"): Promise<void> {
   mailConfig();
   const from = process.env.SMTP_FROM;
   if (!from || !/^\d{6}$/.test(otp)) throw new Error("Mailer unavailable");
-  const { subject, text, html } = buildVerificationEmail(otp);
+  const { subject, text, html } = buildVerificationEmail(otp, purpose);
   const provider = process.env.EMAIL_PROVIDER ?? "smtp";
   if (provider === "resend") {
     if (!process.env.RESEND_API_KEY) throw new Error("Mailer unavailable");

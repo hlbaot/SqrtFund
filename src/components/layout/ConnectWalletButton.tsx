@@ -6,7 +6,21 @@ import Link from "next/link";
 import { useAccount, useConnect, useDisconnect, useBalance } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatUnits } from "viem";
-import { Wallet, LogOut, ChevronDown, Check, Copy, Loader2, Pencil } from "lucide-react";
+import {
+  Wallet,
+  LogOut,
+  ChevronDown,
+  Check,
+  Copy,
+  Loader2,
+  Pencil,
+  Building2,
+  GraduationCap,
+  User,
+  ShieldCheck,
+  Award,
+} from "lucide-react";
+import { ExplorerLink } from "@/components/tx/ExplorerLink";
 import dynamic from "next/dynamic";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAvatar } from "@/hooks/useAvatar";
@@ -14,6 +28,8 @@ import { shortAddress, formatUsdcFixed } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
 import { useNotificationCounts } from "@/hooks/useNotificationCounts";
+import { useMyOrganizerApplication } from "@/hooks/useOrganizerApplications";
+import { ApplyOrganizerModal } from "@/components/organizer/ApplyOrganizerModal";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 const AvatarPickerDialog = dynamic(() => import("./AvatarPickerDialog").then(module => module.AvatarPickerDialog), { ssr: false });
@@ -23,7 +39,7 @@ import { logoutWallet, markWalletConnected, isWalletLoggedOut, markWalletLoggedO
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { GradientBorder } from "@/components/ui/GradientBorder";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { WalletRoleStatus } from "@/components/layout/WalletRoleStatus";
 import { NotificationBadge } from "@/components/ui/NotificationBadge";
 import { fmt } from "@/lib/copy";
 
@@ -37,8 +53,24 @@ export function ConnectWalletButton() {
   }, [status, address, connector]);
   const queryClient = useQueryClient();
   const { t, locale } = useLocale();
-  const { role, isReady, isStudent, isAdmin } = useRole();
+  const {
+    role,
+    roles,
+    isReady,
+    isStudent,
+    isAdmin,
+    isPlatformOwner,
+    isOrganizer,
+    isRoundAdmin,
+    hasManagedRounds,
+    studentStatus,
+    organizerStatus,
+    refetchWalletRoles,
+    canCreateRound,
+  } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
+  const myApp = useMyOrganizerApplication(isConnected ? address : undefined);
+  const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const { avatar } = useAvatar(address);
@@ -53,6 +85,9 @@ export function ConnectWalletButton() {
   const closeAvatarPicker = useCallback(() => {
     setAvatarPickerOpen(false);
     window.requestAnimationFrame(() => trigger.current?.focus());
+  }, []);
+  const closeApplyModal = useCallback(() => {
+    setApplyModalOpen(false);
   }, []);
   const openAvatarPicker = () => {
     setDropdownOpen(false);
@@ -158,7 +193,8 @@ export function ConnectWalletButton() {
   }
 
   return (
-    <div ref={root} className="relative flex min-h-10 min-w-[170px] items-center justify-end transition-opacity duration-200 ease-in-out" onBlur={event => {
+    <>
+      <div ref={root} className="relative flex min-h-10 min-w-[170px] items-center justify-end transition-opacity duration-200 ease-in-out" onBlur={event => {
       console.log("[LOGOUT_DEBUG] root onBlur! relatedTarget:", event.relatedTarget);
       if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !panel.current?.contains(event.relatedTarget as Node | null)) {
         console.log("[LOGOUT_DEBUG] root onBlur closing dropdown!");
@@ -179,65 +215,219 @@ export function ConnectWalletButton() {
         <div ref={panel} style={{ "--profile-top": `${position.top}px`, "--profile-right": `${position.right}px` } as React.CSSProperties}
           onKeyDown={event => { if (event.key === "Escape") { setDropdownOpen(false); trigger.current?.focus(); } }}
           onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !root.current?.contains(event.relatedTarget as Node | null)) setDropdownOpen(false); }}
-          id={menuId} role="dialog" aria-label={t.wallet.profile} className="fixed left-4 right-4 bottom-4 z-50 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-sm border border-line-strong bg-bg p-4 text-xs text-foreground shadow-2xl lg:left-auto lg:bottom-auto lg:right-[var(--profile-right)] lg:top-[var(--profile-top)] lg:w-80">
-          <div className="flex items-center gap-3 border-b border-line pb-4">
+          id={menuId} role="dialog" aria-label={t.wallet.profile} className="fixed left-4 right-4 bottom-4 z-50 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-sm border border-line-strong bg-bg p-4 text-xs text-foreground shadow-2xl lg:left-auto lg:bottom-auto lg:right-[var(--profile-right)] lg:top-[var(--profile-top)] lg:w-84">
+
+          {/* Header: Avatar + Network + Role Status */}
+          <div className="flex items-start gap-3 border-b border-line pb-3.5">
             <button type="button" onClick={openAvatarPicker} aria-label={t.avatar.change}
-              className="group relative shrink-0 rounded-full cursor-pointer transition-transform hover:scale-105 active:scale-95">
-              <Avatar address={address} size={48} avatarId={avatar} />
-              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                <Pencil className="h-4 w-4" aria-hidden="true" />
+              className="group relative shrink-0 rounded-full cursor-pointer transition-transform hover:scale-105 active:scale-95 ring-2 ring-line-strong/60">
+              <Avatar address={address} size={44} avatarId={avatar} />
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                <Pencil className="h-3.5 w-3.5 text-white" aria-hidden="true" />
               </span>
             </button>
-            <div className="min-w-0 space-y-1">
-              <p className="role-label text-muted">{t.common.testnetBadge}</p>
-              {isReady ? <Badge variant={role === "admin" ? "warning" : role === "student" ? "accent" : role === "owner" ? "owner" : "default"}>{t.wallet[role]}</Badge> : <Skeleton className="h-6 w-32" />}
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="flex items-center justify-between gap-1.5">
+                <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted">
+                  <span className={`h-1.5 w-1.5 rounded-full ${isFuji ? "bg-money animate-pulse" : "bg-amber-400"}`} />
+                  <span>{isFuji ? "Avalanche Fuji" : t.wallet.switchNetwork}</span>
+                </div>
+                <ExplorerLink address={address} iconOnly />
+              </div>
+              <WalletRoleStatus roles={roles} studentStatus={studentStatus} organizerStatus={organizerStatus} locale={locale} onRetry={refetchWalletRoles} />
             </div>
           </div>
-          <p className="mt-4 break-all font-mono leading-relaxed">{address}</p>
-          <button type="button" onClick={copyAddress} className="mono-label my-2 flex w-full items-center justify-between px-2 py-2 text-muted hover:bg-surface hover:text-foreground cursor-pointer transition-colors active:scale-[0.99]">
-            <span aria-live="polite">{copied ? t.wallet.copied : t.common.copyAddress}</span>
-            {copied ? <Check className="h-3.5 w-3.5 text-money" /> : <Copy className="h-3.5 w-3.5" />}
-          </button>
-          {(avax || tokenBalance.isEnabled) && <div className="mb-3 space-y-2 border-y border-line py-3 font-mono" aria-label={t.wallet.balance}>
-            {avax && <p className="flex justify-between"><span className="text-muted">AVAX</span><span className="tabular-nums">{Number(formatUnits(avax.value, avax.decimals)).toFixed(4)}</span></p>}
-            <p className="flex justify-between gap-2"><span className="text-muted">USDC</span><span className="tabular-nums">{usdc !== undefined ? formatUsdcFixed(Number(formatUnits(usdc, 6))) : tokenBalance.isError ? t.tokenBalance.error : tokenBalance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}</span></p>
-          </div>}
 
-          {/* Student Verification section for non-admin, non-student wallets */}
+          {/* Address & Quick Copy Card */}
+          <div className="my-3 flex items-center justify-between gap-2 bg-surface-2/40 border border-line rounded-xs px-2.5 py-1.5">
+            <span className="font-mono text-xs text-foreground truncate select-all">
+              {address}
+            </span>
+            <button
+              type="button"
+              onClick={copyAddress}
+              aria-label={t.common.copyAddress}
+              className="flex items-center gap-1 shrink-0 text-[11px] font-mono text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-money" />
+                  <span className="text-money">{t.wallet.copied}</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>{t.common.copyAddress}</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Available Balances Card */}
+          {(avax || tokenBalance.isEnabled) && (
+            <div className="mb-3 p-2.5 bg-surface/60 border border-line rounded-xs space-y-1.5" aria-label={t.wallet.balance}>
+              <div className="flex items-center justify-between text-[11px] font-mono text-muted border-b border-line/40 pb-1">
+                <span>{locale === "vi" ? "Số dư khả dụng" : "Available Balance"}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                {avax && (
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-muted font-mono block">AVAX</span>
+                    <span className="font-mono text-sm font-semibold tabular-nums text-foreground block">
+                      {Number(formatUnits(avax.value, avax.decimals)).toFixed(4)}
+                    </span>
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-muted font-mono block">USDC</span>
+                  <span className="font-mono text-sm font-semibold tabular-nums text-money block">
+                    {usdc !== undefined
+                      ? `${formatUsdcFixed(Number(formatUnits(usdc, 6)))}`
+                      : tokenBalance.isError
+                      ? t.tokenBalance.error
+                      : tokenBalance.isLoading
+                      ? t.tokenBalance.loading
+                      : t.tokenBalance.unavailable}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Student Verification Callout (if not verified) */}
           {!isStudent && (
-            <div className="mb-3 space-y-2 border-b border-line pb-3">
-              <span className="role-label text-muted block">
-                {t.verification.title}
-              </span>
-
+            <div className="mb-3 p-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/25 rounded-xs space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <GraduationCap className="h-3.5 w-3.5 text-primary" />
+                    {locale === "vi" ? "Bạn là sinh viên?" : "Are you a student?"}
+                  </h4>
+                  <p className="text-[11px] text-muted mt-0.5 leading-snug">
+                    {locale === "vi"
+                      ? "Xác thực email .edu để tham gia đóng góp và nhận quỹ đối ứng."
+                      : "Verify university email to donate and match projects."}
+                  </p>
+                </div>
+              </div>
               <Link
                 href="/verify"
                 onClick={() => setDropdownOpen(false)}
-                className="mono-label block border border-primary p-3 text-center font-bold hover:bg-primary/10 transition-colors cursor-pointer active:scale-[0.99]"
+                className="mono-label block w-full py-1.5 px-3 text-center text-xs font-semibold bg-primary text-black hover:bg-primary-hover rounded-xs transition-colors cursor-pointer"
               >
                 {locale === "vi" ? "Xác thực bằng email trường" : "Verify university email"}
               </Link>
             </div>
           )}
 
-          <div className="space-y-1">
-            {isAdmin && <Link href="/admin" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs">{t.nav.admin}<NotificationBadge count={counts.admin} /></Link>}
-            <Link href="/my" onClick={() => { counts.markAllSeen(); setDropdownOpen(false); }} className="mono-label flex justify-between px-2 py-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs">{t.nav.my}<NotificationBadge count={counts.activity} /></Link>
+          {/* Navigation & Action Links */}
+          <div className="space-y-0.5 border-t border-line pt-2">
+            {isPlatformOwner && (
+              <Link
+                href="/admin?tab=platform"
+                onClick={() => setDropdownOpen(false)}
+                className="flex items-center justify-between p-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
+              >
+                <span className="flex items-center gap-2 text-xs font-medium">
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                  {t.nav.platformDashboard}
+                </span>
+                <Badge variant="primary" className="text-[10px] px-1 py-0">Owner</Badge>
+              </Link>
+            )}
+
+            {(canCreateRound || isRoundAdmin || hasManagedRounds) && (
+              <Link
+                href="/admin?tab=organizer"
+                onClick={() => setDropdownOpen(false)}
+                className="flex items-center justify-between p-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
+              >
+                <span className="flex items-center gap-2 text-xs font-medium">
+                  <Award className="h-3.5 w-3.5 text-warning" />
+                  {t.nav.organizerDashboard}
+                </span>
+                <NotificationBadge count={counts.admin} />
+              </Link>
+            )}
+
+            {!isPlatformOwner && !canCreateRound && !isRoundAdmin && !hasManagedRounds && isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setDropdownOpen(false)}
+                className="flex items-center justify-between p-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
+              >
+                <span className="flex items-center gap-2 text-xs font-medium">
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                  {t.nav.admin}
+                </span>
+                <NotificationBadge count={counts.admin} />
+              </Link>
+            )}
+
+            {!isPlatformOwner && !isOrganizer && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  setApplyModalOpen(true);
+                }}
+                className="w-full flex items-center justify-between p-2 text-left hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
+              >
+                <span className="flex items-center gap-2 text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                  <Building2 className="h-3.5 w-3.5 text-muted group-hover:text-primary transition-colors" />
+                  {t.applyOrganizer.btnMenu}
+                </span>
+                {myApp.isPending ? (
+                  <Badge variant="warning" className="text-[10px] px-1.5 py-0">
+                    {t.applyOrganizer.statusPendingBadge}
+                  </Badge>
+                ) : (
+                  <span className="text-[10px] text-muted font-mono">{locale === "vi" ? "Đăng ký" : "Apply"} &rarr;</span>
+                )}
+              </button>
+            )}
+
+            <Link
+              href="/my"
+              onClick={() => { counts.markAllSeen(); setDropdownOpen(false); }}
+              className="flex items-center justify-between p-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
+            >
+              <span className="flex items-center gap-2 text-xs font-medium">
+                <User className="h-3.5 w-3.5 text-muted group-hover:text-foreground transition-colors" />
+                {t.nav.my}
+              </span>
+              <NotificationBadge count={counts.activity} />
+            </Link>
           </div>
-          <button
-            type="button"
-            onMouseDown={() => console.log("[LOGOUT_DEBUG] Disconnect button onMouseDown")}
-            onClick={() => {
-              console.log("[LOGOUT_DEBUG] Disconnect button onClick");
-              handleDisconnect();
-            }}
-            className="mono-label mt-3 flex w-full items-center gap-2 border-t border-line px-2 pt-4 pb-1 text-primary hover:bg-primary/10 cursor-pointer transition-colors active:scale-[0.99]"
-          >
-            <LogOut className="h-3.5 w-3.5" />{t.nav.disconnect}
-          </button>
+
+          {/* Disconnect Button */}
+          <div className="border-t border-line pt-2 mt-2">
+            <button
+              type="button"
+              onMouseDown={() => console.log("[LOGOUT_DEBUG] Disconnect button onMouseDown")}
+              onClick={() => {
+                console.log("[LOGOUT_DEBUG] Disconnect button onClick");
+                handleDisconnect();
+              }}
+              className="flex w-full items-center justify-center gap-2 py-2 px-3 text-xs text-muted hover:text-destructive hover:bg-destructive/10 cursor-pointer transition-colors rounded-xs"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>{t.nav.disconnect}</span>
+            </button>
+          </div>
         </div>, document.body
       )}
       {avatarPickerOpen && <AvatarPickerDialog key={address.toLowerCase()} address={address} onClose={closeAvatarPicker} />}
     </div>
+    {address && (
+      <ApplyOrganizerModal
+        isOpen={applyModalOpen}
+        onClose={closeApplyModal}
+        walletAddress={address}
+        isOrganizer={isOrganizer}
+        isPlatformOwner={isPlatformOwner}
+      />
+    )}
+  </>
   );
 }

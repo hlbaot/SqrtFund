@@ -45,7 +45,8 @@ beforeEach(() => {
     finalized: false, isCancelled: false, supportsPhase2: true, pool: 1_000_000n, maxMatchBps: 3000n,
     leftover: 700_000n, leftoverWithdrawn: false, cancelledPoolWithdrawn: false,
     financials: { pool: 1_000_000n, leftover: 700_000n, status: "open" }, refetch: vi.fn(), isLoading: false, isError: false,
-    factoryOwner: undefined, organizer: undefined, minDonation: 1n, maxDonation: 5n, maxPerRound: 10n,
+    factoryOwner: undefined, isOrganizer: false, isAuthorizationLoading: false, isAuthorizationError: false, isLegacyFactory: false,
+    organizer: undefined, minDonation: 1n, maxDonation: 5n, maxPerRound: 10n,
     projectCount: 1n, status: "open", studentRegistry: undefined, readFailureKind: "rpc", roundVersion: "current",
   };
   f.write.mockResolvedValue("0x123"); f.receipt.mockResolvedValue({ status: "success" }); f.invalidate.mockResolvedValue(undefined);

@@ -21,7 +21,7 @@ export function useAdminRounds(admin?: Address) {
     query: { enabled: Boolean(admin && addresses.length), staleTime: IMMUTABLE_STALE_MS, gcTime: QUERY_GC_MS },
   });
   const isError = !isAddress(factoryAddress) || isFactoryError || factoryData?.[0]?.status === "failure" || metadata.isError || Boolean(addresses.length && metadata.data?.some((result, i) => i % 2 === 0 && result.status === "failure"));
-  const isLoading = !isError && (isFactoryLoading || !factoryData || Boolean(addresses.length && (!metadata.data || metadata.isPending)));
+  const isLoading = Boolean(admin) && !isError && (isFactoryLoading || !factoryData || Boolean(addresses.length && (!metadata.data || metadata.isPending)));
   const rounds = addresses.map((address, i) => ({
     address,
     admin: metadata.data?.[i * 2]?.result as Address | undefined,

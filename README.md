@@ -362,3 +362,7 @@ SqrtFund/
 ├── __tests__/                    # Kiểm thử giao diện và API với Vitest
 └── .env.example                  # File mẫu cấu hình biến môi trường
 ```
+
+## CI và bản build
+
+Workflow GitHub Actions kiểm tra frontend, contract và lưu bản build Next.js để tải về. Xem [hướng dẫn thiết lập CI](docs/ci.md) để cấu hình Variables, chạy workflow và tải artifact. Giai đoạn MVP này chưa có bước deploy tự động.

@@ -24,3 +24,11 @@ it("rejects an app password containing spaces", async () => {
 it("propagates SMTP rejection instead of reporting success", async () => {
   f.send.mockRejectedValue(new Error("SMTP rejected")); await expect(sendOtp("student@hust.edu.vn", "012345")).rejects.toThrow("SMTP rejected");
 });
+it("sends contact-verification instructions without asking Organizer applicants to verify as students", async () => {
+  await sendOtp("contact@gmail.com", "123456", "organizer");
+  const message = f.send.mock.calls[0][0];
+  expect(message.subject).toContain("Organizer");
+  expect(message.text).toContain("không cấp quyền Organizer");
+  expect(message.text).not.toContain("confirm the wallet transaction");
+  expect(message.html).toContain("123456");
+});
