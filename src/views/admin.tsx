@@ -152,7 +152,7 @@ export function AdminView() {
 
       </div>
 
-      <RoundControls key={roundAddress || "no-round"} round={round} projects={projects}
+      <RoundControls key={`controls:${roundAddress || "no-round"}`} round={round} projects={projects}
         projectsLoading={isProjectsLoading} projectsError={isProjectsError} onSelectRound={setSelectedRound} />
 
       {/* Finalized Round Distribution Results Table */}
@@ -219,7 +219,7 @@ export function AdminView() {
         onClose={() => { if (!reviewBusy.current) { setReviewTarget(null); setReviewError(undefined); } }} onConfirm={() => void confirmReview()} />}
 
       {/* Project Proposals Approval Queue */}
-      {isAdmin && <ProjectReviewList key={roundAddress || "no-round"} projects={projects} round={moderationRound} viewer={viewer} now={now}
+      {isAdmin && <ProjectReviewList key={`review:${roundAddress || "no-round"}`} projects={projects} round={moderationRound} viewer={viewer} now={now}
         pending={busyProjectId !== null} isLoading={isProjectsLoading} isError={isProjectsError} onRetry={() => void refetchProjects()}
         onAction={(project, action) => { const current = projects.find(item => item.id === project.id); if (current) openReview(current, action); }} />}
 

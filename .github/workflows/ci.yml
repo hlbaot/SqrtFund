@@ -1,0 +1,106 @@
+name: CI - Test and Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  frontend:
+    name: Frontend checks and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      RUN_VERIFICATION_INTEGRATION: '0'
+      RUN_ROUND_RPC_INTEGRATION: '0'
+      NEXT_PUBLIC_CHAIN_ID: '43113'
+      NEXT_PUBLIC_RPC_URL: ${{ vars.NEXT_PUBLIC_RPC_URL || 'https://api.avax-test.network/ext/bc/C/rpc' }}
+      NEXT_PUBLIC_RPC_URL_FALLBACK: ${{ vars.NEXT_PUBLIC_RPC_URL_FALLBACK }}
+      NEXT_PUBLIC_EXPLORER_URL: ${{ vars.NEXT_PUBLIC_EXPLORER_URL || 'https://testnet.snowtrace.io' }}
+      NEXT_PUBLIC_FACTORY_ADDRESS: ${{ vars.NEXT_PUBLIC_FACTORY_ADDRESS }}
+      NEXT_PUBLIC_USDC_ADDRESS: ${{ vars.NEXT_PUBLIC_USDC_ADDRESS }}
+      NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS: ${{ vars.NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        # Reads the pinned pnpm version from package.json.
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-${{ runner.os }}-node24-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json') }}
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Unit tests
+        run: pnpm test
+      - name: Lint
+        run: pnpm lint
+      - name: Type check
+        run: pnpm typecheck
+      - name: Production build
+        run: pnpm build
+      - name: Package build
+        run: |
+          test -s .next/BUILD_ID
+          tar -czf sqrtfund-build.tar.gz --exclude='.next/cache' --exclude='.next/dev' \
+            .next public package.json pnpm-lock.yaml pnpm-workspace.yaml \
+            next.config.ts tsconfig.json scripts/bundle-stats.mjs
+          sha256sum sqrtfund-build.tar.gz > SHA256SUMS
+      - name: Save build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqrtfund-build-${{ github.sha }}
+          path: |
+            sqrtfund-build.tar.gz
+            SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  contracts:
+    name: Contract tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: contracts
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+      - name: Run contract tests and gas report
+        run: forge test --gas-report | tee gas-report.txt
+      - name: Save gas report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-gas-report-${{ github.sha }}
+          path: contracts/gas-report.txt
+          if-no-files-found: warn
+          retention-days: 7

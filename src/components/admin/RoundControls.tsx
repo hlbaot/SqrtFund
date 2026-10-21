@@ -112,7 +112,7 @@ export function RoundControls({ round, projects, projectsLoading, projectsError,
         <select aria-label={t.tokenBalance.selectRound} value={round.roundAddress} disabled={pending !== null}
           className="min-h-9 w-full border border-line bg-bg px-3 text-xs text-foreground transition-colors hover:border-line-strong focus-visible:outline focus-visible:outline-primary"
           onChange={event => onSelectRound(event.target.value as Address)}>
-          {(round.allRounds?.length ? round.allRounds : [round.roundAddress]).map(value => <option key={value} value={value}>{value === round.roundAddress && round.name ? round.name : shortAddress(value)}</option>)}
+          {Array.from(new Set(round.allRounds?.length ? round.allRounds : [round.roundAddress])).map(value => <option key={value} value={value}>{value === round.roundAddress && round.name ? round.name : shortAddress(value)}</option>)}
         </select>
       </label>
     </div>
