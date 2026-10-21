@@ -6,6 +6,8 @@ export const fmt = (s: string, p: Record<string, string | number> = {}): string 
 
 const enData = {
     roundControls: {
+      historyTitle: "Review rounds", historyHint: "Select an existing round to view its progress, results and available actions.",
+      retryNames: "Could not load some round names. Retry",
       title: "Round controls", progress: "Round progress", donationProgress: "Donation progress", completed: "Completed",
       scheduleUnavailable: "This legacy round has no readable end time.",
       stepOpen: "Open", stepEnded: "Ended", stepFinalized: "Finalized", stepDisbursed: "Disbursement",
@@ -977,6 +979,8 @@ export type Translations = typeof enData;
 
 const viData: Translations = {
     roundControls: {
+      historyTitle: "Xem lại round", historyHint: "Chọn một round đã tạo để xem tiến trình, kết quả và các thao tác hiện có.",
+      retryNames: "Chưa tải được một số tên round. Thử lại",
       title: "Điều khiển vòng", progress: "Tiến trình vòng gọi vốn", donationProgress: "Tiến trình đóng góp", completed: "Đã hoàn thành",
       scheduleUnavailable: "Vòng cũ chưa có thời điểm kết thúc đọc được.",
       stepOpen: "Mở", stepEnded: "Kết thúc", stepFinalized: "Chốt", stepDisbursed: "Giải ngân",

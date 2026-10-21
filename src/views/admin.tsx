@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RoundControls } from "@/components/admin/RoundControls";
+import { RoundHistory } from "@/components/admin/RoundHistory";
 import { AOSInit } from "@/components/common/AOSInit";
 import { useTxFlow } from "@/hooks/useTxFlow";
 import { txToast } from "@/lib/txToast";
@@ -32,6 +33,7 @@ import { AdminSkeleton } from "@/components/common/PageSkeletons";
 import { Container } from "@/components/layout/Container";
 import { Award, ShieldCheck, Layers, Info, Building2 } from "lucide-react";
 import { ApplyOrganizerModal } from "@/components/organizer/ApplyOrganizerModal";
+import type { Address } from "viem";
 
 export function AdminView() {
   const beginFlow = useTxFlow();
@@ -40,6 +42,7 @@ export function AdminView() {
   const { address, chainId, isConnected, status: accountStatus } = useAccount();
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const closeApplyModal = useCallback(() => setApplyModalOpen(false), []);
+  const [roundBusy, setRoundBusy] = useState(false);
 
   const managed = useAdminRounds(isConnected && chainId === TARGET_CHAIN_ID ? address : undefined);
   const selectedRound = managed.roundAddress;
@@ -370,17 +373,32 @@ export function AdminView() {
           {isFactoryAuthorizationError && <StatusAlert tone="warning" title={locale === "vi" ? "Chưa thể tạo vòng mới" : "Round creation unavailable"}>
             {isLegacyFactory ? (locale === "vi" ? "Factory đang cấu hình chưa hỗ trợ Multi-Organizer. Cần cập nhật địa chỉ sau khi deploy và xác minh Factory mới." : "Configure a verified Multi-Organizer Factory deployment.") : (locale === "vi" ? "Không đọc được quyền tạo vòng. Vui lòng thử lại." : "Could not verify round creation permissions.")}
           </StatusAlert>}
-          {roundAddress && <RoundControls
-            key={`controls:${roundAddress || "no-round"}`}
-            round={{ ...round, allRounds: managed.rounds.map(item => item.address) }}
-            projects={projects}
-            projectsLoading={isProjectsLoading}
-            projectsError={isProjectsError}
-            onSelectRound={managed.selectRound}
-          />}
+          {roundAddress && (
+            <section aria-label={t.roundControls.historyTitle} className="border border-line bg-surface">
+              <RoundHistory
+                addresses={managed.rounds.map(item => item.address as Address)}
+                selected={roundAddress}
+                selectedName={roundName}
+                disabled={roundBusy || busyProjectId !== null}
+                onSelect={managed.selectRound}
+              />
+              {isRoundLoading ? (
+                <p role="status" className="p-8 text-center text-sm text-muted">{t.common.loading}</p>
+              ) : (
+                <RoundControls
+                  key={`controls:${roundAddress || "no-round"}`}
+                  round={{ ...round, allRounds: managed.rounds.map(item => item.address) }}
+                  projects={projects}
+                  projectsLoading={isProjectsLoading}
+                  projectsError={isProjectsError}
+                  onBusyChange={setRoundBusy}
+                />
+              )}
+            </section>
+          )}
 
           {/* Finalized Round Distribution Results Table */}
-          {roundAddress && finalized && !isCancelled && (
+          {!isRoundLoading && roundAddress && finalized && !isCancelled && (
             <section
               className="border border-money/40 bg-money/10 p-6 space-y-4 rounded-sm"
               data-aos="fade-up"
@@ -458,21 +476,23 @@ export function AdminView() {
           )}
 
           {/* Project Proposals Approval Queue (Actionable for Round Admin) */}
-          {roundAddress && <ProjectReviewList
-            key={`review:${roundAddress || "no-round"}`}
-            projects={projects}
-            round={moderationRound}
-            viewer={viewer}
-            now={now}
-            pending={busyProjectId !== null}
-            isLoading={isProjectsLoading}
-            isError={isProjectsError}
-            onRetry={() => void refetchProjects()}
-            onAction={(project, action) => {
-              const current = projects.find(item => item.id === project.id);
-              if (current) openReview(current, action);
-            }}
-          />}
+          {!isRoundLoading && roundAddress && (
+            <ProjectReviewList
+              key={`review:${roundAddress || "no-round"}`}
+              projects={projects}
+              round={moderationRound}
+              viewer={viewer}
+              now={now}
+              pending={busyProjectId !== null}
+              isLoading={isProjectsLoading}
+              isError={isProjectsError}
+              onRetry={() => void refetchProjects()}
+              onAction={(project, action) => {
+                const current = projects.find(item => item.id === project.id);
+                if (current) openReview(current, action);
+              }}
+            />
+          )}
 
           {/* Round creation & minting section */}
           {canCreateRound ? (
