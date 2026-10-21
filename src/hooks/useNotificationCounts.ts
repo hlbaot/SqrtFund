@@ -22,7 +22,7 @@ export function useNotificationCounts(role: WalletRole, { markViewed = false } =
     address: enabled ? address : undefined, round,
     projects: !isLoading && !isError ? projects : [],
     refundTotal: refunds.isReady ? refunds.total : 0n,
-  }).filter(item => item.scope !== "admin" || role === "admin");
+  }).filter(item => item.scope !== "admin" || role === "admin" || role === "platform_owner" || role === "organizer");
   // Depend on stable keys so polling does not repeatedly acknowledge unchanged items.
   const serializedKeys = JSON.stringify(items.map(item => item.key));
   const markAllSeen = () => markSeen(items.map(item => item.key));

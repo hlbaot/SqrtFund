@@ -708,7 +708,7 @@ contract QFRoundTest is Test {
         round.registerProject("P", "Desc", "https://img", "https://url");
     }
 
-    function test_RoundFactory_OnlyOwnerAndRoundCountWithSeveralRounds() public {
+    function test_RoundFactory_UnauthorizedCannotCreateAndRoundCountWithSeveralRounds() public {
         address stranger = address(0x123);
         vm.prank(stranger);
         vm.expectRevert();
