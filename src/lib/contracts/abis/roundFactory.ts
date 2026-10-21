@@ -13,6 +13,25 @@ export const roundFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "authorizedOrganizers",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "createRound",
     "inputs": [
       {
@@ -137,6 +156,24 @@ export const roundFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "setOrganizer",
+    "inputs": [
+      {
+        "name": "organizer",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "authorized",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "studentRegistry",
     "inputs": [],
     "outputs": [
@@ -160,6 +197,25 @@ export const roundFactoryAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "OrganizerUpdated",
+    "inputs": [
+      {
+        "name": "organizer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "authorized",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",

@@ -21,6 +21,11 @@ export function Dialog({ isOpen, onClose, title, description, children, classNam
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!isOpen) return;
     const opener = document.activeElement as HTMLElement | null;
@@ -29,13 +34,21 @@ export function Dialog({ isOpen, onClose, title, description, children, classNam
     const focusable = () => Array.from(panel.current?.querySelectorAll<HTMLElement>(
       'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]'
     ) ?? []).filter(element => element.tabIndex >= 0 && element.getClientRects().length > 0);
-    const initial = panel.current?.querySelector<HTMLElement>("[data-autofocus]");
-    (initial ?? focusable()[0] ?? panel.current)?.focus();
+
+    // Only apply initial focus if focus is not already inside the dialog panel
+    if (!panel.current?.contains(document.activeElement)) {
+      const initial = panel.current?.querySelector<HTMLElement>("[data-autofocus]");
+      const firstInput = panel.current?.querySelector<HTMLElement>(
+        "input:not(:disabled), textarea:not(:disabled), select:not(:disabled)"
+      );
+      (initial ?? firstInput ?? focusable()[0] ?? panel.current)?.focus();
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
       } else if (event.key === "Tab") {
         const elements = focusable();
         const first = elements[0];
@@ -52,15 +65,15 @@ export function Dialog({ isOpen, onClose, title, description, children, classNam
       document.body.style.overflow = previousOverflow;
       if (opener?.isConnected) opener.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen || typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-xs cursor-pointer" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-xs cursor-pointer" onClick={() => onCloseRef.current()} aria-hidden="true" />
       <div ref={panel} role="dialog" aria-modal="true" tabIndex={-1}
         aria-labelledby={title ? titleId : undefined} aria-describedby={description ? descriptionId : undefined}
-        className={twMerge(clsx("relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-sm border border-line bg-bg p-4 text-foreground outline-none sm:p-6", className))}>
+        className={twMerge(clsx("relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-sm border border-line bg-bg p-4 text-foreground outline-none sm:p-6", className))}>
         <button onClick={onClose} type="button" aria-label={t.common.close}
           className="absolute right-3 top-3 p-1.5 text-muted hover:bg-surface-2 hover:text-foreground cursor-pointer transition-colors rounded-xs active:scale-95">
           <X className="h-4 w-4" aria-hidden="true" />

@@ -3,6 +3,8 @@ import { isPublicProject } from "@/lib/projectVisibility";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Address } from "viem";
+import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { isPublicRound } from "@/lib/roundVisibility";
 import { useFactoryRounds, useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
@@ -41,17 +43,20 @@ function RoundData({ address, number, onData, retry }: { address: Address; numbe
 
 export function RoundsView() {
   const { factoryData, isFactoryLoading: isLoading, isFactoryError, refetchFactory: refetch } = useFactoryRounds();
-  const allRounds = (factoryData?.[0]?.result as Address[] | undefined) ?? [];
+  // Giữ số thứ tự gốc của Factory khi ẩn vòng demo cũ khỏi danh sách công khai.
+  const allRounds = useMemo(() => ((factoryData?.[0]?.result as Address[] | undefined) ?? [])
+    .map((address, index) => ({ address, number: index + 1 }))
+    .filter(round => isPublicRound(round.address, TARGET_CHAIN_ID)), [factoryData]);
   const discoveryError = isFactoryError || factoryData?.[0]?.status === "failure";
   const { role, isReady } = useRole();
   const [loaded, setLoaded] = useState<Record<string, LoadedRound>>({});
   const [retry, setRetry] = useState(0);
   const onData = useCallback((address: string, data: LoadedRound) => { setLoaded(current => ({ ...current, [address]: data })); }, []);
-  const entries = allRounds.map(address => loaded[address]);
+  const entries = allRounds.map(({ address }) => loaded[address]);
   const loading = isLoading || (entries.length > 0 && entries.every(entry => !entry || entry.loading));
   const error = discoveryError && allRounds.length === 0;
   return <Container className="competition-page min-w-0 py-8 sm:py-10">
-    {allRounds.map((address, index) => <RoundData key={`${address}:${retry}`} address={address} number={index + 1} onData={onData} retry={retry} />)}
+    {allRounds.map(({ address, number }) => <RoundData key={`${address}:${retry}`} address={address} number={number} onData={onData} retry={retry} />)}
     <RoundsList rounds={entries.flatMap(entry => entry && !entry.loading ? [entry.round] : [])} state={error ? "error" : loading ? "loading" : "ready"} isAdmin={isReady && role === "admin"} onRetry={() => { refetch(); setRetry(value => value + 1); }} />
   </Container>;
 }

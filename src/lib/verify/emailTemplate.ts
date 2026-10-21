@@ -1,6 +1,12 @@
 /** Self-contained email markup: inline styles/tables, no remote images or fonts. */
-export function buildVerificationEmail(otp: string): { subject: string; text: string; html: string } {
+export function buildVerificationEmail(otp: string, purpose: "student" | "organizer" = "student"): { subject: string; text: string; html: string } {
   if (otp.length !== 6 || !/^\d{6}$/.test(otp)) throw new Error("Invalid verification code");
+  if (purpose === "organizer") {
+    const subject = "SqrtFund — Xác thực email liên hệ Organizer";
+    const text = `Mã xác thực email liên hệ Organizer / Organizer contact email code: ${otp}\nCó hiệu lực trong 10 phút / Valid for 10 minutes.\nNhập mã trong đơn đăng ký Organizer. Xác thực email không cấp quyền Organizer; đơn vẫn cần Platform Owner duyệt.\nEnter the code in your Organizer application. Email verification does not grant Organizer access; Platform Owner approval is required.\nKhông chia sẻ mã. Nếu không yêu cầu mã, hãy bỏ qua email này.`;
+    const html = `<html lang="vi"><body style="background:#0c0c12;color:#eeeeef;font-family:Arial,sans-serif;padding:32px"><h1>SqrtFund</h1><h2>Xác thực email liên hệ Organizer</h2><p>Organizer contact email verification</p><p style="font-size:32px;letter-spacing:6px">${otp}</p><p>Mã có hiệu lực trong 10 phút / Valid for 10 minutes.</p><p>Xác thực email không cấp quyền Organizer. Đơn đăng ký vẫn cần Platform Owner duyệt.</p><p>Email verification does not grant Organizer access. Your application requires Platform Owner approval.</p><p>Không chia sẻ mã. Nếu không yêu cầu mã, hãy bỏ qua email này.</p></body></html>`;
+    return { subject, text, html };
+  }
   const subject = "Mã xác thực SqrtFund / SqrtFund verification code";
   const text = `SQRTFUND — XÁC THỰC EMAIL TRƯỜNG / UNIVERSITY EMAIL VERIFICATION\n\nMã xác thực của bạn / Your verification code: ${otp}\nCó hiệu lực trong 10 phút / Valid for 10 minutes.\n\nQuay lại SqrtFund và nhập mã trong cửa sổ xác thực email. Sau khi mã được chấp nhận, xác nhận giao dịch trong ví để hoàn tất xác thực sinh viên.\nReturn to SqrtFund and enter this code in the email verification dialog. Once accepted, confirm the wallet transaction to complete student verification.\n\nKhông chia sẻ mã này. SqrtFund không yêu cầu private key hay seed phrase của ví.\nDo not share this code. SqrtFund will never ask for your wallet private key or seed phrase.\n\nNếu bạn không yêu cầu mã, hãy bỏ qua email này.\nIf you did not request this code, ignore this email.\n\nSqrtFund · Quadratic funding for student communities.`;
   const html = `<!doctype html>
