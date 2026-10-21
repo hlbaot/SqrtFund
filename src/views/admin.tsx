@@ -1,5 +1,6 @@
 "use client";
 import { RoundControls } from "@/components/admin/RoundControls";
+import { RoundHistory } from "@/components/admin/RoundHistory";
 
 import { AOSInit } from "@/components/common/AOSInit";
 
@@ -37,6 +38,7 @@ export function AdminView() {
   const { t, locale } = useLocale();
   const { address, chainId, isConnected, status: accountStatus } = useAccount();
   const [selectedRound, setSelectedRound] = useState<Address>();
+  const [roundBusy, setRoundBusy] = useState(false);
   const { role, isLoading: isRoleLoading, isReady } = useRole(selectedRound);
   const isAdmin = isReady && role === "admin";
   const router = useRouter();
@@ -116,7 +118,7 @@ export function AdminView() {
     }
   }
 
-  if (accountStatus === "reconnecting" || accountStatus === "connecting" || isRoleLoading || isRoundLoading) {
+  if (accountStatus === "reconnecting" || accountStatus === "connecting" || (!selectedRound && (isRoleLoading || isRoundLoading))) {
     return (
       <Container className="py-8 sm:py-10">
         <AdminSkeleton />
@@ -156,7 +158,7 @@ export function AdminView() {
         projectsLoading={isProjectsLoading} projectsError={isProjectsError} onSelectRound={setSelectedRound} />
 
       {/* Finalized Round Distribution Results Table */}
-      {finalized && !isCancelled && (
+      {!isRoundLoading && finalized && !isCancelled && (
         <section
           className="border border-money/40 bg-money/10 p-6 space-y-4"
           data-aos="fade-up"

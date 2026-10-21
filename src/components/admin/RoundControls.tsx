@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { Address } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
@@ -13,7 +12,7 @@ import { useTxFlow } from "@/hooks/useTxFlow";
 import { useLocale } from "@/lib/context/locale";
 import { deriveRoundActions, FINALIZE_GRACE } from "@/lib/roundPhase";
 import { calculateRoundSettlement, calculateRoundStats } from "@/lib/roundStats";
-import { formatUsdc, shortAddress } from "@/lib/format";
+import { formatUsdc } from "@/lib/format";
 import { tokenMatchesConfigured } from "@/lib/tokenBalance";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { qfRoundAbi } from "@/lib/contracts/abis";
@@ -28,9 +27,9 @@ import { FinalizeButton } from "./FinalizeButton";
 
 type Action = "finalize" | "cancelRound" | "withdrawLeftover" | "withdrawPoolIfCancelled";
 
-export function RoundControls({ round, projects, projectsLoading, projectsError, onSelectRound }: {
+export function RoundControls({ round, projects, projectsLoading, projectsError, onBusyChange }: {
   round: ReturnType<typeof useRound>; projects: EnrichedProject[];
-  projectsLoading: boolean; projectsError?: boolean; onSelectRound: (address: Address) => void;
+  projectsLoading: boolean; projectsError?: boolean; onBusyChange?: (busy: boolean) => void;
 }) {
   const { t, locale } = useLocale();
   const c = t.roundControls;
@@ -45,6 +44,10 @@ export function RoundControls({ round, projects, projectsLoading, projectsError,
   const [confirm, setConfirm] = useState<"finalize" | "cancelRound" | null>(null);
   const [error, setError] = useState<string>();
   const busy = useRef(false);
+  useEffect(() => {
+    onBusyChange?.(pending !== null || confirm !== null);
+    return () => onBusyChange?.(false);
+  }, [pending, confirm, onBusyChange]);
   const close = useCallback(() => { if (!busy.current) { setConfirm(null); setError(undefined); } }, []);
   const actionRound = { ...round, depositSupported: tokenMatchesConfigured(round.token),
     isError: round.isError || (round.roundVersion === "current" && round.financials?.status === undefined) };

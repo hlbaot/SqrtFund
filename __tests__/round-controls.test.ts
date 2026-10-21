@@ -50,7 +50,7 @@ beforeEach(() => {
   };
   f.write.mockResolvedValue("0x123"); f.receipt.mockResolvedValue({ status: "success" }); f.invalidate.mockResolvedValue(undefined);
 });
-const render = () => renderToStaticMarkup(createElement(RoundControls, { round, projects, projectsLoading: false, onSelectRound: vi.fn() }));
+const render = () => renderToStaticMarkup(createElement(RoundControls, { round, projects, projectsLoading: false }));
 const labels = (html: string) => [...html.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/g)].map(match => match[1].replace(/<[^>]+>/g, "").trim());
 
 it("only renders available controls and no faded finalize button before the end", () => {

@@ -7,11 +7,11 @@ import { projectReviewCopy } from "@/lib/projectReview";
 const state = vi.hoisted(() => ({ supports: true, finalized: false, cancelled: false, wallet: "0x1111111111111111111111111111111111111111", now: 1000 }));
 vi.mock("@/hooks/useCurrentTimestamp", () => ({ useCurrentTimestamp: () => state.now }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
-vi.mock("wagmi", () => ({ useAccount: () => ({ address: state.wallet, chainId: 43113, isConnected: true, status: "connected" }), usePublicClient: () => ({}), useWriteContract: () => ({}) }));
+vi.mock("wagmi", () => ({ useAccount: () => ({ address: state.wallet, chainId: 43113, isConnected: true, status: "connected" }), usePublicClient: () => ({}), useWriteContract: () => ({}), useReadContracts: () => ({ data: [{ status: "success", result: "Demo round" }, { status: "success", result: "Previous round" }] }) }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}) }));
 vi.mock("@/hooks/useTxFlow", () => ({ useTxFlow: () => vi.fn() }));
 vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ role: "admin", isLoading: false, isReady: true }) }));
-vi.mock("@/hooks/useRound", () => ({ useRound: () => ({ roundAddress: "0x2222222222222222222222222222222222222222", admin: "0x1111111111111111111111111111111111111111", name: "Demo round", endTime: 2000n, finalized: state.finalized, isCancelled: state.cancelled, leftover: 0n, leftoverWithdrawn: false, isLoading: false }) }));
+vi.mock("@/hooks/useRound", () => ({ useRound: () => ({ roundAddress: "0x2222222222222222222222222222222222222222", allRounds: ["0x2222222222222222222222222222222222222222", "0x4444444444444444444444444444444444444444"], admin: "0x1111111111111111111111111111111111111111", name: "Demo round", endTime: 2000n, finalized: state.finalized, isCancelled: state.cancelled, leftover: 0n, leftoverWithdrawn: false, isLoading: false }) }));
 vi.mock("@/hooks/useProjects", () => ({ useProjects: () => ({ supportsRejection: state.supports, projects: [
   { id: "1", contractId: 1n, name: "PendingAlpha", ownerAddress: "0x3333333333333333333333333333333333333333", description: "D", contactUrl: "", approved: false, rejected: false },
   { id: "2", contractId: 2n, name: "RejectedBeta", ownerAddress: "0x3333333333333333333333333333333333333333", description: "D", contactUrl: "", approved: false, rejected: true },
@@ -25,6 +25,13 @@ vi.mock("@/components/round/RoundCancellationPanel", () => ({ RoundCancellationP
 vi.mock("@/components/common/AOSInit", () => ({ AOSInit: () => null }));
 beforeEach(() => Object.assign(state, { supports: true, finalized: false, cancelled: false, wallet: "0x1111111111111111111111111111111111111111", now: 1000 }));
 const render = () => renderToStaticMarkup(createElement(AdminView));
+it("renders one round selector and one control panel even with multiple rounds", () => {
+  const html = render();
+  expect(html.match(/<select aria-label="Chọn round"/g)).toHaveLength(1);
+  expect(html.match(/aria-label="Điều khiển vòng"/g)).toHaveLength(1);
+  expect(html).toContain("Vòng 2 · Previous round");
+  expect(html).toContain("Vòng 1 · Demo round");
+});
 it("renders review actions for pending projects and rejected badges in the filterable admin queue", () => {
   const html = render();
   const cards = [...html.matchAll(/<article\b[\s\S]*?<\/article>/g)].map(match => match[0]);
