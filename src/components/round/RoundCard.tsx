@@ -135,7 +135,7 @@ export function RoundCard({ round, className = "", adminAddress, roundIndex }: R
       {/* CTA pinned to bottom */}
       <Link
         href={`/round/${round.id}`}
-        className="mono-label inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 border border-primary bg-primary/10 px-6 py-2.5 text-primary transition-colors hover:bg-primary hover:text-foreground focus:outline-none"
+        className="mono-label inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 border border-primary bg-primary/10 px-6 py-2.5 text-primary transition-all hover:bg-primary hover:text-foreground cursor-pointer active:scale-[0.99] focus:outline-none"
       >
         <span>{t.roundCard.viewRound}</span>
         <ArrowRight className="h-4 w-4" />

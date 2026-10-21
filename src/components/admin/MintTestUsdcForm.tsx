@@ -170,9 +170,9 @@ export function MintTestUsdcForm() {
 
   return (
     <div className="border border-line bg-surface p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Coins className="h-5 w-5 text-money" />
-        <div>
+      <div className="flex items-start gap-2">
+        <Coins className="h-5 w-5 shrink-0 text-money" />
+        <div className="min-w-0">
           <h3 className="text-base font-bold text-foreground tracking-tight">
             {t.admin.mintTestUsdcTitle}
           </h3>
@@ -182,8 +182,8 @@ export function MintTestUsdcForm() {
         </div>
       </div>
 
-      <p className="text-xs text-muted" role="status">{t.tokenBalance.recipient}: {recipientBalance.isError ? t.tokenBalance.error : recipientBalance.isReady ? formatUsdc(recipientBalance.balance!) : recipientBalance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}</p>
-      <form onSubmit={handleOpenConfirm} className="space-y-4 max-w-xl">
+      <p className="break-words text-xs text-muted" role="status">{t.tokenBalance.recipient}: {recipientBalance.isError ? t.tokenBalance.error : recipientBalance.isReady ? formatUsdc(recipientBalance.balance!) : recipientBalance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}</p>
+      <form onSubmit={handleOpenConfirm} className="space-y-4">
         <Input
           label={t.admin.mintRecipientLabel}
           type="text"

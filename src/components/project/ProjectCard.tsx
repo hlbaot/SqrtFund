@@ -112,7 +112,7 @@ export function ProjectCard({ project, roundId = "1" }: ProjectCardProps) {
       <div className="mt-4 pt-1">
         <Link
           href={`/round/${roundId}/project/${project.id}`}
-          className="mono-label flex w-full items-center justify-center gap-1.5 border border-line-strong bg-surface py-2.5 text-muted transition-colors hover:border-primary hover:bg-surface-2 hover:text-foreground focus:outline-none"
+          className="mono-label flex w-full items-center justify-center gap-1.5 border border-line-strong bg-surface py-2.5 text-muted transition-all hover:border-primary hover:bg-surface-2 hover:text-foreground cursor-pointer active:scale-[0.98] focus:outline-none"
         >
           <span>{t.projectCard.viewDetails}</span>
           <ArrowRight className="h-3.5 w-3.5" />

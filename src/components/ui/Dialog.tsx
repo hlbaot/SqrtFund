@@ -57,12 +57,12 @@ export function Dialog({ isOpen, onClose, title, description, children, classNam
   if (!isOpen || typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[2147483646] flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-xs" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-xs cursor-pointer" onClick={onClose} aria-hidden="true" />
       <div ref={panel} role="dialog" aria-modal="true" tabIndex={-1}
         aria-labelledby={title ? titleId : undefined} aria-describedby={description ? descriptionId : undefined}
         className={twMerge(clsx("relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-sm border border-line bg-bg p-4 text-foreground outline-none sm:p-6", className))}>
         <button onClick={onClose} type="button" aria-label={t.common.close}
-          className="absolute right-3 top-3 p-1.5 text-muted hover:bg-surface-2 hover:text-foreground">
+          className="absolute right-3 top-3 p-1.5 text-muted hover:bg-surface-2 hover:text-foreground cursor-pointer transition-colors rounded-xs active:scale-95">
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
         {title && <h2 id={titleId} className="mono-label pr-8 font-bold text-foreground">{title}</h2>}

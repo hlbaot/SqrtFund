@@ -1,5 +1,5 @@
 "use client";
-import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
+import { RoundControls } from "@/components/admin/RoundControls";
 
 import { AOSInit } from "@/components/common/AOSInit";
 
@@ -24,23 +24,23 @@ import { getContractErrorMessage, isUserRejected } from "@/lib/errors";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatUsdcFixed, formatCount } from "@/lib/format";
 import { CreateRoundForm } from "@/components/admin/CreateRoundForm";
-import { DepositPoolForm } from "@/components/admin/DepositPoolForm";
 import { MintTestUsdcForm } from "@/components/admin/MintTestUsdcForm";
-import { FinalizeButton } from "@/components/admin/FinalizeButton";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { AdminSkeleton } from "@/components/common/PageSkeletons";
 import { Container } from "@/components/layout/Container";
-import { Award, ArrowDownLeft } from "lucide-react";
+import { Award } from "lucide-react";
+import type { Address } from "viem";
 
 export function AdminView() {
   const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
   const { address, chainId, isConnected, status: accountStatus } = useAccount();
-  const { role, isLoading: isRoleLoading, isReady } = useRole();
+  const [selectedRound, setSelectedRound] = useState<Address>();
+  const { role, isLoading: isRoleLoading, isReady } = useRole(selectedRound);
   const isAdmin = isReady && role === "admin";
   const router = useRouter();
+  const round = useRound(selectedRound);
   const {
     roundAddress,
     admin: roundAdmin,
@@ -48,26 +48,23 @@ export function AdminView() {
     endTime,
     isCancelled,
     finalized,
-    leftover,
-    leftoverWithdrawn,
     refetch: refetchRound,
     isLoading: isRoundLoading,
-  } = useRound();
-  const { projects, supportsRejection, refetch: refetchProjects, isLoading: isProjectsLoading, isError: isProjectsError } = useProjects();
+  } = round;
+  const { projects, supportsRejection, refetch: refetchProjects, isLoading: isProjectsLoading, isError: isProjectsError } = useProjects(roundAddress);
   const publicClient = usePublicClient({ chainId: TARGET_CHAIN_ID });
   const queries = useQueryClient();
   const { writeContractAsync } = useWriteContract();
 
   useEffect(() => {
     if (accountStatus === "reconnecting" || accountStatus === "connecting" || isRoleLoading || isRoundLoading) return;
-    if (!isConnected || !isAdmin) {
+    if (!isConnected) {
       txToast.error("admin-access", t.wallet.accessDenied);
       router.replace("/");
     }
   }, [accountStatus, isRoleLoading, isRoundLoading, isConnected, isAdmin, router, t.wallet.accessDenied]);
 
   const [busyProjectId, setBusyProjectId] = useState<bigint | null>(null);
-  const [isWithdrawingLeftover, setIsWithdrawingLeftover] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<{ project: EnrichedProject; action: ModerationAction } | null>(null);
   const [reviewError, setReviewError] = useState<string>();
   const [reviewPhase, setReviewPhase] = useState<"idle" | "signing" | "confirming">("idle");
@@ -119,62 +116,6 @@ export function AdminView() {
     }
   }
 
-  // Withdraw unallocated leftover funds
-  const handleWithdrawLeftover = async () => {
-    const flow = beginFlow("withdraw-leftover");
-    if (!roundAddress || !publicClient) return;
-
-    const toastId = "withdraw-leftover";
-    setIsWithdrawingLeftover(true);
-    try {
-      flow.toast.pending(
-        toastId,
-        t.toasts.withdrawTitle,
-        t.toasts.confirmInWallet
-      );
-
-      const hash = await flow.wait(() => writeContractAsync({
-        address: roundAddress,
-        abi: qfRoundAbi,
-        functionName: "withdrawLeftover",
-      }));
-
-      flow.toast.pending(
-        toastId,
-        t.toasts.withdrawConfirm,
-        t.toasts.confirmingOnChain,
-        hash
-      );
-
-      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
-      if (receipt.status !== "success") {
-        throw new Error("Withdraw transaction reverted.");
-      }
-
-      flow.toast.success(
-        toastId,
-        t.toasts.withdrawSuccess,
-        t.toasts.withdrawSuccessDesc,
-        hash
-      );
-
-      refetchRound();
-    } catch (err: unknown) {
-      if (flow.cancelled) return false;
-      flow.error(
-        toastId,
-        err,
-        t.toasts.withdrawFailed,
-        locale
-      );
-    } finally {
-      flow.finish();
-      if (!flow.cancelled) {
-        setIsWithdrawingLeftover(false);
-      }
-    }
-  };
-
   if (accountStatus === "reconnecting" || accountStatus === "connecting" || isRoleLoading || isRoundLoading) {
     return (
       <Container className="py-8 sm:py-10">
@@ -184,15 +125,14 @@ export function AdminView() {
   }
 
   // Keep the existing reserved layout while the access effect redirects guests.
-  if (!isConnected || !isAdmin) return <Container className="py-8 sm:py-10"><AdminSkeleton /></Container>;
+  if (!isConnected) return <Container className="py-8 sm:py-10"><AdminSkeleton /></Container>;
 
   const approvedProjects = projects.filter(isPublicProject);
-  const leftoverUsdc = Number(leftover) / 1_000_000;
 
   return (
     <Container className="py-8 sm:py-10 space-y-8">
       <AOSInit />
-      {/* Admin Header with FinalizeButton */}
+      {/* Administration header; round actions live in one control panel. */}
       <div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-6"
         data-aos="fade-down"
@@ -203,22 +143,20 @@ export function AdminView() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
               {t.admin.title}
             </h1>
-            <Badge variant="primary">{t.admin.badgeAdmin}</Badge>
+            {isAdmin && <Badge variant="primary">{t.admin.badgeAdmin}</Badge>}
           </div>
           <p className="mt-1 text-xs sm:text-sm text-muted">
             {t.admin.adminSubtitle}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {roundAddress && <FinalizeButton />}
-        </div>
       </div>
 
-      <RoundCancellationPanel projectNames={Object.fromEntries(projects.map(project => [project.id, project.name]))} roundAddress={roundAddress} adminControls />
+      <RoundControls key={roundAddress || "no-round"} round={round} projects={projects}
+        projectsLoading={isProjectsLoading} projectsError={isProjectsError} onSelectRound={setSelectedRound} />
 
       {/* Finalized Round Distribution Results Table */}
-      {finalized && (
+      {finalized && !isCancelled && (
         <section
           className="border border-money/40 bg-money/10 p-6 space-y-4"
           data-aos="fade-up"
@@ -233,22 +171,7 @@ export function AdminView() {
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="accent">{t.admin.roundFinalizedBadge}</Badge>
-              {leftover > 0n && !leftoverWithdrawn && (
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={handleWithdrawLeftover}
-                  disabled={isWithdrawingLeftover}
-                  isLoading={isWithdrawingLeftover}
-                  className="text-xs font-bold"
-                >
-                  <ArrowDownLeft className="h-3.5 w-3.5 mr-1" />
-                  {t.admin.withdrawLeftoverBtn} ({formatUsdcFixed(leftoverUsdc)})
-                </Button>
-              )}
-              {leftoverWithdrawn && (
-                <Badge variant="outline">{t.admin.leftoverWithdrawnBadge}</Badge>
-              )}
+
             </div>
           </div>
 
@@ -296,20 +219,15 @@ export function AdminView() {
         onClose={() => { if (!reviewBusy.current) { setReviewTarget(null); setReviewError(undefined); } }} onConfirm={() => void confirmReview()} />}
 
       {/* Project Proposals Approval Queue */}
-      <ProjectReviewList key={roundAddress || "no-round"} projects={projects} round={moderationRound} viewer={viewer} now={now}
+      {isAdmin && <ProjectReviewList key={roundAddress || "no-round"} projects={projects} round={moderationRound} viewer={viewer} now={now}
         pending={busyProjectId !== null} isLoading={isProjectsLoading} isError={isProjectsError} onRetry={() => void refetchProjects()}
-        onAction={(project, action) => { const current = projects.find(item => item.id === project.id); if (current) openReview(current, action); }} />
+        onAction={(project, action) => { const current = projects.find(item => item.id === project.id); if (current) openReview(current, action); }} />}
 
-      {/* Forms Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-aos="fade-up" data-aos-duration="600">
+      {/* Round creation takes roughly three quarters; minting sits alongside it. */}
+      {isAdmin && <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] [&>*]:min-w-0" data-aos="fade-up" data-aos-duration="600">
         <CreateRoundForm />
-        <DepositPoolForm />
-      </div>
-
-      {/* Mint Test USDC (visible if connected wallet is MockUSDC owner) */}
-      <div data-aos="fade-up" data-aos-duration="600">
         <MintTestUsdcForm />
-      </div>
+      </div>}
     </Container>
   );
 }

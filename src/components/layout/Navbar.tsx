@@ -58,7 +58,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => setShowAnnouncement(false)}
-              className="mono-label px-2 py-1 text-muted hover:text-foreground text-xs"
+              className="mono-label px-2 py-1 text-muted hover:text-foreground hover:bg-surface-2 cursor-pointer transition-colors rounded-xs text-xs"
               aria-label={t.nav.dismissAnnouncement}
             >
               x
@@ -69,7 +69,7 @@ export function Navbar() {
       <Container className="flex min-h-16 items-center justify-between gap-4">
         <Link
           href="/"
-          className="flex min-h-[44px] min-w-[44px] items-center shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs"
+          className="flex min-h-[44px] min-w-[44px] items-center shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs cursor-pointer transition-opacity hover:opacity-85 active:scale-95"
           aria-label={t.nav.homeAria}
         >
           <Image
@@ -88,8 +88,8 @@ export function Navbar() {
         >
           {navLinks.map(link => (
             <NavLink key={link.href} {...link} pathname={pathname} pendingHref={pendingHref}
-              count={link.href === "/admin" ? counts.admin : link.href === "/my" ? counts.student + counts.owner : 0}
-              onNavigate={setPendingHref} />
+              count={link.href === "/admin" ? counts.admin : link.href === "/my" ? counts.activity : 0}
+              onNavigate={href => { if (href === "/my") counts.markAllSeen(); setPendingHref(href); }} />
           ))}
         </nav>
 
@@ -102,7 +102,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="min-h-10 min-w-10 border border-line p-2 text-muted hover:bg-surface-2 hover:text-foreground focus:outline-none"
+            className="min-h-10 min-w-10 border border-line p-2 text-muted hover:bg-surface-2 hover:text-foreground cursor-pointer transition-colors active:scale-95 focus:outline-none"
             aria-label={mobileMenuOpen ? t.nav.closeMenu : t.nav.openMenu}
             aria-expanded={mobileMenuOpen}
           >
@@ -117,8 +117,8 @@ export function Navbar() {
             <nav className="flex flex-col space-y-1.5" aria-label={t.nav.mobileNavigation}>
               {navLinks.map(link => (
                 <NavLink key={link.href} {...link} mobile pathname={pathname} pendingHref={pendingHref}
-                  count={link.href === "/admin" ? counts.admin : link.href === "/my" ? counts.student + counts.owner : 0}
-                  onNavigate={href => { setPendingHref(href); setMobileMenuOpen(false); }} />
+                  count={link.href === "/admin" ? counts.admin : link.href === "/my" ? counts.activity : 0}
+                  onNavigate={href => { if (href === "/my") counts.markAllSeen(); setPendingHref(href); setMobileMenuOpen(false); }} />
               ))}
             </nav>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">

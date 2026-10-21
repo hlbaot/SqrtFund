@@ -76,7 +76,7 @@ export function useRoundRefunds(
       args: [viewer!, id] as const,
       chainId: TARGET_CHAIN_ID,
     })),
-    query: { enabled: Boolean(enabled && round && viewer && ids.length && validLimit), refetchInterval: 5000 },
+    query: { enabled: Boolean(enabled && round && viewer && ids.length && validLimit), staleTime: 5000, refetchInterval: 5000 },
   });
   const values = reads.data ?? [];
   const isError = limit.isError || reads.isError || (limit.isSuccess && !validLimit) || Boolean(reads.data?.some(value => value.status === "failure"));

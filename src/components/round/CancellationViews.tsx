@@ -148,7 +148,7 @@ export function CancelRoundDialog({
         <span>{c.typeName.replace("{suffix}", address.slice(-6))}</span>
         <input
           autoComplete="off"
-          className="w-full border border-line bg-bg p-2 font-mono text-sm"
+          className="w-full border border-line bg-bg p-2 font-mono text-sm focus-visible:outline focus-visible:outline-primary"
           value={input}
           disabled={pending}
           onChange={event => setInput(event.target.value)}
@@ -159,11 +159,12 @@ export function CancelRoundDialog({
       {error && <p role="alert" className="mt-3 break-words text-sm text-primary">{error}</p>}
 
       <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <Button variant="secondary" disabled={pending} onClick={onClose}>
+        <Button variant="secondary" className="focus-visible:ring-2 focus-visible:ring-primary/60" disabled={pending} onClick={onClose}>
           {t.common.cancel}
         </Button>
         <Button
           variant="destructive"
+          className="focus-visible:ring-2 focus-visible:ring-primary/60"
           disabled={!allowed}
           isLoading={pending}
           title={!allowed ? blocked || c.typeRequired : undefined}

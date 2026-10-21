@@ -1,5 +1,6 @@
 import { isPublicProject } from "@/lib/projectVisibility";
 import type { ProjectStatus } from "@/types";
+import { computeMatchingBigInt, computeRawMatching, matchingCoverage } from "@/lib/qf";
 
 export type ProjectStatItem = {
   status?: ProjectStatus;
@@ -40,5 +41,56 @@ export function calculateRoundStats(projects: readonly ProjectStatItem[] = []): 
     totalDonatedRaw,
     totalDonated,
     totalSupporters,
+  };
+}
+
+type FundingProject = ProjectStatItem & { sumSqrtRaw?: bigint; rejected?: boolean };
+
+/** Raw demand is an estimate even after finalization; it is not the capped payout. */
+export function calculateRoundFundingStats(
+  projects: readonly FundingProject[] | undefined,
+  pool: bigint | undefined,
+  finalized = false,
+  cancelled = false,
+) {
+  const approved = projects?.filter(isPublicProject);
+  const stats = projects ? calculateRoundStats(projects) : undefined;
+  const donationsReadable = approved?.every(p => typeof p.totalDonatedRaw === "bigint" && p.totalDonatedRaw >= 0n);
+  const matchingReadable = donationsReadable && approved?.every(p => typeof p.sumSqrtRaw === "bigint" && p.sumSqrtRaw >= 0n);
+  const totalRaw = matchingReadable
+    ? approved!.reduce((sum, p) => sum + computeRawMatching(p.sumSqrtRaw!, p.totalDonatedRaw!), 0n)
+    : undefined;
+  const coverage = totalRaw !== undefined && pool !== undefined && pool >= 0n
+    ? matchingCoverage(totalRaw, pool) : undefined;
+  const needed = coverage ? (coverage.underfunded ? totalRaw! - pool! : 0n) : undefined;
+  return {
+    approvedCount: stats?.approvedCount,
+    pendingCount: projects?.filter(p => !p.rejected && (p.status === "pending" || (p.status === undefined && p.approved === false))).length,
+    totalDonatedRaw: donationsReadable ? stats?.totalDonatedRaw : undefined,
+    totalRaw,
+    coverage,
+    needed,
+    // Ceiling division in micro-USDC avoids float rounding and scientific notation.
+    suggestedDeposit: needed !== undefined && needed > 0n && !finalized && !cancelled
+      ? ((needed + 999_999n) / 1_000_000n).toString() : undefined,
+  };
+}
+
+/** Exact contract allocation (including per-project caps and integer rounding). */
+export function calculateRoundSettlement(projects: readonly (FundingProject & { claimed?: boolean })[] | undefined, pool?: bigint, maxMatchBps?: bigint, finalizedLeftover?: bigint) {
+  const funding = calculateRoundFundingStats(projects, pool);
+  const approved = projects?.filter(isPublicProject);
+  const results = approved && funding.totalRaw !== undefined && pool !== undefined && pool >= 0n
+    && maxMatchBps !== undefined && maxMatchBps >= 0n && maxMatchBps <= 10000n
+    ? computeMatchingBigInt(approved.map((p, id) => ({ id, sumSqrt: p.sumSqrtRaw!, totalDonated: p.totalDonatedRaw! })), pool, maxMatchBps) : undefined;
+  const estimated = results?.reduce((sum, result) => sum + result.payout, 0n);
+  const knownFinal = pool !== undefined && finalizedLeftover !== undefined && finalizedLeftover >= 0n && finalizedLeftover <= pool;
+  return {
+    ...funding,
+    matching: knownFinal ? pool - finalizedLeftover : estimated,
+    leftover: knownFinal ? finalizedLeftover : estimated !== undefined && pool !== undefined ? pool - estimated : undefined,
+    matchingCount: results?.filter(result => result.payout > 0n).length,
+    allClaimed: approved !== undefined && results !== undefined && approved.every((project, index) =>
+      project.totalDonatedRaw! + results[index].payout === 0n || project.claimed === true),
   };
 }

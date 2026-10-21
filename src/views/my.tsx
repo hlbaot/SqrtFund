@@ -14,6 +14,7 @@ import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
 import { useClaim } from "@/hooks/useClaim";
+import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 import { formatUsdcFixed, formatCooldown } from "@/lib/format";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
@@ -45,7 +46,8 @@ export function MyView() {
 
   const { roundAddress, finalized, isCancelled, isLoading: isRoundLoading } = useRound();
   const { projects, isLoading: isProjectsLoading, refetch: refetchProjects } = useProjects();
-  const { isStudent } = useRole();
+  const { isStudent, role, isReady } = useRole();
+  useNotificationCounts(isReady ? role : "guest", { markViewed: true });
   const {
     canClaim,
     nextClaimAt,
@@ -166,7 +168,7 @@ export function MyView() {
                 onClick={handleOpenAvatarDialog}
                 aria-label={t.avatar.change}
                 title={t.avatar.change}
-                className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-foreground hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary transition-transform hover:scale-110"
+                className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-foreground hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition-transform hover:scale-110 active:scale-95"
               >
                 <Pencil className="h-3 w-3" />
               </button>
@@ -245,7 +247,7 @@ export function MyView() {
               href="https://faucet.avax.network/"
               target="_blank"
               rel="noopener noreferrer"
-              className="mono-label inline-flex items-center gap-1 border border-line bg-surface-2 px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-surface focus:outline-none"
+              className="mono-label inline-flex items-center gap-1 border border-line bg-surface-2 px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-surface cursor-pointer transition-colors active:scale-[0.98] focus:outline-none"
             >
               <span>AVAX Faucet</span>
               <ExternalLink className="h-3 w-3" />

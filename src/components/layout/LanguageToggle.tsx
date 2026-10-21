@@ -12,10 +12,10 @@ export function LanguageToggle() {
         type="button"
         onClick={() => setLocale("en")}
         aria-label="Switch to English"
-        className={`rounded px-2 py-1 transition-colors ${
+        className={`rounded px-2 py-1 transition-all cursor-pointer active:scale-95 ${
           locale === "en"
-            ? "bg-surface text-foreground"
-            : "text-muted hover:text-foreground"
+            ? "bg-surface text-foreground shadow-xs"
+            : "text-muted hover:text-foreground hover:bg-surface/60"
         }`}
       >
         EN
@@ -24,10 +24,10 @@ export function LanguageToggle() {
         type="button"
         onClick={() => setLocale("vi")}
         aria-label="Chuyển sang Tiếng Việt"
-        className={`rounded px-2 py-1 transition-colors ${
+        className={`rounded px-2 py-1 transition-all cursor-pointer active:scale-95 ${
           locale === "vi"
-            ? "bg-surface text-foreground"
-            : "text-muted hover:text-foreground"
+            ? "bg-surface text-foreground shadow-xs"
+            : "text-muted hover:text-foreground hover:bg-surface/60"
         }`}
       >
         VI

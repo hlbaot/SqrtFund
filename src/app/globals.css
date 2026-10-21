@@ -105,7 +105,12 @@ textarea {
 
 a[href],
 button:not(:disabled),
-[role="button"] {
+select:not(:disabled),
+summary,
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"]:not([aria-disabled="true"]),
+.cursor-pointer {
+  cursor: pointer !important;
   transition:
     background-color 180ms ease,
     border-color 180ms ease,
@@ -115,11 +120,19 @@ button:not(:disabled),
     transform 180ms ease;
 }
 
+button:disabled,
+[role="button"][aria-disabled="true"],
+[disabled] {
+  cursor: not-allowed !important;
+}
+
 a[href]:hover,
 button:not(:disabled):hover,
-[role="button"]:hover {
-  cursor: pointer;
-  filter: brightness(1.08);
+select:not(:disabled):hover,
+summary:hover,
+[role="button"]:not([aria-disabled="true"]):hover,
+[role="tab"]:not([aria-disabled="true"]):hover {
+  filter: brightness(1.12);
 }
 
 :focus-visible {
@@ -513,6 +526,8 @@ body,
 .gradient-border.nav-border {
   background: var(--bg);
   border-color: transparent;
+  cursor: pointer;
+  transition: all 180ms ease;
 }
 
 .nav-border::before {
@@ -532,12 +547,21 @@ body,
 }
 
 .nav-border:hover {
-  border-color: var(--line-strong);
+  background: var(--surface) !important;
+  border-color: var(--line-strong) !important;
+}
+
+.nav-border:hover::before {
+  opacity: 0.6 !important;
+}
+
+.nav-border.nav-selected {
+  background: var(--surface-2) !important;
 }
 
 .nav-border.nav-selected::before,
 .nav-border:has(a:focus-visible)::before {
-  opacity: 1;
+  opacity: 1 !important;
 }
 
 .gradient-border.avatar-choice[data-selected="false"] {
@@ -572,6 +596,11 @@ body,
   background: color-mix(in srgb, var(--primary) 22%, var(--bg));
 }
 
+.competition-segment button {
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
 .competition-segment button[aria-pressed="true"] {
   background: var(--surface-2);
   color: var(--text);
@@ -580,6 +609,11 @@ body,
 
 .competition-segment button[aria-pressed="false"] {
   color: var(--muted);
+}
+
+.competition-segment button[aria-pressed="false"]:hover {
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .competition-number {

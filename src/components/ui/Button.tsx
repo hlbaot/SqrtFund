@@ -27,15 +27,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "ui-button mono-label inline-flex items-center justify-center border transition-colors duration-200 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-line disabled:text-muted disabled:opacity-45 select-none";
+      "ui-button mono-label inline-flex items-center justify-center border transition-all duration-200 focus-visible:outline-none cursor-pointer disabled:cursor-not-allowed disabled:border-line disabled:text-muted disabled:opacity-45 select-none active:scale-[0.98]";
 
     const variantStyles: Record<ButtonVariant, string> = {
-      primary: "gradient-border text-foreground",
-      secondary: "border-line-strong bg-surface text-foreground",
-      outline: "border-line-strong bg-transparent text-foreground",
-      ghost: "border-transparent bg-transparent text-muted",
-      destructive: "border-primary bg-primary/10 text-primary",
-      accent: "border-money bg-money/10 text-money",
+      primary: "gradient-border text-foreground hover:brightness-110",
+      secondary: "border-line-strong bg-surface text-foreground hover:bg-surface-2 hover:border-line",
+      outline: "border-line-strong bg-transparent text-foreground hover:bg-surface-2 hover:border-line",
+      ghost: "border-transparent bg-transparent text-muted hover:bg-surface-2 hover:text-foreground",
+      destructive: "border-primary bg-primary/10 text-primary hover:bg-primary hover:text-foreground",
+      accent: "border-money bg-money/10 text-money hover:bg-money hover:text-bg",
     };
 
     const sizeStyles: Record<ButtonSize, string> = {

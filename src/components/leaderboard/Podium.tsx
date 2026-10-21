@@ -69,7 +69,7 @@ export function Podium({ projects, roundId, pool, finalized }: { projects: Ranke
               </div>
             </div>
 
-            <Link href={`/round/${roundId}/project/${project.id}`} className="competition-focus mt-4 flex min-h-10 items-center justify-between text-xs text-primary">
+            <Link href={`/round/${roundId}/project/${project.id}`} className="competition-focus mt-4 flex min-h-10 items-center justify-between text-xs text-primary hover:underline hover:text-primary-hover cursor-pointer transition-colors active:scale-[0.99]">
               <span>{t.competition.viewProject}</span>
               <ArrowUpRight className="h-4 w-4 shrink-0" aria-hidden="true" />
             </Link>

@@ -71,12 +71,23 @@ export function useRound(customRoundAddress?: Address) {
     if (startTime && endTime && nowSec > 0 && BigInt(nowSec) >= endTime) return "closed";
     return "open";
   }, [isCancelled, finalized, startTime, endTime, nowSec]);
+  const financialStatus: RoundStatus | undefined = typeof roundData?.[8]?.result === "boolean"
+    && (roundData?.[15]?.status === "success" || roundData?.[15]?.status === "skipped")
+    ? isCancelled ? "cancelled" : finalized ? "finalized"
+      : endTime !== undefined && nowSec > 0 ? (BigInt(nowSec) >= endTime ? "closed" : "open") : undefined
+    : undefined;
   const refetch = useCallback(() => { void refetchFactory(); if (roundAddress) void refetchRound(); }, [refetchFactory, roundAddress, refetchRound]);
   return {
     roundAddress, allRounds, factoryOwner, admin, token, name, organizer, startTime, endTime,
     minDonation, maxDonation, maxMatchBps, maxPerRound: roundData?.[14]?.result as bigint | undefined,
     pool: pool ?? 0n, finalized, leftover: leftover ?? 0n, leftoverWithdrawn,
     projectCount: projectCount ?? 0n, status,
+    // Preserve missing reads for financial summaries instead of displaying fallback zeros.
+    financials: {
+      pool,
+      leftover,
+      status: financialStatus,
+    },
     isCancelled, supportsPhase2: fields?.supportsPhase2 === true, cancelledPoolWithdrawn: roundData?.[16]?.result === true,
     roundVersion: fields?.version, studentRegistry: fields?.registry, readFailureKind,
     isLoading: (!customRoundAddress && isFactoryLoading) || (Boolean(roundAddress) && isRoundLoading),

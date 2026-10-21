@@ -207,9 +207,9 @@ export function HomeView() {
                   target.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className={`group relative h-2.5 w-2.5 border transition-colors ${activeSection === item.id
-                ? "border-primary bg-primary"
-                : "border-line-strong bg-surface hover:border-primary"
+              className={`group relative h-2.5 w-2.5 border transition-all cursor-pointer ${activeSection === item.id
+                ? "border-primary bg-primary scale-125"
+                : "border-line-strong bg-surface hover:border-primary hover:scale-110"
                 }`}
               aria-current={activeSection === item.id ? "true" : undefined}
             >
@@ -311,7 +311,7 @@ export function HomeView() {
               <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
                 <a
                   href="#current-round"
-                  className="gradient-border mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 px-6 py-2.5 text-foreground focus:outline-none sm:w-auto"
+                  className="gradient-border mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 px-6 py-2.5 text-foreground focus:outline-none sm:w-auto cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
                 >
                   <span>{t.homeIntro.primaryCta}</span>
                   <ArrowRight className="h-4 w-4" />
@@ -319,7 +319,7 @@ export function HomeView() {
 
                 <Link
                   href="/register"
-                  className="mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 border border-line-strong bg-surface px-6 py-2.5 text-muted transition-colors hover:text-foreground focus:outline-none sm:w-auto"
+                  className="mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 border border-line-strong bg-surface px-6 py-2.5 text-muted transition-all hover:bg-surface-2 hover:border-line hover:text-foreground focus:outline-none sm:w-auto cursor-pointer active:scale-[0.98]"
                 >
                   <Rocket className="h-4 w-4" />
                   <span>{t.homeIntro.secondaryCta}</span>

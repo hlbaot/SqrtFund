@@ -19,10 +19,11 @@ describe("wallet reload identity", () => {
     ]) expect(walletChanged(baseline, next)).toBe(true);
   });
   it("clears only connector persistence keys", () => {
-    const storage = { "wagmi.store": "wallet", "wagmi.recentConnectorId": "core", "rk-wallet": "wallet", locale: "vi", "sqrt-fund:wallet-snapshot": "snapshot" };
+    const storage = { "wagmi.store": "wallet", "wagmi.recentConnectorId": "core", "rk-wallet": "wallet", locale: "vi", "sqrt-fund:wallet-snapshot": "snapshot", "sqrt-fund:notifications-seen:0xabc": '["refund:0xround"]' };
     const adapter = Object.assign(storage, { removeItem(key: string) { delete (storage as Record<string, unknown>)[key]; } });
     clearWalletStorage(adapter as unknown as Storage);
     expect(storage).toMatchObject({ locale: "vi", "sqrt-fund:wallet-snapshot": "snapshot" });
+    expect(storage["sqrt-fund:notifications-seen:0xabc"]).toBe('["refund:0xround"]');
     expect(Object.keys(storage).filter(key => /^(wagmi|rk-)/.test(key))).toEqual([]);
   });
 });

@@ -1,21 +1,34 @@
 "use client";
-import { isPendingProject } from "@/lib/projectVisibility";
-
+import { useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useProjects } from "@/hooks/useProjects";
 import { useRound } from "@/hooks/useRound";
-import { useClaim } from "@/hooks/useClaim";
+import { useRoundRefunds } from "@/hooks/useRoundRefunds";
+import { useNotificationSeen } from "@/hooks/useNotificationSeen";
+import { buildNotificationItems, countUnseenNotifications } from "@/lib/notifications";
+import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import type { WalletRole } from "@/hooks/useRole";
 
-export function useNotificationCounts(role: WalletRole) {
-  const { address, isConnected } = useAccount();
-  const { roundAddress, finalized } = useRound();
-  const { projects } = useProjects(roundAddress, { enabled: isConnected && (role === "admin" || role === "owner") });
-  const { claimableUsdc } = useClaim();
-  const admin = isConnected && role === "admin"
-    ? projects.filter(isPendingProject).length : 0;
-  const student = isConnected && role === "student" ? claimableUsdc : 0;
-  const owner = isConnected && role === "owner" && finalized
-    ? projects.filter(p => p.ownerAddress.toLowerCase() === address?.toLowerCase() && p.approved && !p.claimed && p.totalDonatedRaw + p.estimatedMatchingRaw > 0n).length : 0;
-  return { admin, student, owner, total: admin + student + owner };
+export function useNotificationCounts(role: WalletRole, { markViewed = false } = {}) {
+  const { address, isConnected, chainId } = useAccount();
+  const enabled = isConnected && chainId === TARGET_CHAIN_ID;
+  const round = useRound();
+  const { projects, isLoading, isError } = useProjects(round.roundAddress, { enabled });
+  // Reuse /my's refund query keys and polling, rather than a separate RPC reader.
+  const refunds = useRoundRefunds(round.roundAddress, round.projectCount, enabled ? address : undefined,
+    Boolean(enabled && round.isCancelled && !round.isError));
+  const { ready, keys, markSeen } = useNotificationSeen(enabled ? address : undefined);
+  const items = buildNotificationItems({
+    address: enabled ? address : undefined, round,
+    projects: !isLoading && !isError ? projects : [],
+    refundTotal: refunds.isReady ? refunds.total : 0n,
+  }).filter(item => item.scope !== "admin" || role === "admin");
+  // Depend on stable keys so polling does not repeatedly acknowledge unchanged items.
+  const serializedKeys = JSON.stringify(items.map(item => item.key));
+  const markAllSeen = () => markSeen(items.map(item => item.key));
+  const counts = countUnseenNotifications(ready ? items : [], keys);
+  useEffect(() => {
+    if (markViewed && ready && counts.total > 0) markSeen(JSON.parse(serializedKeys) as string[]);
+  }, [markViewed, ready, counts.total, markSeen, serializedKeys]);
+  return { ...counts, markAllSeen };
 }

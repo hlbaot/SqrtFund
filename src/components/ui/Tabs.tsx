@@ -70,7 +70,7 @@ export function TabsTrigger({
       onClick={() => context.onValueChange(value)}
       className={twMerge(
         clsx(
-          "mono-label inline-flex items-center justify-center whitespace-nowrap border-t border-transparent px-4 py-2 transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+          "mono-label inline-flex items-center justify-center whitespace-nowrap border-t border-transparent px-4 py-2 transition-all focus-visible:outline-none cursor-pointer active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
           isSelected
             ? "gradient-border text-foreground font-semibold"
             : "text-muted hover:bg-surface-2 hover:text-foreground",

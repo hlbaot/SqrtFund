@@ -51,7 +51,11 @@ export function TableRow({
   return (
     <tr
       className={twMerge(
-        clsx("transition-colors hover:bg-surface-2 data-[state=selected]:bg-surface-2", className)
+        clsx(
+          "transition-colors hover:bg-surface-2 data-[state=selected]:bg-surface-2",
+          props.onClick && "cursor-pointer",
+          className
+        )
       )}
       {...props}
     >

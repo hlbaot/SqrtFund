@@ -280,10 +280,10 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
                       type="button"
                       disabled={isDisabled}
                       onClick={() => handleQuickSelect(val)}
-                      className={`border border-line px-2.5 py-2 text-xs font-bold transition-colors ${amount === val && !error
+                      className={`border border-line px-2.5 py-2 text-xs font-bold transition-all cursor-pointer active:scale-95 ${amount === val && !error
                         ? "border-primary bg-primary text-foreground"
-                        : "bg-surface-2 text-foreground hover:border-line-strong"
-                        } disabled:opacity-30`}
+                        : "bg-surface-2 text-foreground hover:border-line-strong hover:bg-surface"
+                        } disabled:opacity-30 disabled:cursor-not-allowed`}
                     >
                       {val}
                     </button>

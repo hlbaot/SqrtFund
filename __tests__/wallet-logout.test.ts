@@ -49,10 +49,13 @@ describe("wallet logout persistence", () => {
     await connect(config, { connector: config.connectors[0] });
     const client = new QueryClient();
     client.setQueryData(["wallet-balance"], "100");
+    const seenKey = `sqrt-fund:notifications-seen:${address}`;
+    window.localStorage.setItem(seenKey, '["refund:0xround"]');
     await session.logoutWallet(() => disconnect(config), client);
     expect(config.state.status).toBe("disconnected");
     expect(client.getQueryCache().getAll()).toEqual([]);
     expect(window.location.replace).toHaveBeenCalledWith("/");
+    expect(window.localStorage.getItem(seenKey)).toBe('["refund:0xround"]');
     expect(Object.keys(window.localStorage).filter(key => key.startsWith("wagmi"))).toEqual(["wagmi.test-core.disconnected"]);
     // The retained shim blocks authorization even though the provider still exposes accounts.
     expect(await config.connectors[0].isAuthorized()).toBe(false);

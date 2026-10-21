@@ -3,10 +3,12 @@
 import { useTxFlow } from "@/hooks/useTxFlow";
 import React, { useState } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
-import { formatUnits } from "viem";
+import { formatUnits, type Address } from "viem";
 import { mockUsdcAbi, qfRoundAbi } from "@/lib/contracts/abis";
 import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
+import { useProjects } from "@/hooks/useProjects";
+import { calculateRoundFundingStats } from "@/lib/roundStats";
 import { useAdminRounds } from "@/hooks/useAdminRounds";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { tokenMatchesConfigured } from "@/lib/tokenBalance";
@@ -14,12 +16,15 @@ import { TARGET_CHAIN_ID, usdcAddress } from "@/lib/contracts/addresses";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { parseUsdc, formatUsdc, shortAddress } from "@/lib/format";
+import { parseUsdc, formatUsdc, shortAddress, formatDateTimeGmt7 } from "@/lib/format";
 import { fmt } from "@/lib/copy";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, Coins } from "lucide-react";
 
-export function DepositPoolForm() {
+export function DepositPoolForm({ embedded = false, initialRoundAddress, initialAmount = "", onPendingChange, onDeposited }: {
+  embedded?: boolean; initialRoundAddress?: Address; initialAmount?: string;
+  onPendingChange?: (pending: boolean) => void; onDeposited?: () => void;
+}) {
   const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
   const { address, isConnected, chainId } = useAccount();
@@ -28,11 +33,28 @@ export function DepositPoolForm() {
   const queryClient = useQueryClient();
 
   const selection = useAdminRounds(address);
-  const { name: roundName, token, admin, refetch, finalized, isCancelled, pool, isLoading: isRoundLoading, isError: isRoundError } = useRound(selection.roundAddress);
-  const roundAddress = selection.roundAddress;
+  const roundAddress = initialRoundAddress ?? selection.roundAddress;
+  const { name: roundName, token, admin, refetch, finalized, isCancelled, financials, endTime, isLoading: isRoundLoading, isError: isRoundError } = useRound(roundAddress);
+  const projectData = useProjects(roundAddress, { enabled: Boolean(roundAddress) });
+  const funding = calculateRoundFundingStats(
+    roundAddress && !projectData.isLoading && !projectData.isError ? projectData.projects : undefined,
+    financials.pool, finalized, isCancelled,
+  );
+  const endDate = endTime !== undefined ? new Date(Number(endTime) * 1000) : undefined;
+  const summaryItems = roundAddress ? [
+    { label: t.admin.roundStudentDonations, value: funding.totalDonatedRaw !== undefined ? formatUsdc(funding.totalDonatedRaw) : undefined },
+    { label: t.admin.roundApprovedProjects, value: funding.approvedCount },
+    { label: t.admin.roundPendingProjects, value: funding.pendingCount },
+    { label: t.admin.roundEstimatedDemand, value: funding.totalRaw !== undefined ? formatUsdc(funding.totalRaw) : undefined },
+    { label: t.admin.roundMatchingCoverage, value: funding.coverage ? `${funding.coverage.percent}%` : undefined },
+    { label: t.admin.roundDepositNeeded, value: funding.needed !== undefined ? formatUsdc(funding.needed) : undefined },
+    { label: t.admin.roundFundingStatus, value: financials.status ? t.competition[financials.status] : undefined },
+    { label: t.admin.roundFundingEnd, value: endDate && Number.isFinite(endDate.getTime()) ? formatDateTimeGmt7(endDate) : undefined },
+    { label: t.admin.leftoverAvailable, value: finalized && financials.leftover !== undefined ? formatUsdc(financials.leftover) : undefined },
+  ].filter(item => item.value !== undefined) : [];
   const balance = useTokenBalance(address);
 
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(initialAmount);
   const [isPending, setIsPending] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -117,6 +139,8 @@ export function DepositPoolForm() {
     setIsConfirmOpen(false);
     const flow = beginFlow("deposit-matching-pool");
     setIsPending(true);
+    onPendingChange?.(true);
+    let deposited = false;
 
     try {
       // 1. Check current allowance
@@ -238,6 +262,7 @@ export function DepositPoolForm() {
       setAmount("");
       refetch();
       await queryClient.invalidateQueries();
+      deposited = true;
     } catch (err) {
       if (flow.cancelled) return;
       flow.error(depositId, err, t.toasts.depositFailed, locale);
@@ -245,6 +270,8 @@ export function DepositPoolForm() {
       flow.finish();
       if (!flow.cancelled) {
         setIsPending(false);
+        onPendingChange?.(false);
+        if (deposited) onDeposited?.();
       }
     }
   };
@@ -257,128 +284,7 @@ export function DepositPoolForm() {
 
   const isLargeAmount = validation.success && validation.amount >= 10_000_000_000n; // >= 10,000 USDC
 
-  return (
-    <div className="border border-line bg-surface p-6 space-y-4 max-w-[720px]">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold text-foreground tracking-tight">
-          {t.admin.depositPoolTitle}
-        </h3>
-      </div>
-      <p className="text-xs text-muted">
-        {t.admin.depositPoolDesc}
-      </p>
-
-      <label className="block space-y-1 text-xs">
-        <span>{t.tokenBalance.selectRound}</span>
-        <select className="w-full border border-line bg-bg p-2" value={roundAddress ?? ""} disabled={isPending || selection.isLoading || selection.isError || !selection.rounds.length}
-          onChange={event => { selection.selectRound(event.target.value); setIsConfirmOpen(false); }}>
-          {!roundAddress && <option value="">{selection.isLoading ? t.tokenBalance.loadingRounds : t.tokenBalance.selectRound}</option>}
-          {selection.rounds.map(round => <option key={round.address} value={round.address}>{round.name || shortAddress(round.address)} · {shortAddress(round.address)}</option>)}
-        </select>
-      </label>
-      {roundExplanation && <p role="status" className="text-sm text-muted">{roundExplanation}</p>}
-      {(selection.isError || isRoundError) && <Button type="button" variant="secondary" onClick={() => { selection.refetch(); refetch(); }}>{t.tokenBalance.retry}</Button>}
-      {balance.isError && <Button type="button" variant="secondary" onClick={() => void balance.refetch()}>{t.tokenBalance.retry}</Button>}
-
-      {/* Current Matching Pool Indicator (Top-up deposits supported) */}
-      <div className="flex items-center justify-between border border-line/70 bg-surface-2 p-3 text-xs">
-        <span className="text-muted flex items-center gap-1.5 role-label">
-          <Coins className="h-4 w-4 text-money shrink-0" />
-          <span>{fmt(t.admin.currentPoolLabel, { amount: "" }).replace(/:\s*USDC$/, "").replace(/:\s*$/, "")}:</span>
-        </span>
-        <span
-          className="role-value-md text-money truncate ml-2"
-          title={roundAddress && !roundExplanation ? formatUsdc(pool) : undefined}
-        >
-          {roundAddress && !roundExplanation ? formatUsdc(pool) : "—"}
-        </span>
-      </div>
-
-      <form onSubmit={handleFormSubmit} className="space-y-4">
-        {/* Admin USDC balance & Max button */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted font-mono truncate" title={adminBalance !== undefined ? formatUsdc(adminBalance) : undefined}>
-              {balance.isReady && adminBalance !== undefined ? fmt(t.admin.adminBalanceLabel, {
-                balance: formatUsdc(adminBalance, { includeSymbol: false }),
-              }) : balance.isError ? t.tokenBalance.error : balance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                if (adminBalance !== undefined && adminBalance > 0n) {
-                  setAmount(formatUnits(adminBalance, 6));
-                }
-              }}
-              disabled={isPending || finalized || Boolean(roundExplanation) || !balance.isReady || !adminBalance}
-              className="mono-label text-xs font-bold text-primary hover:underline disabled:text-muted disabled:no-underline"
-            >
-              {t.admin.maxBtn}
-            </button>
-          </div>
-
-          <Input
-            label={t.admin.depositAmountLabel}
-            type="text"
-            inputMode="decimal"
-            placeholder="100"
-            value={amount}
-            disabled={isPending || finalized || Boolean(roundExplanation)}
-            onChange={(e) => setAmount(e.target.value)}
-            suffixElement="USDC"
-            error={validationErrorMessage ?? undefined}
-            required
-          />
-
-          {/* Quick chips (fill input only) */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-xs text-muted">Quick amounts:</span>
-            {quickChips.map((chip) => (
-              <button
-                key={chip.value}
-                type="button"
-                onClick={() => setAmount(chip.value)}
-                disabled={isPending || finalized || Boolean(roundExplanation)}
-                className="rounded-xs border border-line bg-surface-2 px-2.5 py-1 text-xs font-mono font-semibold text-foreground hover:bg-surface hover:border-line-strong transition-colors disabled:opacity-50"
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Button
-            type="submit"
-            variant="accent"
-            fullWidth
-            disabled={isButtonDisabled}
-            isLoading={isPending}
-            className="text-xs font-bold py-2.5"
-          >
-            {finalized
-              ? t.admin.roundAlreadyFinalized
-              : isPending
-              ? t.admin.processingOnFuji
-              : t.admin.depositBtn}
-          </Button>
-
-          {/* Explanation line for disabled states */}
-          {disabledExplanation && (
-            <p className="text-xs text-muted text-center italic">
-              {disabledExplanation}
-            </p>
-          )}
-        </div>
-      </form>
-
-      {/* Confirmation Dialog */}
-      <Dialog
-        isOpen={isConfirmOpen}
-        onClose={() => setIsConfirmOpen(false)}
-        title={t.admin.confirmDepositTitle}
-        description={t.admin.confirmDepositNotice}
-      >
+  const confirmationContent = (
         <div className="space-y-4 pt-3 text-xs">
           <div className="border border-line bg-surface-2 p-3 space-y-2">
             <div className="flex justify-between items-center">
@@ -430,7 +336,157 @@ export function DepositPoolForm() {
             </Button>
           </div>
         </div>
-      </Dialog>
+  );
+
+  return (
+    <div className={embedded ? "space-y-4" : "border border-line bg-surface p-6 space-y-4 max-w-[720px]"}>
+      {!embedded && <div className="flex items-center justify-between">
+        <h3 className="text-base font-bold text-foreground tracking-tight">
+          {t.admin.depositPoolTitle}
+        </h3>
+      </div>}
+      {!embedded && <p className="text-xs text-muted">
+        {t.admin.depositPoolDesc}
+      </p>}
+
+      <div hidden={embedded && isConfirmOpen} className="space-y-4">
+      <label className="block space-y-1 text-xs">
+        <span>{t.tokenBalance.selectRound}</span>
+        <select className="w-full border border-line bg-bg p-2" value={roundAddress ?? ""} disabled={Boolean(initialRoundAddress) || isPending || selection.isLoading || selection.isError || !selection.rounds.length}
+          onChange={event => { selection.selectRound(event.target.value); setIsConfirmOpen(false); }}>
+          {!roundAddress && <option value="">{selection.isLoading ? t.tokenBalance.loadingRounds : t.tokenBalance.selectRound}</option>}
+          {initialRoundAddress && !selection.rounds.some(round => round.address.toLowerCase() === initialRoundAddress.toLowerCase()) && <option value={initialRoundAddress}>{roundName || shortAddress(initialRoundAddress)}</option>}
+          {selection.rounds.map(round => <option key={round.address} value={round.address}>{round.name || shortAddress(round.address)} · {shortAddress(round.address)}</option>)}
+        </select>
+      </label>
+      {roundExplanation && <p role="status" className="text-sm text-muted">{roundExplanation}</p>}
+      {(selection.isError || isRoundError) && <Button type="button" variant="secondary" onClick={() => { selection.refetch(); refetch(); }}>{t.tokenBalance.retry}</Button>}
+      {balance.isError && <Button type="button" variant="secondary" onClick={() => void balance.refetch()}>{t.tokenBalance.retry}</Button>}
+
+      {/* Current Matching Pool Indicator (Top-up deposits supported) */}
+      <div className="flex items-center justify-between border border-line/70 bg-surface-2 p-3 text-xs">
+        <span className="text-muted flex items-center gap-1.5 role-label">
+          <Coins className="h-4 w-4 text-money shrink-0" />
+          <span>{fmt(t.admin.currentPoolLabel, { amount: "" }).replace(/:\s*USDC$/, "").replace(/:\s*$/, "")}:</span>
+        </span>
+        <span
+          className="role-value-md text-money truncate ml-2"
+          title={roundAddress && financials.pool !== undefined ? formatUsdc(financials.pool) : undefined}
+        >
+          {roundAddress && financials.pool !== undefined ? formatUsdc(financials.pool) : "—"}
+        </span>
+      </div>
+
+      {roundAddress && (
+        <div className="space-y-3">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            {summaryItems.map(item => (
+              <div key={item.label} className="border border-line/70 bg-surface-2 p-3 space-y-1 min-w-0">
+                <dt className="text-muted">{item.label}</dt>
+                <dd className="font-mono font-semibold break-words">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+          {funding.totalRaw !== undefined && <p className="text-xs text-muted">{t.admin.roundEstimatedDemandHint}</p>}
+          {funding.suggestedDeposit && (financials.status === "open" || financials.status === "closed") && (
+            <button type="button" onClick={() => setAmount(funding.suggestedDeposit!)}
+              disabled={isPending || Boolean(roundExplanation)}
+              className="border border-line px-2.5 py-1 text-xs font-semibold text-primary hover:underline disabled:opacity-50">
+              {fmt(t.admin.fillRoundShortfall, { amount: funding.suggestedDeposit })}
+            </button>
+          )}
+        </div>
+      )}
+
+      <form onSubmit={handleFormSubmit} className="space-y-4">
+        {/* Admin USDC balance & Max button */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted font-mono truncate" title={adminBalance !== undefined ? formatUsdc(adminBalance) : undefined}>
+              {balance.isReady && adminBalance !== undefined ? fmt(t.admin.adminBalanceLabel, {
+                balance: formatUsdc(adminBalance, { includeSymbol: false }),
+              }) : balance.isError ? t.tokenBalance.error : balance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (adminBalance !== undefined && adminBalance > 0n) {
+                  setAmount(formatUnits(adminBalance, 6));
+                }
+              }}
+              disabled={isPending || finalized || Boolean(roundExplanation) || !balance.isReady || !adminBalance}
+              className="mono-label text-xs font-bold text-primary hover:underline disabled:text-muted disabled:no-underline"
+            >
+              {t.admin.maxBtn}
+            </button>
+          </div>
+
+          <Input
+            label={t.admin.depositAmountLabel}
+            type="text"
+            inputMode="decimal"
+            placeholder="100"
+            value={amount}
+            disabled={isPending || finalized || Boolean(roundExplanation)}
+            onChange={(e) => setAmount(e.target.value)}
+            suffixElement="USDC"
+            error={validationErrorMessage ?? undefined}
+            required
+          />
+
+          {/* Quick chips (fill input only) */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-xs text-muted">{t.admin.quickDepositAmounts}</span>
+            {quickChips.map((chip) => (
+              <button
+                key={chip.value}
+                type="button"
+                onClick={() => setAmount(chip.value)}
+                disabled={isPending || finalized || Boolean(roundExplanation)}
+                className="rounded-xs border border-line bg-surface-2 px-2.5 py-1 text-xs font-mono font-semibold text-foreground hover:bg-surface hover:border-line-strong transition-colors disabled:opacity-50"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Button
+            type="submit"
+            variant="accent"
+            fullWidth
+            disabled={isButtonDisabled}
+            isLoading={isPending}
+            className="text-xs font-bold py-2.5"
+          >
+            {finalized
+              ? t.admin.roundAlreadyFinalized
+              : isPending
+              ? t.admin.processingOnFuji
+              : t.admin.depositBtn}
+          </Button>
+
+          {/* Explanation line for disabled states */}
+          {disabledExplanation && (
+            <p className="text-xs text-muted text-center italic">
+              {disabledExplanation}
+            </p>
+          )}
+        </div>
+      </form>
+
+      </div>
+
+      {embedded ? isConfirmOpen && <div className="border-t border-line pt-4">
+        <h4 className="text-sm font-semibold">{t.admin.confirmDepositTitle}</h4>
+        <p className="mt-1 text-xs text-muted">{t.admin.confirmDepositNotice}</p>
+        {confirmationContent}
+      </div> : <Dialog isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)}
+        title={t.admin.confirmDepositTitle} description={t.admin.confirmDepositNotice}>
+        {confirmationContent}
+      </Dialog>}
+
     </div>
   );
 }

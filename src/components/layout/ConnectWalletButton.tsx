@@ -10,11 +10,10 @@ import { Wallet, LogOut, ChevronDown, Check, Copy, Loader2, Pencil } from "lucid
 import dynamic from "next/dynamic";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAvatar } from "@/hooks/useAvatar";
-import { shortAddress, formatCooldown, formatUsdcFixed } from "@/lib/format";
+import { shortAddress, formatUsdcFixed } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
 import { useNotificationCounts } from "@/hooks/useNotificationCounts";
-import { useClaim } from "@/hooks/useClaim";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 const AvatarPickerDialog = dynamic(() => import("./AvatarPickerDialog").then(module => module.AvatarPickerDialog), { ssr: false });
@@ -26,6 +25,7 @@ import { Badge } from "@/components/ui/Badge";
 import { GradientBorder } from "@/components/ui/GradientBorder";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { NotificationBadge } from "@/components/ui/NotificationBadge";
+import { fmt } from "@/lib/copy";
 
 export function ConnectWalletButton() {
   const { address, isConnected, chainId, status, connector } = useAccount();
@@ -39,7 +39,6 @@ export function ConnectWalletButton() {
   const { t, locale } = useLocale();
   const { role, isReady, isStudent, isAdmin } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
-  const { canClaim, remainingSeconds } = useClaim();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const { avatar } = useAvatar(address);
@@ -168,13 +167,13 @@ export function ConnectWalletButton() {
     }}>
       <button ref={trigger} type="button" onClick={() => { const rect = trigger.current?.getBoundingClientRect(); if (rect) setPosition({ top: rect.bottom + 8, right: Math.max(16, window.innerWidth - rect.right) }); setDropdownOpen(open => !open); }} aria-label={t.wallet.profile}
         aria-expanded={dropdownOpen} aria-haspopup="dialog" aria-controls={menuId}
-        className="mono-label relative flex max-w-full min-h-10 items-center gap-2 rounded-sm border border-line-strong bg-surface px-3 text-foreground hover:bg-surface-2">
+        className="mono-label relative flex max-w-full min-h-10 items-center gap-2 rounded-sm border border-line-strong bg-surface px-3 text-foreground hover:bg-surface-2 hover:border-line cursor-pointer transition-colors active:scale-[0.99]">
         <Avatar address={address} size={24} avatarId={avatar} />
         <span className={`h-2 w-2 shrink-0 rounded-full ${isFuji ? "bg-money" : "bg-amber-400"}`} aria-hidden="true" />
         <span className="min-w-0 truncate whitespace-nowrap text-xs border border-line px-1.5 py-0.5">{isFuji ? t.common.testnetBadge : t.wallet.switchNetwork}</span>
         <span>{shortAddress(address, 4)}</span>
         <ChevronDown className={`h-3.5 w-3.5 text-muted transition-transform ${dropdownOpen ? "rotate-180" : ""}`} aria-hidden="true" />
-        {counts.total > 0 && <span aria-label={t.wallet.notifications} className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-bg" />}
+        {counts.activity > 0 && <span aria-label={fmt(t.wallet.newNotifications, { count: counts.activity })} className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-bg" />}
       </button>
       {dropdownOpen && createPortal(
         <div ref={panel} style={{ "--profile-top": `${position.top}px`, "--profile-right": `${position.right}px` } as React.CSSProperties}
@@ -183,7 +182,7 @@ export function ConnectWalletButton() {
           id={menuId} role="dialog" aria-label={t.wallet.profile} className="fixed left-4 right-4 bottom-4 z-50 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-sm border border-line-strong bg-bg p-4 text-xs text-foreground shadow-2xl lg:left-auto lg:bottom-auto lg:right-[var(--profile-right)] lg:top-[var(--profile-top)] lg:w-80">
           <div className="flex items-center gap-3 border-b border-line pb-4">
             <button type="button" onClick={openAvatarPicker} aria-label={t.avatar.change}
-              className="group relative shrink-0 rounded-full">
+              className="group relative shrink-0 rounded-full cursor-pointer transition-transform hover:scale-105 active:scale-95">
               <Avatar address={address} size={48} avatarId={avatar} />
               <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                 <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -195,7 +194,7 @@ export function ConnectWalletButton() {
             </div>
           </div>
           <p className="mt-4 break-all font-mono leading-relaxed">{address}</p>
-          <button type="button" onClick={copyAddress} className="mono-label my-2 flex w-full items-center justify-between px-2 py-2 text-muted hover:bg-surface hover:text-foreground">
+          <button type="button" onClick={copyAddress} className="mono-label my-2 flex w-full items-center justify-between px-2 py-2 text-muted hover:bg-surface hover:text-foreground cursor-pointer transition-colors active:scale-[0.99]">
             <span aria-live="polite">{copied ? t.wallet.copied : t.common.copyAddress}</span>
             {copied ? <Check className="h-3.5 w-3.5 text-money" /> : <Copy className="h-3.5 w-3.5" />}
           </button>
@@ -214,7 +213,7 @@ export function ConnectWalletButton() {
               <Link
                 href="/verify"
                 onClick={() => setDropdownOpen(false)}
-                className="mono-label block border border-primary p-3 text-center font-bold hover:bg-primary/10 transition-colors"
+                className="mono-label block border border-primary p-3 text-center font-bold hover:bg-primary/10 transition-colors cursor-pointer active:scale-[0.99]"
               >
                 {locale === "vi" ? "Xác thực bằng email trường" : "Verify university email"}
               </Link>
@@ -222,24 +221,8 @@ export function ConnectWalletButton() {
           )}
 
           <div className="space-y-1">
-            {isAdmin && <Link href="/admin" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.nav.admin}<NotificationBadge count={counts.admin} /></Link>}
-            <Link href="/my" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface">{t.wallet.myProjects}<NotificationBadge count={counts.owner} /></Link>
-            {isReady && role === "student" && (
-              <Link
-                href="/my#claim-usdc"
-                onClick={() => setDropdownOpen(false)}
-                className="mono-label flex items-center justify-between px-2 py-2 hover:bg-surface"
-              >
-                <span>{t.wallet.claimUsdc}</span>
-                {canClaim ? (
-                  <NotificationBadge count={counts.student} />
-                ) : (
-                  <span className="tabular-mono text-xs text-muted border border-line px-1.5 py-0.5 rounded">
-                    {t.faucet.nextClaimIn.toUpperCase()} {formatCooldown(remainingSeconds)}
-                  </span>
-                )}
-              </Link>
-            )}
+            {isAdmin && <Link href="/admin" onClick={() => setDropdownOpen(false)} className="mono-label flex justify-between px-2 py-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs">{t.nav.admin}<NotificationBadge count={counts.admin} /></Link>}
+            <Link href="/my" onClick={() => { counts.markAllSeen(); setDropdownOpen(false); }} className="mono-label flex justify-between px-2 py-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs">{t.nav.my}<NotificationBadge count={counts.activity} /></Link>
           </div>
           <button
             type="button"
@@ -248,7 +231,7 @@ export function ConnectWalletButton() {
               console.log("[LOGOUT_DEBUG] Disconnect button onClick");
               handleDisconnect();
             }}
-            className="mono-label mt-3 flex w-full items-center gap-2 border-t border-line px-2 pt-4 pb-1 text-primary hover:bg-primary/10"
+            className="mono-label mt-3 flex w-full items-center gap-2 border-t border-line px-2 pt-4 pb-1 text-primary hover:bg-primary/10 cursor-pointer transition-colors active:scale-[0.99]"
           >
             <LogOut className="h-3.5 w-3.5" />{t.nav.disconnect}
           </button>

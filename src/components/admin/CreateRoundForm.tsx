@@ -3,10 +3,16 @@
 import { useTxFlow } from "@/hooks/useTxFlow";
 
 import React, { useState } from "react";
+import { formatUnits, type Address } from "viem";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
-import { roundFactoryAbi } from "@/lib/contracts/abis";
+import { mockUsdcAbi, qfRoundAbi, roundFactoryAbi } from "@/lib/contracts/abis";
 import { parseUsdc } from "@/lib/format";
-import { factoryAddress, usdcAddress } from "@/lib/contracts/addresses";
+import { factoryAddress, usdcAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { createdRoundAddress, fundRound, parseInitialPool } from "@/lib/roundFunding";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { fmt } from "@/lib/copy";
+import { DepositPoolButton } from "./DepositPoolButton";
 import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
 import { Input } from "@/components/ui/Input";
@@ -26,8 +32,10 @@ function toLocalDatetimeString(date: Date): string {
 export function CreateRoundForm() {
   const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
-  const { isConnected } = useAccount();
-  const publicClient = usePublicClient();
+  const { isConnected, address, chainId } = useAccount();
+  const publicClient = usePublicClient({ chainId: TARGET_CHAIN_ID });
+  const queries = useQueryClient();
+  const balance = useTokenBalance(address);
   const { writeContractAsync } = useWriteContract();
   const { refetch } = useRound();
 
@@ -57,6 +65,11 @@ export function CreateRoundForm() {
   const [maxPerRoundUsdc, setMaxPerRoundUsdc] = useState("10");
   const [maxMatchPercent, setMaxMatchPercent] = useState("30");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [initialPool, setInitialPool] = useState("");
+  const [unfunded, setUnfunded] = useState<{ address?: Address; amount: string } | null>(null);
+  const poolValidation = parseInitialPool(initialPool, balance.isReady ? balance.balance : undefined);
+  const poolError = !poolValidation.success ? (poolValidation.errorKey === "exceeds_balance" ? t.admin.validationExceedsBalance : t.admin.initialPoolInvalid) : undefined;
+  const fundingNeedsBalance = poolValidation.success && poolValidation.amount > 0n && !balance.isReady;
 
   const roundNameBytes = React.useMemo(
     () => new TextEncoder().encode(roundName.trim()).length,
@@ -72,7 +85,7 @@ export function CreateRoundForm() {
     e.preventDefault();
     const toastId = "create-round";
 
-    if (!isConnected || !factoryAddress || !publicClient) {
+    if (!isConnected || !address || chainId !== TARGET_CHAIN_ID || !factoryAddress || !publicClient) {
       flow.toast.error(
         toastId,
         t.toasts.factoryNotReadyTitle,
@@ -105,6 +118,11 @@ export function CreateRoundForm() {
     }
 
     if (hasValidationErr) return;
+    if (!poolValidation.success || fundingNeedsBalance) {
+      flow.toast.error(toastId, t.admin.initialPoolLabel, poolError ?? t.tokenBalance.unavailable);
+      flow.finish(); return;
+    }
+    const initialAmount = poolValidation.amount;
 
     if (!startDateTime || !endDateTime) {
       flow.toast.error(
@@ -151,6 +169,7 @@ export function CreateRoundForm() {
         address: factoryAddress,
         abi: roundFactoryAbi,
         functionName: "createRound",
+        chainId: TARGET_CHAIN_ID,
         args: [
           trimmedName,
           trimmedOrg,
@@ -186,6 +205,40 @@ export function CreateRoundForm() {
       setRoundName("");
       setOrganizer("");
       refetch();
+      await queries.invalidateQueries();
+      if (initialAmount > 0n) {
+        // The round is already deployed. Funding failure must never be reported as creation failure.
+        let deployed: Address | undefined;
+        try {
+          deployed = createdRoundAddress(receipt.logs, factoryAddress, address, usdcAddress);
+          if (!deployed) throw new Error(t.admin.initialPoolRoundMissing);
+          const targetRound = deployed;
+          await fundRound(initialAmount, {
+            allowance: () => flow.wait(() => publicClient.readContract({ address: usdcAddress, abi: mockUsdcAbi, functionName: "allowance", args: [address, targetRound] })),
+            approve: () => {
+              flow.toast.pending("initial-pool", t.toasts.depositApproveStep, t.toasts.depositApproveDesc);
+              return flow.wait(() => writeContractAsync({ address: usdcAddress, abi: mockUsdcAbi, functionName: "approve", args: [targetRound, initialAmount], chainId: TARGET_CHAIN_ID }));
+            },
+            deposit: () => {
+              flow.toast.pending("initial-pool", t.toasts.depositStep, t.toasts.depositStepDesc);
+              return flow.wait(() => writeContractAsync({ address: targetRound, abi: qfRoundAbi, functionName: "depositPool", args: [initialAmount], chainId: TARGET_CHAIN_ID }));
+            },
+            confirm: async fundingHash => {
+              flow.toast.pending("initial-pool", t.admin.initialPoolConfirming, t.toasts.confirmingOnChain, fundingHash);
+              const fundingReceipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash: fundingHash }), 120_000);
+              if (fundingReceipt.status !== "success") throw new Error(t.admin.initialPoolFailed);
+            },
+          });
+          flow.toast.success("initial-pool", t.toasts.depositSuccess);
+          setInitialPool("");
+          refetch();
+          await queries.invalidateQueries();
+        } catch (fundingError) {
+          if (flow.cancelled) return;
+          setUnfunded({ address: deployed, amount: formatUnits(initialAmount, 6) });
+          flow.error("initial-pool", fundingError, t.admin.initialPoolFailed, locale);
+        }
+      }
     } catch (err: unknown) {
       if (flow.cancelled) return false;
       flow.error(
@@ -203,7 +256,7 @@ export function CreateRoundForm() {
   };
 
   return (
-    <div className="border border-line bg-surface p-6 space-y-4 max-w-[720px]">
+    <div className="border border-line bg-surface p-6 space-y-4">
       <div>
         <h3 className="text-base font-bold text-foreground tracking-tight">
           {t.admin.createRoundTitle}
@@ -214,7 +267,7 @@ export function CreateRoundForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
             label={`${t.admin.roundNameLabel} *`}
             type="text"
@@ -317,12 +370,22 @@ export function CreateRoundForm() {
           value={maxPerRoundUsdc} onChange={event => setMaxPerRoundUsdc(event.target.value)} suffixElement="USDC"
           helperText={t.admin.invalidRoundBudget} required />
 
+        <div className="border-t border-line pt-4 space-y-2">
+          <Input label={`${t.admin.initialPoolLabel} (${t.admin.optionalLabel})`} type="text" inputMode="decimal"
+            placeholder="0" value={initialPool} onChange={event => setInitialPool(event.target.value)}
+            suffixElement="USDC" helperText={t.admin.initialPoolHint} error={poolError} disabled={isSubmitting} />
+          {initialPool.trim() && <p className="text-xs text-muted font-mono">
+            {balance.isReady && balance.balance !== undefined ? fmt(t.admin.adminBalanceLabel, { balance: formatUnits(balance.balance, 6) })
+              : balance.isError ? t.tokenBalance.error : balance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}
+          </p>}
+        </div>
+
         <div className="pt-2">
           <Button
             type="submit"
             variant="primary"
             fullWidth
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isConnected || chainId !== TARGET_CHAIN_ID || Boolean(poolError) || fundingNeedsBalance}
             isLoading={isSubmitting}
             className="text-xs font-bold py-2.5"
           >
@@ -330,6 +393,10 @@ export function CreateRoundForm() {
           </Button>
         </div>
       </form>
+      {unfunded && <div role="status" className="space-y-3 border border-amber-400/20 bg-amber-400/5 p-3 text-xs">
+        <p className="text-muted">{t.admin.initialPoolRetryHint}</p>
+        <DepositPoolButton roundAddress={unfunded.address} amount={unfunded.amount} onDeposited={() => { setUnfunded(null); setInitialPool(""); }} />
+      </div>}
     </div>
   );
 }

@@ -1,127 +1,43 @@
 "use client";
 
-import { useTxFlow } from "@/hooks/useTxFlow";
-import React, { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { MatchingPoolWarning } from "@/components/project/MatchingPoolWarning";
 import { useLocale } from "@/lib/context/locale";
-import { useRound } from "@/hooks/useRound";
-import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
-import { useWriteContract, usePublicClient } from "wagmi";
-import { qfRoundAbi } from "@/lib/contracts/abis";
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import { formatUsdc } from "@/lib/format";
+import type { calculateRoundSettlement } from "@/lib/roundStats";
 
-export function FinalizeButton() {
-  const beginFlow = useTxFlow();
-  const { t, locale } = useLocale();
-  const publicClient = usePublicClient();
-  const { writeContractAsync } = useWriteContract();
-  const { roundAddress, endTime, finalized, isCancelled, refetch } = useRound();
-  const nowSec = useCurrentTimestamp();
-
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [isPending, setIsPending] = useState(false);
-
-  const canFinalize = Boolean(roundAddress && !isCancelled && !finalized && endTime && nowSec > 0 && BigInt(nowSec) >= endTime);
-
-  const handleFinalize = async () => {
-    const flow = beginFlow();
-    if (!roundAddress || !publicClient) return;
-
-    const toastId = "finalize-round";
-    setIsPending(true);
-    try {
-      flow.toast.pending(
-        toastId,
-        t.toasts.finalizeTitle,
-        t.toasts.finalizeDesc
-      );
-
-      const hash = await flow.wait(() => writeContractAsync({
-        address: roundAddress,
-        abi: qfRoundAbi,
-        functionName: "finalize",
-      }));
-
-      flow.toast.pending(
-        toastId,
-        t.toasts.computingPayoutsTitle,
-        t.toasts.computingPayoutsDesc,
-        hash
-      );
-
-      const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
-      if (receipt.status !== "success") {
-        throw new Error("Finalize transaction reverted.");
-      }
-
-      flow.toast.success(
-        toastId,
-        t.toasts.finalizeSuccess,
-        t.toasts.finalizeSuccessDesc,
-        hash
-      );
-
-      refetch();
-    } catch (err: unknown) {
-      if (flow.cancelled) return false;
-      flow.error(
-        toastId,
-        err,
-        t.toasts.finalizeFailed,
-        locale
-      );
-    } finally {
-      flow.finish();
-      if (!flow.cancelled) {
-        setIsPending(false);
-      }
-    }
-  };
-
-  if (finalized) {
-    return (
-      <div className="inline-flex items-center gap-1.5 border border-money/30 bg-money/10 px-4 py-2 text-xs font-bold text-money">
-        <CheckCircle2 className="h-4 w-4" />
-        <span>{t.admin.roundFinalizedBadge}</span>
+export function FinalizeButton({ allowed, pending, disabled, open, onOpen, onClose, onConfirm, summary, pool, statsReady, error }: {
+  allowed: boolean; pending: boolean; disabled: boolean; open: boolean;
+  onOpen: () => void; onClose: () => void; onConfirm: () => void;
+  summary: ReturnType<typeof calculateRoundSettlement>; pool?: bigint; statsReady: boolean; error?: string;
+}) {
+  const { t } = useLocale();
+  const c = t.roundControls;
+  if (!allowed && !open) return null;
+  const rows = [
+    [c.pool, pool], [c.donations, summary.totalDonatedRaw],
+    [c.estimatedMatching, summary.matching], [c.estimatedLeftover, summary.leftover],
+  ] as const;
+  return <>
+    {allowed && <Button className="focus-visible:ring-2 focus-visible:ring-primary/60" type="button" variant="primary" disabled={disabled} isLoading={pending} onClick={onOpen} aria-label={c.finalize}>
+      {c.finalize}
+    </Button>}
+    <Dialog isOpen={open} onClose={onClose} title={c.confirmFinalize}>
+      <p className="text-xs leading-relaxed text-muted">{c.finalizeWarning}</p>
+      <dl className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+        {rows.map(([label, value]) => value !== undefined && <div key={label} className="border border-line bg-surface p-3">
+          <dt className="text-muted">{label}</dt><dd className="mt-1 font-mono text-foreground">{formatUsdc(value)}</dd>
+        </div>)}
+      </dl>
+      {summary.totalRaw !== undefined && pool !== undefined && <div className="mt-3"><MatchingPoolWarning totalRaw={summary.totalRaw} pool={pool} /></div>}
+      {!statsReady && <p role="status" className="mt-3 text-xs text-muted">{c.statsUnavailable}</p>}
+      {!allowed && <p role="status" className="mt-3 text-xs text-muted">{c.actionChanged}</p>}
+      {error && <p role="alert" className="mt-3 text-xs text-primary">{error}</p>}
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button className="focus-visible:ring-2 focus-visible:ring-primary/60" type="button" variant="secondary" disabled={pending} onClick={onClose}>{t.common.cancel}</Button>
+        <Button className="focus-visible:ring-2 focus-visible:ring-primary/60" type="button" variant="primary" disabled={!allowed || !statsReady || disabled} isLoading={pending} onClick={onConfirm}>{c.confirmFinalize}</Button>
       </div>
-    );
-  }
-
-  return (
-    <div className="relative inline-flex flex-col items-start gap-1">
-      <div
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-      >
-        <Button
-          variant={canFinalize ? "primary" : "secondary"}
-          disabled={!canFinalize || isPending}
-          isLoading={isPending}
-          onClick={handleFinalize}
-          className="text-xs font-bold"
-        >
-          {isPending ? t.admin.finalizingOnFuji : t.admin.finalizeButton}
-        </Button>
-      </div>
-
-      <p className="text-xs text-muted max-w-xs leading-relaxed">
-        {t.admin.gracePeriodNotice}
-      </p>
-
-      {showTooltip && !canFinalize && (
-        <div
-          role="tooltip"
-          className="absolute bottom-full left-0 mb-2 z-20 w-72 border border-line-strong bg-bg p-2.5 text-xs text-muted shadow-lg"
-        >
-          <div className="flex items-center gap-1.5 text-amber-300 font-semibold mb-1">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            <span>{t.admin.actionLocked}</span>
-          </div>
-          <span>
-            {t.admin.finalizeGraceTooltip}
-          </span>
-        </div>
-      )}
-    </div>
-  );
+    </Dialog>
+  </>;
 }

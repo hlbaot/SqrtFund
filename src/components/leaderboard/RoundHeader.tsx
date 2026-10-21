@@ -34,7 +34,7 @@ export function RoundHeader({ round, choices, onRoundChange, finalPayoutsAvailab
             aria-label={c.previous}
             disabled={index <= 0}
             onClick={() => onRoundChange(choices[index - 1].id)}
-            className="competition-focus flex min-h-11 w-11 shrink-0 items-center justify-center border-r border-line disabled:text-line-strong"
+            className="competition-focus flex min-h-11 w-11 shrink-0 items-center justify-center border-r border-line hover:bg-surface-2 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:text-line-strong active:scale-95"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -42,7 +42,7 @@ export function RoundHeader({ round, choices, onRoundChange, finalPayoutsAvailab
             aria-label={c.switchRound}
             value={round.id}
             onChange={event => onRoundChange(event.target.value)}
-            className="competition-focus min-h-11 min-w-0 max-w-[min(65vw,22rem)] flex-1 truncate bg-bg px-3 text-xs"
+            className="competition-focus min-h-11 min-w-0 max-w-[min(65vw,22rem)] flex-1 truncate bg-bg px-3 text-xs cursor-pointer hover:bg-surface-2/60 transition-colors"
           >
             {choices.map(choice => (
               <option key={choice.id} value={choice.id}>
@@ -55,7 +55,7 @@ export function RoundHeader({ round, choices, onRoundChange, finalPayoutsAvailab
             aria-label={c.next}
             disabled={index < 0 || index >= choices.length - 1}
             onClick={() => onRoundChange(choices[index + 1].id)}
-            className="competition-focus flex min-h-11 w-11 shrink-0 items-center justify-center border-l border-line disabled:text-line-strong"
+            className="competition-focus flex min-h-11 w-11 shrink-0 items-center justify-center border-l border-line hover:bg-surface-2 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:text-line-strong active:scale-95"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
