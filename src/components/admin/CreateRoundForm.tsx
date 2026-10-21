@@ -7,7 +7,7 @@ import { formatUnits, type Address } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { mockUsdcAbi, qfRoundAbi, roundFactoryAbi } from "@/lib/contracts/abis";
-import { parseUsdc } from "@/lib/format";
+import { formatUsdc, parseUsdc } from "@/lib/format";
 import { factoryAddress, usdcAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { createdRoundAddress, fundRound, parseInitialPool } from "@/lib/roundFunding";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
@@ -374,10 +374,10 @@ export function CreateRoundForm() {
           <Input label={`${t.admin.initialPoolLabel} (${t.admin.optionalLabel})`} type="text" inputMode="decimal"
             placeholder="0" value={initialPool} onChange={event => setInitialPool(event.target.value)}
             suffixElement="USDC" helperText={t.admin.initialPoolHint} error={poolError} disabled={isSubmitting} />
-          {initialPool.trim() && <p className="text-xs text-muted font-mono">
-            {balance.isReady && balance.balance !== undefined ? fmt(t.admin.adminBalanceLabel, { balance: formatUnits(balance.balance, 6) })
+          <p role="status" className="text-xs text-muted font-mono">
+            {balance.isReady && balance.balance !== undefined ? fmt(t.admin.adminBalanceLabel, { balance: formatUsdc(balance.balance, { includeSymbol: false }) })
               : balance.isError ? t.tokenBalance.error : balance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}
-          </p>}
+          </p>
         </div>
 
         <div className="pt-2">
