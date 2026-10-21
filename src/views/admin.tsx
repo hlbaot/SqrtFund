@@ -1,5 +1,6 @@
 "use client";
 import { RoundControls } from "@/components/admin/RoundControls";
+import { RoundHistory } from "@/components/admin/RoundHistory";
 
 import { AOSInit } from "@/components/common/AOSInit";
 
@@ -37,6 +38,7 @@ export function AdminView() {
   const { t, locale } = useLocale();
   const { address, chainId, isConnected, status: accountStatus } = useAccount();
   const [selectedRound, setSelectedRound] = useState<Address>();
+  const [roundBusy, setRoundBusy] = useState(false);
   const { role, isLoading: isRoleLoading, isReady } = useRole(selectedRound);
   const isAdmin = isReady && role === "admin";
   const router = useRouter();
@@ -116,7 +118,7 @@ export function AdminView() {
     }
   }
 
-  if (accountStatus === "reconnecting" || accountStatus === "connecting" || isRoleLoading || isRoundLoading) {
+  if (accountStatus === "reconnecting" || accountStatus === "connecting" || (!selectedRound && (isRoleLoading || isRoundLoading))) {
     return (
       <Container className="py-8 sm:py-10">
         <AdminSkeleton />
@@ -152,11 +154,16 @@ export function AdminView() {
 
       </div>
 
-      <RoundControls key={roundAddress || "no-round"} round={round} projects={projects}
-        projectsLoading={isProjectsLoading} projectsError={isProjectsError} onSelectRound={setSelectedRound} />
+      <section aria-label={t.roundControls.historyTitle} className="border border-line bg-surface">
+        <RoundHistory addresses={round.allRounds} selected={roundAddress} selectedName={roundName}
+          disabled={roundBusy || busyProjectId !== null} onSelect={setSelectedRound} />
+        {isRoundLoading ? <p role="status" className="p-8 text-center text-sm text-muted">{t.common.loading}</p>
+          : <RoundControls key={roundAddress || "no-round"} round={round} projects={projects}
+            projectsLoading={isProjectsLoading} projectsError={isProjectsError} onBusyChange={setRoundBusy} />}
+      </section>
 
       {/* Finalized Round Distribution Results Table */}
-      {finalized && !isCancelled && (
+      {!isRoundLoading && finalized && !isCancelled && (
         <section
           className="border border-money/40 bg-money/10 p-6 space-y-4"
           data-aos="fade-up"
@@ -219,7 +226,7 @@ export function AdminView() {
         onClose={() => { if (!reviewBusy.current) { setReviewTarget(null); setReviewError(undefined); } }} onConfirm={() => void confirmReview()} />}
 
       {/* Project Proposals Approval Queue */}
-      {isAdmin && <ProjectReviewList key={roundAddress || "no-round"} projects={projects} round={moderationRound} viewer={viewer} now={now}
+      {!isRoundLoading && isAdmin && <ProjectReviewList key={roundAddress || "no-round"} projects={projects} round={moderationRound} viewer={viewer} now={now}
         pending={busyProjectId !== null} isLoading={isProjectsLoading} isError={isProjectsError} onRetry={() => void refetchProjects()}
         onAction={(project, action) => { const current = projects.find(item => item.id === project.id); if (current) openReview(current, action); }} />}
 

@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { Address } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
@@ -13,7 +12,7 @@ import { useTxFlow } from "@/hooks/useTxFlow";
 import { useLocale } from "@/lib/context/locale";
 import { deriveRoundActions, FINALIZE_GRACE } from "@/lib/roundPhase";
 import { calculateRoundSettlement, calculateRoundStats } from "@/lib/roundStats";
-import { formatUsdc, shortAddress } from "@/lib/format";
+import { formatUsdc } from "@/lib/format";
 import { tokenMatchesConfigured } from "@/lib/tokenBalance";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { qfRoundAbi } from "@/lib/contracts/abis";
@@ -28,9 +27,9 @@ import { FinalizeButton } from "./FinalizeButton";
 
 type Action = "finalize" | "cancelRound" | "withdrawLeftover" | "withdrawPoolIfCancelled";
 
-export function RoundControls({ round, projects, projectsLoading, projectsError, onSelectRound }: {
+export function RoundControls({ round, projects, projectsLoading, projectsError, onBusyChange }: {
   round: ReturnType<typeof useRound>; projects: EnrichedProject[];
-  projectsLoading: boolean; projectsError?: boolean; onSelectRound: (address: Address) => void;
+  projectsLoading: boolean; projectsError?: boolean; onBusyChange?: (busy: boolean) => void;
 }) {
   const { t, locale } = useLocale();
   const c = t.roundControls;
@@ -45,6 +44,10 @@ export function RoundControls({ round, projects, projectsLoading, projectsError,
   const [confirm, setConfirm] = useState<"finalize" | "cancelRound" | null>(null);
   const [error, setError] = useState<string>();
   const busy = useRef(false);
+  useEffect(() => {
+    onBusyChange?.(pending !== null || confirm !== null);
+    return () => onBusyChange?.(false);
+  }, [pending, confirm, onBusyChange]);
   const close = useCallback(() => { if (!busy.current) { setConfirm(null); setError(undefined); } }, []);
   const actionRound = { ...round, depositSupported: tokenMatchesConfigured(round.token),
     isError: round.isError || (round.roundVersion === "current" && round.financials?.status === undefined) };
@@ -104,17 +107,10 @@ export function RoundControls({ round, projects, projectsLoading, projectsError,
     : actions.phase === "finalized" ? (disbursed ? c.disbursed : c.readyToClaim) : c.refundHint;
   const results = [[c.allocatedMatching, summary.matching === undefined ? undefined : formatUsdc(summary.matching)],
     [c.leftover, summary.leftover === undefined ? undefined : formatUsdc(summary.leftover)], [c.matchingProjects, summary.matchingCount]] as const;
-  return <section aria-label={c.title} className="space-y-5 border border-line bg-surface p-4 sm:p-5">
-    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-      <h2 className="text-sm font-semibold text-foreground">{c.title}</h2>
-      <label className="flex min-w-0 flex-col gap-1 text-xs text-muted sm:max-w-sm sm:flex-1">
-        <span>{t.tokenBalance.selectRound}</span>
-        <select aria-label={t.tokenBalance.selectRound} value={round.roundAddress} disabled={pending !== null}
-          className="min-h-9 w-full border border-line bg-bg px-3 text-xs text-foreground transition-colors hover:border-line-strong focus-visible:outline focus-visible:outline-primary"
-          onChange={event => onSelectRound(event.target.value as Address)}>
-          {(round.allRounds?.length ? round.allRounds : [round.roundAddress]).map(value => <option key={value} value={value}>{value === round.roundAddress && round.name ? round.name : shortAddress(value)}</option>)}
-        </select>
-      </label>
+  return <section aria-label={c.title} className="space-y-5 p-4 sm:p-5">
+    <div>
+      <h3 className="text-xs font-medium text-muted">{c.title}</h3>
+      {round.name && <p className="mt-1 text-lg font-semibold text-foreground">{round.name}</p>}
     </div>
     {actions.phase !== "cancelled" && <Stepper steps={steps} ariaLabel={c.progress} />}
     {actions.phase === "cancelled" ? <StatusAlert tone="warning" title={c.cancelled}>
