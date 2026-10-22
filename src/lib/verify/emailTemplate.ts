@@ -1,14 +1,11 @@
 /** Self-contained email markup: inline styles/tables, no remote images or fonts. */
 export function buildVerificationEmail(otp: string, purpose: "student" | "organizer" = "student"): { subject: string; text: string; html: string } {
   if (otp.length !== 6 || !/^\d{6}$/.test(otp)) throw new Error("Invalid verification code");
-  if (purpose === "organizer") {
-    const subject = "SqrtFund — Xác thực email liên hệ Organizer";
-    const text = `Mã xác thực email liên hệ Organizer / Organizer contact email code: ${otp}\nCó hiệu lực trong 10 phút / Valid for 10 minutes.\nNhập mã trong đơn đăng ký Organizer. Xác thực email không cấp quyền Organizer; đơn vẫn cần Platform Owner duyệt.\nEnter the code in your Organizer application. Email verification does not grant Organizer access; Platform Owner approval is required.\nKhông chia sẻ mã. Nếu không yêu cầu mã, hãy bỏ qua email này.`;
-    const html = `<html lang="vi"><body style="background:#0c0c12;color:#eeeeef;font-family:Arial,sans-serif;padding:32px"><h1>SqrtFund</h1><h2>Xác thực email liên hệ Organizer</h2><p>Organizer contact email verification</p><p style="font-size:32px;letter-spacing:6px">${otp}</p><p>Mã có hiệu lực trong 10 phút / Valid for 10 minutes.</p><p>Xác thực email không cấp quyền Organizer. Đơn đăng ký vẫn cần Platform Owner duyệt.</p><p>Email verification does not grant Organizer access. Your application requires Platform Owner approval.</p><p>Không chia sẻ mã. Nếu không yêu cầu mã, hãy bỏ qua email này.</p></body></html>`;
-    return { subject, text, html };
-  }
-  const subject = "Mã xác thực SqrtFund / SqrtFund verification code";
-  const text = `SQRTFUND — XÁC THỰC EMAIL TRƯỜNG / UNIVERSITY EMAIL VERIFICATION\n\nMã xác thực của bạn / Your verification code: ${otp}\nCó hiệu lực trong 10 phút / Valid for 10 minutes.\n\nQuay lại SqrtFund và nhập mã trong cửa sổ xác thực email. Sau khi mã được chấp nhận, xác nhận giao dịch trong ví để hoàn tất xác thực sinh viên.\nReturn to SqrtFund and enter this code in the email verification dialog. Once accepted, confirm the wallet transaction to complete student verification.\n\nKhông chia sẻ mã này. SqrtFund không yêu cầu private key hay seed phrase của ví.\nDo not share this code. SqrtFund will never ask for your wallet private key or seed phrase.\n\nNếu bạn không yêu cầu mã, hãy bỏ qua email này.\nIf you did not request this code, ignore this email.\n\nSqrtFund · Quadratic funding for student communities.`;
+  const organizer = purpose === "organizer";
+  const subject = organizer ? "SqrtFund — Xác thực email liên hệ Organizer" : "Mã xác thực SqrtFund / SqrtFund verification code";
+  const text = organizer
+    ? `SQRTFUND — XÁC THỰC EMAIL LIÊN HỆ / CONTACT EMAIL VERIFICATION\n\nMã xác thực của bạn / Your verification code: ${otp}\nCó hiệu lực trong 1 phút / Valid for 1 minute.\n\nNhập mã trong đơn đăng ký Nhà tổ chức. Xác thực email không cấp quyền Organizer; đơn vẫn cần Platform Owner duyệt. Không yêu cầu email trường.\nEnter this code in your Organizer application. Email verification does not grant Organizer access; Platform Owner approval is required. No university email required.\n\nKhông chia sẻ mã. Nếu không yêu cầu mã, hãy bỏ qua email này.`
+    : `SQRTFUND — XÁC THỰC EMAIL TRƯỜNG / UNIVERSITY EMAIL VERIFICATION\n\nMã xác thực của bạn / Your verification code: ${otp}\nCó hiệu lực trong 1 phút / Valid for 1 minute.\n\nQuay lại SqrtFund và nhập mã trong cửa sổ xác thực email. Sau khi mã được chấp nhận, xác nhận giao dịch trong ví để hoàn tất xác thực sinh viên.\nReturn to SqrtFund and enter this code in the email verification dialog. Once accepted, confirm the wallet transaction to complete student verification.\n\nKhông chia sẻ mã này. SqrtFund không yêu cầu private key hay seed phrase của ví.\nDo not share this code. SqrtFund will never ask for your wallet private key or seed phrase.\n\nNếu bạn không yêu cầu mã, hãy bỏ qua email này.\nIf you did not request this code, ignore this email.\n\nSqrtFund · Quadratic funding for student communities.`;
   const html = `<!doctype html>
 <html lang="vi">
 <head>
@@ -32,7 +29,7 @@ export function buildVerificationEmail(otp: string, purpose: "student" | "organi
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#0a0a10;color:#f2f1ec;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">Mã xác thực email trường của bạn có hiệu lực 10 phút. / Your university email verification code is valid for 10 minutes.</div>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">Mã xác thực SqrtFund của bạn có hiệu lực 1 phút. / Your SqrtFund verification code is valid for 1 minute.</div>
   <table role="presentation" width="100%" bgcolor="#0a0a10" style="width:100%;background-color:#0a0a10;">
     <tr><td class="email-wrap" align="center" style="padding:44px 16px;">
       <!--[if mso]><table role="presentation" width="600"><tr><td><![endif]-->
@@ -41,24 +38,24 @@ export function buildVerificationEmail(otp: string, purpose: "student" | "organi
         <tr><td class="email-header" style="padding:26px 34px;border-bottom:1px solid #23232e;">
           <table role="presentation" width="100%" style="width:100%;"><tr>
             <td style="white-space:nowrap;font-size:24px;line-height:32px;font-weight:700;letter-spacing:-1px;color:#f2f1ec;"><span style="color:#e84142;">√</span>&nbsp;Sqrt<span style="color:#e84142;">Fund</span></td>
-            <td align="right" class="header-label" style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:16px;letter-spacing:1.5px;color:#9a9ab0;">STUDENT<br>VERIFICATION</td>
+            <td align="right" class="header-label" style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:16px;letter-spacing:1.5px;color:#9a9ab0;">${organizer ? "ORGANIZER" : "STUDENT"}<br>VERIFICATION</td>
           </tr></table>
         </td></tr>
         <tr><td class="email-content" style="padding:34px;">
           <p style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:16px;font-weight:700;letter-spacing:2px;color:#e84142;">01 / VERIFY YOUR EMAIL</p>
-          <h1 class="email-title" style="margin:14px 0 16px;font-size:39px;line-height:46px;letter-spacing:-1.5px;font-weight:700;color:#f2f1ec;">Xác thực<br>email trường<span style="color:#e84142;">.</span></h1>
-          <p style="font-size:14px;line-height:23px;color:#c3c2d0;">Thêm một bước để tham gia cộng đồng SqrtFund. Nhập mã bên dưới vào cửa sổ xác thực trong ứng dụng.</p>
-          <p lang="en" style="margin-top:9px;font-size:12px;line-height:20px;color:#9a9ab0;">You're one step closer to the SqrtFund community. Enter this code in the app's email verification dialog.</p>
+          <h1 class="email-title" style="margin:14px 0 16px;font-size:39px;line-height:46px;letter-spacing:-1.5px;font-weight:700;color:#f2f1ec;">Xác thực<br>${organizer ? "email liên hệ" : "email trường"}<span style="color:#e84142;">.</span></h1>
+          <p style="font-size:14px;line-height:23px;color:#c3c2d0;">${organizer ? "Xác nhận email liên hệ để hoàn tất đơn đăng ký Nhà tổ chức. Nhập mã bên dưới vào ứng dụng." : "Thêm một bước để tham gia cộng đồng SqrtFund. Nhập mã bên dưới vào cửa sổ xác thực trong ứng dụng."}</p>
+          <p lang="en" style="margin-top:9px;font-size:12px;line-height:20px;color:#9a9ab0;">${organizer ? "Confirm your contact email to complete your Organizer application. Enter this code in the app." : "You are one step closer to the SqrtFund community. Enter this code in the app."}</p>
           <table role="presentation" width="100%" style="width:100%;margin-top:27px;">
             <tr><td align="center" bgcolor="#12121b" style="padding:24px 12px;background-color:#12121b;border:1px solid #633034;border-top:2px solid #e84142;">
               <p style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:16px;letter-spacing:1.5px;color:#9a9ab0;">MÃ XÁC THỰC / VERIFICATION CODE</p>
               <p class="email-code" dir="ltr" style="margin:15px 0 16px;font-family:'Courier New',Courier,monospace;font-size:46px;line-height:54px;font-weight:700;letter-spacing:10px;color:#f2f1ec;white-space:nowrap;">${otp}</p>
-              <p style="font-family:'Courier New',Courier,monospace;font-size:11px;line-height:18px;color:#ff7778;">HIỆU LỰC 10 PHÚT &nbsp;/&nbsp; VALID FOR 10 MIN</p>
+              <p style="font-family:'Courier New',Courier,monospace;font-size:11px;line-height:18px;color:#ff7778;">HIỆU LỰC 1 PHÚT &nbsp;/&nbsp; VALID FOR 1 MIN</p>
             </td></tr>
           </table>
           <table role="presentation" width="100%" style="width:100%;margin-top:26px;">
             <tr><td width="29" valign="top" style="width:29px;padding-top:1px;font-family:'Courier New',Courier,monospace;font-size:11px;line-height:20px;color:#e84142;">02</td>
-              <td style="font-size:12px;line-height:20px;color:#c3c2d0;">Sau khi mã được chấp nhận, xác nhận giao dịch trong ví để hoàn tất xác thực sinh viên.<br><span lang="en" style="font-size:11px;color:#9a9ab0;">Once accepted, confirm the wallet transaction to finish student verification.</span></td>
+              <td style="font-size:12px;line-height:20px;color:#c3c2d0;">${organizer ? "Email đã xác thực là bước đầu tiên. Quyền Organizer chỉ được cấp sau khi Platform Owner duyệt đơn; không cần email trường." : "Sau khi mã được chấp nhận, xác nhận giao dịch trong ví để hoàn tất xác thực sinh viên."}<br><span lang="en" style="font-size:11px;color:#9a9ab0;">${organizer ? "Email verification does not grant Organizer access. Platform Owner approval is required; no university email needed." : "Once accepted, confirm the wallet transaction to finish student verification."}</span></td>
             </tr>
           </table>
           <table role="presentation" width="100%" style="width:100%;margin-top:23px;">

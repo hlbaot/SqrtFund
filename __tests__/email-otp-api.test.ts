@@ -34,6 +34,7 @@ beforeEach(() => {
   vi.stubEnv("BLOCKED_EMAIL_DOMAINS", "");
   f.from.mockImplementation((table: string) => {
     const builder = {
+      update: (value: unknown) => { f.operations.push({ table, method: "update", value }); return { eq: async () => ({ error: null }) }; },
       select: (value: unknown) => { f.operations.push({ table, method: "select", value }); return builder; },
       eq: () => builder, lt: () => builder,
       delete: () => { f.operations.push({ table, method: "delete", value: null }); return builder; },
@@ -52,6 +53,10 @@ describe("request OTP boundary", () => {
     const response = await requestOtp(req({ email: "a@hust.edu.vn", address }));
     expect(response.status).toBe(200); expect(f.validate).toHaveBeenCalledWith();
     const stored = f.reserve.mock.calls[0][1]; expect(stored.registry_address).toBe(registry);
+    const data = await response.json();
+    expect(Date.parse(data.expiresAt) - Date.now()).toBeGreaterThan(59_000);
+    expect(Date.parse(data.expiresAt) - Date.now()).toBeLessThanOrEqual(60_000);
+    expect(f.operations).toContainEqual({ table: "otp_requests", method: "update", value: { expires_at: data.expiresAt } });
   });
   it.each([undefined, "", "   "])("allows open-edu requests when allowlist is %s", async domains => {
     vi.stubEnv("ALLOWED_EMAIL_DOMAINS", domains); result(); result();

@@ -1,3 +1,4 @@
+import { setOtpExpiry } from "@/lib/verify/expiry";
 import { randomUUID } from "node:crypto";
 import { isAddress } from "viem";
 import { normalizeContactEmail, validContactEmail } from "@/lib/organizerContact";
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
       if (error) throw databaseError(error);
       if (data?.status === "RATE_LIMITED") return failure("RATE_LIMITED", 429, { retryAfter: data.retryAfter });
       if (data?.status !== "OK") throw new Error("OTP reservation unavailable");
+      const expiresAt = await setOtpExpiry(db, "organizer_contact_otps", id);
       try { await sendOtp(email, otp, "organizer"); }
       catch (error) {
         logServerError("mail", error);
@@ -42,7 +44,7 @@ export async function POST(request: Request) {
         await db.from("organizer_contact_otps").update({ used: true }).eq("id", id);
         return failure("EMAIL_SEND_FAILED", 502);
       }
-      return json({ ok: true, requestId: id, expiresAt: data.expiresAt, resendAfter: 60 });
+      return json({ ok: true, requestId: id, expiresAt, resendAfter: 60 });
     }
     if (typeof body.requestId !== "string" || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(body.requestId)
       || typeof body.otp !== "string" || !/^\d{6}$/.test(body.otp)) return failure("INVALID_REQUEST");

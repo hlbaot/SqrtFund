@@ -5,7 +5,7 @@ import { normalizeContactEmail } from "@/lib/organizerContact";
 
 export function useOrganizerEmailOtp(wallet: string | undefined, email: string) {
   const now = useCurrentTimestamp() * 1000;
-  const [challenge, setChallenge] = useState<{ id: string; identity: string; resendAt: number }>();
+  const [challenge, setChallenge] = useState<{ id: string; identity: string; resendAt: number; expiresAt?: number }>();
   const [proof, setProof] = useState<{ token: string; expiresAt: number; identity: string }>();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -14,6 +14,8 @@ export function useOrganizerEmailOtp(wallet: string | undefined, email: string) 
   const submitting = useRef(false);
   const identity = `${wallet?.toLowerCase()}:${normalizeContactEmail(email)}`;
   const currentChallenge = challenge?.identity === identity ? challenge : undefined;
+  const expiresIn = currentChallenge?.expiresAt ? Math.max(0, Math.ceil((currentChallenge.expiresAt - now) / 1000)) : 0;
+  const expired = Boolean(currentChallenge?.id && currentChallenge.expiresAt && expiresIn === 0);
   const verified = proof?.identity === identity && proof.expiresAt > now;
   function reset() {
     generation.current++;
@@ -22,6 +24,7 @@ export function useOrganizerEmailOtp(wallet: string | undefined, email: string) 
   }
   async function act(action: "request" | "verify") {
     if (submitting.current) return;
+    if (action === "verify" && expired) { setError("OTP_EXPIRED"); return; }
     submitting.current = true; setBusy(true); setError(undefined);
     const run = generation.current;
     try {
@@ -32,11 +35,11 @@ export function useOrganizerEmailOtp(wallet: string | undefined, email: string) 
       const data = await response.json();
       if (run !== generation.current) return;
       if (!response.ok || !data.ok) {
-        if (action === "request" && typeof data.retryAfter === "number") setChallenge(previous => ({ id: previous?.id ?? "", identity, resendAt: Date.now() + data.retryAfter * 1000 }));
+        if (action === "request" && typeof data.retryAfter === "number") setChallenge(previous => ({ id: previous?.id ?? "", identity, expiresAt: previous?.expiresAt, resendAt: Date.now() + data.retryAfter * 1000 }));
         throw new Error(data.code || "SERVICE_UNAVAILABLE");
       }
       if (action === "request") {
-        setChallenge({ id: data.requestId, identity, resendAt: Date.now() + data.resendAfter * 1000 });
+        setChallenge({ id: data.requestId, identity, expiresAt: Date.parse(data.expiresAt), resendAt: Date.now() + data.resendAfter * 1000 });
         setProof(undefined); setCode("");
       } else setProof({ token: data.emailVerificationToken, expiresAt: data.expiresAt, identity });
     } catch (error) {
@@ -46,7 +49,7 @@ export function useOrganizerEmailOtp(wallet: string | undefined, email: string) 
     }
   }
   return {
-    code, setCode, busy, error, reset, verified: Boolean(verified),
+    code, setCode, busy, error, reset, expiresIn, expired, verified: Boolean(verified),
     token: verified ? proof?.token : undefined,
     hasChallenge: Boolean(currentChallenge?.id),
     resendIn: currentChallenge ? Math.max(0, Math.ceil((currentChallenge.resendAt - now) / 1000)) : 0,

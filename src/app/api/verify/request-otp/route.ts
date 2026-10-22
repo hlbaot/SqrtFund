@@ -1,3 +1,4 @@
+import { setOtpExpiry } from "@/lib/verify/expiry";
 import { randomUUID } from "node:crypto";
 import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { isAddress, keccak256, toBytes } from "viem";
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
       return json({ code: "ALREADY_VERIFIED", registryAddress: registry, chainId: 43113, emailHash, expiry: expiry.toString(), signature });
     }
     if (reservation.status !== "OK" || !reservation.expiresAt) throw new Error("Reservation unavailable");
+    const expiresAt = await setOtpExpiry(db, "otp_requests", id);
     stage = "mail";
     try { await sendOtp(deliveryEmail, otp); }
     catch (error) {
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
       if (error instanceof VerificationError) return failure(error.code, error.status, { missing: error.missing });
       return failure("EMAIL_SEND_FAILED", 502);
     }
-    return json({ requestId: id, expiresAt: reservation.expiresAt, resendAfter: 60 });
+    return json({ requestId: id, expiresAt, resendAfter: 60 });
   } catch (error) {
     logServerError(stage, error);
     return error instanceof VerificationError ? failure(error.code, error.status, error.missing ? { missing: error.missing } : {}) : failure("SERVICE_UNAVAILABLE", 503);

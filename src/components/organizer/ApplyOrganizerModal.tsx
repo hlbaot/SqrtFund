@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { isAddress } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog } from "@/components/ui/Dialog";
+import { OtpInput } from "@/components/ui/OtpInput";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -263,18 +264,24 @@ function OrganizerApplicationForm({
                     disabled={isSubmitting || emailOtp.busy || emailOtp.resendIn > 0 || !validContactEmail(email) || !walletAddress}>
                     {emailOtp.busy ? (vi ? "Đang xử lý…" : "Processing…") : emailOtp.resendIn > 0 ? `${vi ? "Gửi lại sau" : "Resend in"} ${emailOtp.resendIn}s` : (vi ? "Gửi mã OTP" : "Send OTP")}
                   </Button>
-                  {emailOtp.hasChallenge && <div className="flex flex-wrap items-center gap-2">
-                    <Input aria-label={vi ? "Mã OTP email liên hệ" : "Contact email OTP"} placeholder={vi ? "Nhập mã 6 số" : "6-digit code"}
-                      inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={emailOtp.code}
-                      onChange={event => emailOtp.setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} disabled={isSubmitting || emailOtp.busy} />
-                    <Button type="button" variant="outline" onClick={() => void emailOtp.verifyOtp().then(() => setFieldErrors(previous => ({ ...previous, email: undefined })))}
-                      disabled={isSubmitting || emailOtp.busy || !/^\d{6}$/.test(emailOtp.code)}>{vi ? "Xác thực mã" : "Verify code"}</Button>
+                  {emailOtp.hasChallenge && <div className="space-y-3">
+                    <OtpInput value={emailOtp.code} onChange={emailOtp.setCode} locale={locale}
+                      disabled={isSubmitting || emailOtp.busy || emailOtp.expired} />
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p role="status" className={`text-xs font-mono ${emailOtp.expired ? "text-primary" : "text-muted"}`}>
+                        {emailOtp.expired
+                          ? (vi ? "Mã đã hết hạn. Hãy gửi lại mã mới." : "Code expired. Request a new code.")
+                          : `${vi ? "Mã hết hạn sau" : "Code expires in"} ${Math.floor((emailOtp.expiresIn ?? 60) / 60)}:${String((emailOtp.expiresIn ?? 60) % 60).padStart(2, "0")}`}
+                      </p>
+                      <Button type="button" variant="outline" onClick={() => void emailOtp.verifyOtp().then(() => setFieldErrors(previous => ({ ...previous, email: undefined })))}
+                        disabled={isSubmitting || emailOtp.busy || emailOtp.expired || !/^\d{6}$/.test(emailOtp.code)}>{vi ? "Xác thực mã" : "Verify code"}</Button>
+                    </div>
                   </div>}
                 </>}
                 {emailOtp.error && <p role="alert" className="text-xs text-primary">{emailOtp.error in t.verification.emailErrors
                   ? t.verification.emailErrors[emailOtp.error as keyof typeof t.verification.emailErrors]
                   : (vi ? "Không thể xác thực email. Vui lòng thử lại." : "Email verification failed. Please retry.")}</p>}
-                <p className="text-xs text-muted">{vi ? "Mã có hiệu lực 10 phút. Xác thực email không cấp quyền Organizer và không yêu cầu email trường." : "Codes expire after 10 minutes. Email verification does not grant Organizer access; a university email is not required."}</p>
+                <p className="text-xs text-muted">{vi ? "Mã có hiệu lực 1 phút. Xác thực email không cấp quyền Organizer và không yêu cầu email trường." : "Codes expire after 1 minute. Email verification does not grant Organizer access; a university email is not required."}</p>
               </div>
             </div>
 
