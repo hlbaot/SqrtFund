@@ -32,6 +32,7 @@ export type EnrichedProject = Project & {
   sumSqrtRaw: bigint;
   totalDonatedRaw: bigint;
   estimatedMatchingRaw: bigint;
+  finalMatchingRaw?: bigint;
   claimed: boolean;
   approved: boolean;
   rejected: boolean;
@@ -39,7 +40,7 @@ export type EnrichedProject = Project & {
 
 export function useProjects(customRoundAddress?: Address, options: { enabled?: boolean } = {}) {
   const enabled = options.enabled !== false;
-  const { roundAddress: defaultRoundAddress, admin } = useRound(customRoundAddress);
+  const { roundAddress: defaultRoundAddress, admin, finalized } = useRound(customRoundAddress);
   const { address, isConnected, chainId } = useAccount();
   const viewer = isConnected && chainId === TARGET_CHAIN_ID ? address : undefined;
   const roundAddress = customRoundAddress || defaultRoundAddress;
@@ -99,6 +100,28 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     | [readonly bigint[], readonly bigint[]]
     | undefined;
 
+  // Read the recorded settlement, rather than presenting a preview as a finalized payout.
+  const payoutProjects = useMemo(() => projectsData?.[0]?.filter(project => project.approved) ?? [], [projectsData]);
+  const finalPayouts = useReadContracts({
+    allowFailure: true,
+    contracts: payoutProjects.map(project => ({
+      address: roundAddress, abi: qfRoundAbi, functionName: "payoutOf" as const,
+      args: [project.id] as const, chainId: TARGET_CHAIN_ID,
+    })),
+    query: {
+      enabled: enabled && Boolean(roundAddress) && finalized === true && payoutProjects.length > 0,
+      staleTime: QUERY_STALE_MS, gcTime: QUERY_GC_MS, refetchInterval: 15000, ...roundReadRetry,
+    },
+  });
+  const finalMap = useMemo(() => {
+    const map = new Map<string, bigint>();
+    if (finalized) payoutProjects.forEach((project, index) => {
+      const result = finalPayouts.data?.[index];
+      if (result?.status === "success" && typeof result.result === "bigint") map.set(project.id.toString(), result.result);
+    });
+    return map;
+  }, [finalized, payoutProjects, finalPayouts.data]);
+
   const estimatedMap = useMemo(() => {
     const map = new Map<string, bigint>();
     if (previewData && previewData[0] && previewData[1]) {
@@ -120,6 +143,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
       const matchingBigInt = estimatedMap.get(pIdStr) ?? 0n;
       const totalDonatedNum = Number(p.totalDonated) / 1_000_000;
       const matchingNum = Number(matchingBigInt) / 1_000_000;
+      const finalMatchingRaw = finalMap.get(pIdStr);
 
       return {
         id: pIdStr,
@@ -134,6 +158,8 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
         supporterCount: Number(p.donorCount),
         totalDonated: totalDonatedNum,
         estimatedMatching: matchingNum,
+        finalMatching: finalMatchingRaw === undefined ? undefined : Number(finalMatchingRaw) / 1_000_000,
+        finalMatchingRaw,
         status: p.rejected ? "rejected" : p.approved ? "approved" : "pending",
         rejected: p.rejected === true,
         rank: index + 1,
@@ -146,7 +172,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
         approved: p.approved,
       };
     });
-  }, [projectsData, estimatedMap, roundAddress]);
+  }, [projectsData, estimatedMap, roundAddress, finalMap]);
 
   const visibleProjects = useMemo(() => projects.filter(project => canViewProject(project, viewer, admin)), [projects, viewer, admin]);
 
@@ -157,6 +183,9 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     isLoading: enabled && Boolean(roundAddress) && ((!probeResolved && !rejectionProbe.isError) || (probeResolved && isLoading)),
     isError: (!probeResolved && rejectionProbe.isError) || isError || contractData?.[0]?.status === "failure",
     // A failed capability probe must be retried before choosing a tuple ABI.
-    refetch: () => probeResolved ? refetch() : rejectionProbe.refetch(),
+    refetch: () => {
+      if (finalized && payoutProjects.length) void finalPayouts.refetch();
+      return probeResolved ? refetch() : rejectionProbe.refetch();
+    },
   };
 }
