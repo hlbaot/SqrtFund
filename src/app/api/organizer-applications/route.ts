@@ -9,6 +9,7 @@ import {
 } from "@/lib/server/organizerApplications";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
@@ -23,8 +24,9 @@ export async function GET(request: Request) {
     }
 
     const applications = await listOrganizerApplications({ walletAddress, status });
-    return NextResponse.json({ ok: true, applications });
+    return NextResponse.json({ ok: true, applications }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (error instanceof VerificationError) return NextResponse.json({ ok: false, error: error.code }, { status: error.status, headers: { "Cache-Control": "no-store" } });
     console.error("[api/organizer-applications] GET error:", error);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
@@ -118,6 +120,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ ok: true, application });
   } catch (error) {
+    if (error instanceof VerificationError) return NextResponse.json({ ok: false, error: error.code }, { status: error.status, headers: { "Cache-Control": "no-store" } });
     console.error("[api/organizer-applications] PATCH error:", error);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }

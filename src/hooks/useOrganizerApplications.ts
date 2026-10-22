@@ -8,18 +8,18 @@ export type { OrganizerApplication };
 export function useMyOrganizerApplication(walletAddress?: string) {
   const query = useQuery({
     queryKey: ["organizer-application", walletAddress?.toLowerCase()],
-    queryFn: async (): Promise<OrganizerApplication | null> => {
+    queryFn: async ({ signal }): Promise<OrganizerApplication | null> => {
       if (!walletAddress) return null;
-      const res = await fetch(`/api/organizer-applications?walletAddress=${encodeURIComponent(walletAddress)}`);
+      const res = await fetch(`/api/organizer-applications?walletAddress=${encodeURIComponent(walletAddress)}`, { cache: "no-store", signal });
       if (!res.ok) throw new Error("Failed to fetch application");
       const json = await res.json();
-      if (!json.ok || !Array.isArray(json.applications) || json.applications.length === 0) {
-        return null;
-      }
-      return json.applications[0];
+      if (!json.ok || !Array.isArray(json.applications)) throw new Error("Invalid application response");
+      return json.applications[0] ?? null;
     },
     enabled: Boolean(walletAddress),
     staleTime: 15_000,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: "always",
   });
 
   const app = query.data ?? null;
@@ -43,19 +43,21 @@ export function useOrganizerApplicationsAdmin(statusFilter?: string) {
 
   const query = useQuery({
     queryKey: ["admin-organizer-applications", statusFilter || "all"],
-    queryFn: async (): Promise<OrganizerApplication[]> => {
+    queryFn: async ({ signal }): Promise<OrganizerApplication[]> => {
       const url = statusFilter && statusFilter !== "all"
         ? `/api/organizer-applications?status=${encodeURIComponent(statusFilter)}`
         : `/api/organizer-applications`;
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: "no-store", signal });
       if (!res.ok) throw new Error("Failed to fetch applications");
       const json = await res.json();
       if (!json.ok || !Array.isArray(json.applications)) {
-        return [];
+        throw new Error("Invalid application response");
       }
       return json.applications;
     },
-    staleTime: 10_000,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: "always",
   });
 
   const updateMutation = useMutation({
@@ -81,9 +83,20 @@ export function useOrganizerApplicationsAdmin(statusFilter?: string) {
       }
       return data.application as OrganizerApplication;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["admin-organizer-applications"] });
-      void queryClient.invalidateQueries({ queryKey: ["organizer-application"] });
+    onSuccess: async (updated) => {
+      await queryClient.cancelQueries({ queryKey: ["admin-organizer-applications"] });
+      // Cập nhật ngay mọi bộ lọc, rồi đối chiếu lại server; không chờ reload.
+      for (const [key] of queryClient.getQueriesData({ queryKey: ["admin-organizer-applications"] })) {
+        queryClient.setQueryData<OrganizerApplication[]>(key, previous => {
+          if (!previous) return previous;
+          const remaining = previous.filter(app => app.id !== updated.id);
+          return key[1] === "all" || key[1] === updated.status ? [updated, ...remaining] : remaining;
+        });
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-organizer-applications"] }),
+        queryClient.invalidateQueries({ queryKey: ["organizer-application"] }),
+      ]);
     },
   });
 

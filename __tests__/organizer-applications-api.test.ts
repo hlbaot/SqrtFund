@@ -3,6 +3,32 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/emailWalletIdentity", () => ({ ensureEmailWallet: vi.fn().mockResolvedValue(undefined) }));
 
+// Database double: the production service must never use per-instance memory.
+const database = vi.hoisted(() => ({ rows: [] as Record<string, unknown>[], error: null as null | { code: string } }));
+vi.mock("@/lib/verify/supabaseAdmin", () => ({ supabaseAdmin: () => ({ from: () => {
+  let operation = "read";
+  let values: Record<string, unknown> = {};
+  const filters: [string, unknown][] = [];
+  const execute = () => {
+    if (database.error) return { data: null, error: database.error };
+    let rows = database.rows.filter(row => filters.every(([key, value]) => row[key] === value));
+    if (operation === "insert") { database.rows.push(values); rows = [values]; }
+    if (operation === "update") rows.forEach(row => Object.assign(row, values));
+    return { data: rows, error: null };
+  };
+  const query = {
+    select: () => query, order: () => query,
+    ilike: (key: string, value: string) => { filters.push([key, value]); return query; },
+    eq: (key: string, value: unknown) => { filters.push([key, value]); return query; },
+    insert: (input: Record<string, unknown>) => { operation = "insert"; values = input; return query; },
+    update: (input: Record<string, unknown>) => { operation = "update"; values = input; return query; },
+    single: async () => { const result = execute(); return { ...result, data: result.data?.[0] ?? null }; },
+    maybeSingle: async () => query.single(),
+    then: (resolve: (result: ReturnType<typeof execute>) => unknown) => Promise.resolve(execute()).then(resolve),
+  };
+  return query;
+} }) }));
+
 import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { VerificationError } from "@/lib/verify/errors";
 import { issueOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
@@ -196,4 +222,21 @@ it("rejects an old email proof after email ownership is bound to another wallet"
   vi.mocked(ensureEmailWallet).mockRejectedValueOnce(new VerificationError("EMAIL_ALREADY_USED",409));
   const response=await POST(new Request("http://localhost/api/organizer-applications",{method:"POST",body:JSON.stringify({walletAddress:wallet,organizationName:"Test Club",contactEmail:email,reason:"Organize a funding round",emailVerificationToken:issueOrganizerEmailProof(email,wallet).emailVerificationToken})}));
   expect(response.status).toBe(409); expect(await response.json()).toMatchObject({error:"EMAIL_ALREADY_USED"});
+});
+
+it("returns a database failure instead of a successful empty list", async () => {
+  database.error = { code: "42P01" };
+  try {
+    const response = await GET(new Request("http://localhost/api/organizer-applications"));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ ok: false, error: "DB_SCHEMA_MISMATCH" });
+    const patch = await PATCH(new Request("http://localhost/api/organizer-applications", {
+      method: "PATCH", body: JSON.stringify({ id: "existing", status: "approved" }),
+    }));
+    expect(patch.status).toBe(503);
+  } finally { database.error = null; }
+});
+it("does not cache organizer application lists", async () => {
+  const response = await GET(new Request("http://localhost/api/organizer-applications"));
+  expect(response.headers.get("cache-control")).toBe("no-store");
 });
