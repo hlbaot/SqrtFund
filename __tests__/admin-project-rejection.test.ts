@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { AdminView } from "@/views/admin";
 import { copy } from "@/lib/copy";
 import { projectReviewCopy } from "@/lib/projectReview";
-const state = vi.hoisted(() => ({ supports: true, finalized: false, cancelled: false, wallet: "0x1111111111111111111111111111111111111111", now: 1000, tab: "organizer", authLoading: false, authError: false, access: true }));
+const state = vi.hoisted(() => ({ supports: true, finalized: false, cancelled: false, approved: false, wallet: "0x1111111111111111111111111111111111111111", now: 1000, tab: "organizer", authLoading: false, authError: false, access: true, canCreate: true, fundingOwner: false, credit: 0n }));
 vi.mock("@/hooks/useCurrentTimestamp", () => ({ useCurrentTimestamp: () => state.now }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), useSearchParams: () => new URLSearchParams({ tab: state.tab }) }));
 vi.mock("wagmi", () => ({
@@ -15,7 +15,7 @@ vi.mock("wagmi", () => ({
 }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}) }));
 vi.mock("@/hooks/useTxFlow", () => ({ useTxFlow: () => vi.fn() }));
-vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ role: state.access ? "admin" : "guest", isAuthorizationLoading: state.authLoading, isAuthorizationError: state.authError }) }));
+vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ role: state.access ? "admin" : "guest", canCreateRound: state.canCreate, isAuthorizationLoading: state.authLoading, isAuthorizationError: state.authError }) }));
 vi.mock("@/hooks/useAdminRounds", () => ({ useAdminRounds: () => ({
   roundAddress: "0x2222222222222222222222222222222222222222",
   rounds: [
@@ -40,17 +40,18 @@ vi.mock("@/hooks/useRound", () => ({ useRound: () => ({
   isLoading: false,
 }) }));
 vi.mock("@/hooks/useProjects", () => ({ useProjects: () => ({ supportsRejection: state.supports, projects: [
-  { id: "1", contractId: 1n, name: "PendingAlpha", ownerAddress: "0x3333333333333333333333333333333333333333", description: "D", contactUrl: "", approved: false, rejected: false },
+  { id: "1", contractId: 1n, name: "PendingAlpha", ownerAddress: "0x3333333333333333333333333333333333333333", description: "D", contactUrl: "", approved: state.approved, rejected: false, totalDonated: 4, estimatedMatching: 99, finalMatching: 6, supporterCount: 3 },
   { id: "2", contractId: 2n, name: "RejectedBeta", ownerAddress: "0x3333333333333333333333333333333333333333", description: "D", contactUrl: "", approved: false, rejected: true },
 ] }) }));
 vi.mock("@/lib/context/locale", async () => { const { copy } = await import("@/lib/copy"); return { useLocale: () => ({ locale: "vi", t: copy.vi }) }; });
-vi.mock("@/components/admin/CreateRoundForm", () => ({ CreateRoundForm: () => null }));
+vi.mock("@/hooks/useInitialPoolDeposit", () => ({ useInitialPoolDeposit: () => ({ supported: true, isOwner: state.fundingOwner, credit: state.credit }) }));
+vi.mock("@/components/admin/CreateRoundForm", () => ({ CreateRoundForm: () => createElement("p", null, "CreateRoundMarker") }));
 vi.mock("@/components/admin/DepositPoolForm", () => ({ DepositPoolForm: () => null }));
 vi.mock("@/components/admin/MintTestUsdcForm", () => ({ MintTestUsdcForm: () => null }));
 vi.mock("@/components/admin/FinalizeButton", () => ({ FinalizeButton: () => null }));
 vi.mock("@/components/round/RoundCancellationPanel", () => ({ RoundCancellationPanel: () => null }));
 vi.mock("@/components/common/AOSInit", () => ({ AOSInit: () => null }));
-beforeEach(() => Object.assign(state, { supports: true, finalized: false, cancelled: false, wallet: "0x1111111111111111111111111111111111111111", now: 1000, tab: "organizer", authLoading: false, authError: false, access: true }));
+beforeEach(() => Object.assign(state, { supports: true, finalized: false, cancelled: false, approved: false, wallet: "0x1111111111111111111111111111111111111111", now: 1000, tab: "organizer", authLoading: false, authError: false, access: true, canCreate: true, fundingOwner: false, credit: 0n }));
 const render = () => renderToStaticMarkup(createElement(AdminView));
 it("renders one round selector and one control panel even with multiple rounds", () => {
   const html = render();
@@ -107,4 +108,23 @@ it("shows a retryable read error instead of denying an unresolved wallet", () =>
 
 it("limits Organizer round options to rounds owned by the connected wallet", () => {
   expect(render()).not.toContain("0x6666666666666666666666666666666666666666");
+});
+
+it("uses the confirmed payout for the finalized admin table instead of the matching preview", () => {
+  state.finalized = true; state.approved = true;
+  const html = render();
+  const table = html.match(/<table[\s\S]*?<\/table>/)?.[0];
+  expect(table).toContain("6.00 USDC");
+  expect(table).toContain("10.00 USDC");
+  expect(table).not.toContain("99.00 USDC");
+  expect(table).not.toContain("103.00 USDC");
+});
+
+it("keeps the creation form available to the owner of the already-deployed funding-only Factory", () => {
+  state.canCreate = false; state.fundingOwner = true;
+  expect(render()).toContain("CreateRoundMarker");
+});
+it("keeps refundable deposits accessible after Organizer authorization is revoked", () => {
+  state.access = false; state.canCreate = false; state.credit = 25_000_000n;
+  expect(render()).toContain("CreateRoundMarker");
 });

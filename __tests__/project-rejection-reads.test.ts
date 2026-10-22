@@ -14,6 +14,7 @@ vi.mock("wagmi", () => ({
   useAccount: () => ({ address: state.viewer, isConnected: true, chainId: 43113 }),
   useReadContract: () => ({ data: state.modern ? false : undefined, isSuccess: state.modern, isError: !state.modern, error: state.modern ? undefined : state.rpcError ? new Error("RPC down") : new ContractFunctionZeroDataError({ functionName: "rejected" }), refetch: state.retryProbe }),
   useReadContracts: (options: { contracts: { abi: Abi }[]; query: { enabled: boolean } }) => {
+    if (!options.contracts.length) return { data: [], refetch: vi.fn() };
     state.enabled = options.query.enabled; state.lastAbi = options.contracts[0].abi;
     const sourceAbi = state.modern ? qfRoundAbi : legacyProjectAbi;
     const result = state.modern ? [[{ ...raw, rejected: true }], 1n] as const : [[raw], 1n] as const;

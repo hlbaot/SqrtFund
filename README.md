@@ -217,7 +217,7 @@ SqrtFund vận hành thử nghiệm trên mạng Avalanche Fuji với MockUSDC (
 | Contract | Địa chỉ | Explorer |
 | :--- | :--- | :--- |
 | **StudentRegistry** | `0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e` | [Snowtrace](https://testnet.snowtrace.io/address/0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e) |
-| **RoundFactory** | `0xbC077E28826D0738E56491800bdb8D5725F9e5b3` | [Snowtrace](https://testnet.snowtrace.io/address/0xbC077E28826D0738E56491800bdb8D5725F9e5b3) |
+| **RoundFactory** | `0xA8F91a1e7DD90F64c105c3CAa8FBe153c6bfc55f` | [Snowtrace](https://testnet.snowtrace.io/address/0xA8F91a1e7DD90F64c105c3CAa8FBe153c6bfc55f) |
 | **MockUSDC** | `0xFf56491e29085043DbB11cd01D54cC1449A3d686` | [Snowtrace](https://testnet.snowtrace.io/address/0xFf56491e29085043DbB11cd01D54cC1449A3d686) |
 
 Bạn có thể kiểm tra trực tiếp các hợp đồng đã triển khai bằng lệnh `cast` của Foundry:
@@ -229,7 +229,7 @@ cast call 0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e "attester()(address)" \
 # Kỳ vọng: 0x5C2001c91aEFFaEDf9ef438cA50Bcddd23ce6181
 
 # 2. Kiểm tra RoundFactory gắn với đúng StudentRegistry
-cast call 0xbC077E28826D0738E56491800bdb8D5725F9e5b3 "studentRegistry()(address)" \
+cast call 0xA8F91a1e7DD90F64c105c3CAa8FBe153c6bfc55f "studentRegistry()(address)" \
   --rpc-url https://api.avax-test.network/ext/bc/C/rpc
 # Kỳ vọng: 0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e
 
@@ -271,7 +271,6 @@ Sao chép `.env.example` thành `.env.local` và điền cấu hình phù hợp:
 | `NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS` | Công khai | Địa chỉ hợp đồng `StudentRegistry` |
 | `NEXT_PUBLIC_FACTORY_ADDRESS` | Công khai | Địa chỉ hợp đồng `RoundFactory` |
 | `NEXT_PUBLIC_USDC_ADDRESS` | Công khai | Địa chỉ token `MockUSDC` |
-| `STUDENT_REGISTRY_ADDRESS` | Server | Cùng địa chỉ registry, dùng cho backend API và script |
 | `ATTESTER_ADDRESS` | Server | Địa chỉ ví attester ký EIP-712 |
 | `ATTESTER_PRIVATE_KEY` | Bí mật | Khóa bí mật của ví attester (chỉ lưu ở server) |
 | `OTP_SECRET` | Bí mật | Khóa bí mật dùng để băm mã OTP |
@@ -308,7 +307,7 @@ pnpm build
 
 ```bash
 cd contracts
-export STUDENT_REGISTRY_ADDRESS=<địa_chỉ_registry>
+export NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS=<địa_chỉ_registry>
 forge script script/DeployFactory.s.sol:DeployFactory \
   --rpc-url https://api.avax-test.network/ext/bc/C/rpc \
   --account <keystore_của_bạn> --broadcast

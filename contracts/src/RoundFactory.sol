@@ -2,16 +2,48 @@
 pragma solidity ^0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {QFRound} from "./QFRound.sol";
+import {PrefundedQFRound} from "./PrefundedQFRound.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title RoundFactory
-/// @notice Factory tạo và theo dõi các vòng gọi vốn của nhiều Organizer trên Avalanche Fuji.
-contract RoundFactory is Ownable {
+/// @notice Multi-Organizer round factory with wallet-owned deposits before creation.
+contract RoundFactory is Ownable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     address[] public rounds;
+    mapping(address depositor => mapping(address token => uint256 amount)) public initialPoolDeposits;
     address public immutable studentRegistry;
     // Quyền này chỉ cho phép tạo vòng mới, không cấp quyền quản trị vòng của ví khác.
     mapping(address => bool) public authorizedOrganizers;
     error InvalidRegistry();
+    error InvalidDeposit();
+    error InsufficientDeposit();
+    error UnsupportedToken();
+    event InitialPoolDeposited(address indexed depositor, address indexed token, uint256 amount);
+    event InitialPoolWithdrawn(address indexed depositor, address indexed token, uint256 amount);
+
+    function fundingVersion() external pure returns (uint256) { return 1; }
+
+    /// @notice Reserve funds before creating any round. Credits belong to the depositing wallet.
+    function depositInitialPool(address token, uint256 amount) external nonReentrant onlyOrganizer {
+        if (amount == 0 || token.code.length == 0) revert InvalidDeposit();
+        IERC20 asset = IERC20(token);
+        uint256 beforeBalance = asset.balanceOf(address(this));
+        asset.safeTransferFrom(msg.sender, address(this), amount);
+        if (asset.balanceOf(address(this)) != beforeBalance + amount) revert UnsupportedToken();
+        initialPoolDeposits[msg.sender][token] += amount;
+        emit InitialPoolDeposited(msg.sender, token, amount);
+    }
+
+    /// @notice Refund unused credit, including after factory ownership has changed.
+    function withdrawInitialPool(address token, uint256 amount) external nonReentrant {
+        if (amount == 0) revert InvalidDeposit();
+        if (initialPoolDeposits[msg.sender][token] < amount) revert InsufficientDeposit();
+        initialPoolDeposits[msg.sender][token] -= amount;
+        IERC20(token).safeTransfer(msg.sender, amount);
+        emit InitialPoolWithdrawn(msg.sender, token, amount);
+    }
 
     event RoundCreated(address indexed roundAddress, address indexed admin, address token, string name);
     event OrganizerUpdated(address indexed organizer, bool authorized);
@@ -47,8 +79,28 @@ contract RoundFactory is Ownable {
         uint256 maxDonation,
         uint256 maxMatchBps,
         uint256 maxPerRound
-    ) external onlyOrganizer returns (address roundAddress) {
-        QFRound round = new QFRound(
+    ) external nonReentrant onlyOrganizer returns (address roundAddress) {
+        return _createRound(name, organizer, token, startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound, 0);
+    }
+
+    /// @notice Consumes this wallet's confirmed deposit. Any failure restores both funds and credit.
+    function createFundedRound(
+        string calldata name, string calldata organizer, address token,
+        uint256 startTime, uint256 endTime, uint256 minDonation, uint256 maxDonation,
+        uint256 maxMatchBps, uint256 maxPerRound, uint256 initialPool
+    ) external nonReentrant onlyOrganizer returns (address roundAddress) {
+        if (initialPool == 0) revert InvalidDeposit();
+        if (initialPoolDeposits[msg.sender][token] < initialPool) revert InsufficientDeposit();
+        initialPoolDeposits[msg.sender][token] -= initialPool;
+        return _createRound(name, organizer, token, startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound, initialPool);
+    }
+
+    function _createRound(
+        string calldata name, string calldata organizer, address token,
+        uint256 startTime, uint256 endTime, uint256 minDonation, uint256 maxDonation,
+        uint256 maxMatchBps, uint256 maxPerRound, uint256 initialPool
+    ) private returns (address roundAddress) {
+        PrefundedQFRound round = new PrefundedQFRound(
             name,
             organizer,
             msg.sender, // Cố định admin theo ví tạo vòng, không cho truyền một admin tùy ý.
@@ -59,10 +111,17 @@ contract RoundFactory is Ownable {
             maxDonation,
             maxMatchBps,
             maxPerRound,
-            studentRegistry
+            studentRegistry,
+            initialPool
         );
 
         roundAddress = address(round);
+        if (initialPool > 0) {
+            IERC20 asset = IERC20(token);
+            uint256 beforeBalance = asset.balanceOf(roundAddress);
+            asset.safeTransfer(roundAddress, initialPool);
+            if (asset.balanceOf(roundAddress) != beforeBalance + initialPool) revert UnsupportedToken();
+        }
         rounds.push(roundAddress);
 
         emit RoundCreated(roundAddress, msg.sender, token, name);

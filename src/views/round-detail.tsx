@@ -63,7 +63,7 @@ export function RoundDetailView() {
     {loading ? <><div role="status" aria-label={t.competition.loading} className="competition-skeleton h-[330px] border border-line bg-surface" /><LeaderboardSkeleton /></> : error ? <PresentationState state="error" onRetry={() => { round.refetch(); void refetch(); }} /> : !exists ? <PresentationState state="empty"><h1>{t.competition.notFound}</h1><p className="mt-2 text-sm text-muted">{t.competition.notFoundHint}</p><Link href="/rounds" className="competition-action mt-5 inline-flex">{t.competition.rounds}</Link></PresentationState> : <>
       <RoundCancellationPanel projectNames={Object.fromEntries(projects.map(project => [project.id, project.name]))} roundAddress={round.roundAddress} />
       <StudentVerifyBox />
-      <RoundHeader round={summary} choices={choices.length ? choices : [{ id: summary.id, number: summary.number, phase: summary.phase }]} onRoundChange={id => { startRouteProgress(`/round/${id}`); router.push(`/round/${id}`); }} finalPayoutsAvailable={false} />
+      <RoundHeader round={summary} choices={choices.length ? choices : [{ id: summary.id, number: summary.number, phase: summary.phase }]} onRoundChange={id => { startRouteProgress(`/round/${id}`); router.push(`/round/${id}`); }} finalPayoutsAvailable={approved.every(project => project.finalMatching !== undefined)} />
       <div className="flex flex-wrap items-center gap-4">
         <ExplorerLink address={round.roundAddress} label={t.onChain.roundContract} />
         <ExplorerLink address={round.roundAddress} transactions label={t.onChain.allTransactions} />

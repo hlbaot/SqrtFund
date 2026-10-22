@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { RoundControls } from "@/components/admin/RoundControls";
 import { RoundHistory } from "@/components/admin/RoundHistory";
+import { useInitialPoolDeposit } from "@/hooks/useInitialPoolDeposit";
 import { AOSInit } from "@/components/common/AOSInit";
 import { useTxFlow } from "@/hooks/useTxFlow";
 import { txToast } from "@/lib/txToast";
@@ -40,6 +41,8 @@ export function AdminView() {
   const { t, locale } = useLocale();
   const router = useRouter();
   const { address, chainId, isConnected, status: accountStatus } = useAccount();
+  const initialDeposit = useInitialPoolDeposit(isConnected ? address : undefined);
+  const hasUnusedDeposit = initialDeposit.supported && (initialDeposit.credit ?? 0n) > 0n;
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const closeApplyModal = useCallback(() => setApplyModalOpen(false), []);
   const [roundBusy, setRoundBusy] = useState(false);
@@ -97,7 +100,9 @@ export function AdminView() {
   const queries = useQueryClient();
   const { writeContractAsync } = useWriteContract();
 
-  const hasAnyAdminAccess = isPlatformOwner || isOrganizer || isRoundAdmin || isAdmin || role === "admin";
+  const hasAnyAdminAccess = isPlatformOwner || isOrganizer || isRoundAdmin || isAdmin || role === "admin" || hasUnusedDeposit;
+  // The already-deployed funding-only Factory still permits its owner to use this flow.
+  const canUseCreationForm = canCreateRound || (initialDeposit.supported && initialDeposit.isOwner) || hasUnusedDeposit;
   const displayRoles = roles?.length ? roles : role ? [role] : [];
 
   useEffect(() => {
@@ -370,7 +375,7 @@ export function AdminView() {
             <Button onClick={managed.refetch}>{locale === "vi" ? "Thử lại" : "Retry"}</Button>
           </StatusAlert>}
           {!managed.isError && !roundAddress && <StatusAlert title={locale === "vi" ? "Bạn chưa có vòng gọi vốn" : "You have no rounds yet"} />}
-          {isFactoryAuthorizationError && <StatusAlert tone="warning" title={locale === "vi" ? "Chưa thể tạo vòng mới" : "Round creation unavailable"}>
+          {isFactoryAuthorizationError && !(initialDeposit.supported && initialDeposit.isOwner) && <StatusAlert tone="warning" title={locale === "vi" ? "Chưa thể tạo vòng mới" : "Round creation unavailable"}>
             {isLegacyFactory ? (locale === "vi" ? "Factory đang cấu hình chưa hỗ trợ Multi-Organizer. Cần cập nhật địa chỉ sau khi deploy và xác minh Factory mới." : "Configure a verified Multi-Organizer Factory deployment.") : (locale === "vi" ? "Không đọc được quyền tạo vòng. Vui lòng thử lại." : "Could not verify round creation permissions.")}
           </StatusAlert>}
           {roundAddress && (
@@ -428,7 +433,8 @@ export function AdminView() {
                 </TableHeader>
                 <TableBody>
                   {approvedProjects.map((p) => {
-                    const total = p.totalDonated + p.estimatedMatching;
+                    const matching = p.finalMatching;
+                    const total = matching === undefined ? undefined : p.totalDonated + matching;
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="font-bold text-foreground">
@@ -441,10 +447,10 @@ export function AdminView() {
                           {formatUsdcFixed(p.totalDonated)}
                         </TableCell>
                         <TableCell className="font-mono font-bold text-money tabular-nums">
-                          {formatUsdcFixed(p.estimatedMatching)}
+                          {matching === undefined ? t.competition.unavailable : formatUsdcFixed(matching)}
                         </TableCell>
                         <TableCell className="text-right font-mono font-black text-foreground tabular-nums">
-                          {formatUsdcFixed(total)}
+                          {total === undefined ? t.competition.unavailable : formatUsdcFixed(total)}
                         </TableCell>
                       </TableRow>
                     );
@@ -495,13 +501,13 @@ export function AdminView() {
           )}
 
           {/* Round creation & minting section */}
-          {canCreateRound ? (
+          {canUseCreationForm ? (
             <div
               className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] [&>*]:min-w-0"
               data-aos="fade-up"
               data-aos-duration="600"
             >
-              <CreateRoundForm />
+              <CreateRoundForm key={`${address}:${chainId}`} />
               <MintTestUsdcForm />
             </div>
           ) : (
