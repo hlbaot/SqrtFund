@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "abi": "node scripts/sync-abis.mjs"
+    "abi": "node scripts/sync-abis.mjs",
+    "check:factory": "node scripts/check-factory.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

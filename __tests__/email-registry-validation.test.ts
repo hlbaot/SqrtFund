@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/emailWalletIdentity", () => ({ ensureEmailWallet: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("viem", async importOriginal => ({ ...await importOriginal<typeof import("viem")>(), createPublicClient: () => ({ readContract: f.readContract }) }));
 vi.mock("@/lib/verify/supabaseAdmin", () => ({ supabaseAdmin: () => ({ from: () => ({
+  update: () => ({ eq: async () => ({ error: null }) }),
   select: () => { const query = { eq: () => query, maybeSingle: async () => ({ data: null, error: null }) }; return query; }, delete: f.delete,
 }) }) }));
 vi.mock("@/lib/verify/rateLimit", () => ({ reserveOtp: f.reserve }));
