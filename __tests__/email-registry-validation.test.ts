@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const f = vi.hoisted(() => ({ readContract: vi.fn(), send: vi.fn(), reserve: vi.fn(), delete: vi.fn(), log: vi.fn() }));
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/server/emailWalletIdentity", () => ({ ensureEmailWallet: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("viem", async importOriginal => ({ ...await importOriginal<typeof import("viem")>(), createPublicClient: () => ({ readContract: f.readContract }) }));
 vi.mock("@/lib/verify/supabaseAdmin", () => ({ supabaseAdmin: () => ({ from: () => ({
   select: () => { const query = { eq: () => query, maybeSingle: async () => ({ data: null, error: null }) }; return query; }, delete: f.delete,
