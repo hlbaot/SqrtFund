@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Address, Hex } from "viem";
+import { useStudentVerificationEligibility } from "@/hooks/useStudentVerificationEligibility";
 import { useStudentStatus } from "@/hooks/useStudentStatus";
 import { useLocale } from "@/lib/context/locale";
 import { useTxFlow } from "@/hooks/useTxFlow";
@@ -29,7 +30,8 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 export function StudentVerifyBox({ showVerified = false }: { showVerified?: boolean }) {
   const { address, isConnected, chainId } = useAccount();
-  if (!isConnected || !address) return null;
+  const { canShowStudentIdentity } = useStudentVerificationEligibility();
+  if (!isConnected || !address || !canShowStudentIdentity) return null;
   return <VerificationSession key={`${address}:${chainId}`} address={address} chainId={chainId} showVerified={showVerified} />;
 }
 function VerificationSession({ address, chainId, showVerified }: { address: Address; chainId?: number; showVerified: boolean }) {
