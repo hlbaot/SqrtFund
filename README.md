@@ -305,6 +305,8 @@ pnpm build
 
 ### Tự triển khai contract
 
+Với luồng **nạp USDC trước → tạo round**, dùng [hướng dẫn triển khai Prefunded Factory](docs/prefunded-factory-deployment.md). Kiểm tra Factory đang cấu hình bằng `pnpm check:factory` trước khi sử dụng; Factory chỉ có phân quyền Organizer có thể chưa có API nạp/rút trước khi tạo vòng.
+
 ```bash
 cd contracts
 export NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS=<địa_chỉ_registry>

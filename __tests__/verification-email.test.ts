@@ -6,8 +6,8 @@ describe("branded verification email", () => {
     expect(email.subject).toBe("Mã xác thực SqrtFund / SqrtFund verification code");
     expect(email.html).toContain(">012345</p>");
     expect(email.text).toContain("012345");
-    expect(email.text).toContain("Valid for 10 minutes");
-    expect(email.html).toContain("VALID FOR 10 MIN");
+    expect(email.text).toContain("Valid for 1 minute");
+    expect(email.html).toContain("VALID FOR 1 MIN");
     expect(email.html).toContain("confirm the wallet transaction");
     expect(email.html).toContain("bỏ qua email này");
   });
@@ -20,4 +20,15 @@ describe("branded verification email", () => {
     expect(html).toContain("linear-gradient"); expect(html).toContain('role="presentation"');
     expect(html).not.toMatch(/<script|<iframe|https?:\/\/|<link/i);
   });
+});
+
+it("gives Organizer email the same branded card layout without Student wallet instructions", () => {
+  const { html, text } = buildVerificationEmail("038580", "organizer");
+  expect(html).toContain("max-width:600px");
+  expect(html).toContain("linear-gradient");
+  expect(html).toContain("#e84142");
+  expect(html).toContain("email liên hệ");
+  expect(html).toContain("Platform Owner approval");
+  expect(html).not.toContain("confirm the wallet transaction");
+  expect(text).toContain("Valid for 1 minute");
 });

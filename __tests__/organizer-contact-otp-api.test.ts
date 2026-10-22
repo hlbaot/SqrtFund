@@ -24,7 +24,11 @@ afterEach(() => vi.unstubAllEnvs());
 it("accepts a non-student contact email and sends an Organizer-specific code", async () => {
   const response = await post({ action: "request" });
   expect(response.status).toBe(200);
-  const data = await response.json(); expect(data.requestId).toBeTruthy(); expect(data).not.toHaveProperty("otp");
+  const data = await response.json();
+  expect(Date.parse(data.expiresAt) - Date.now()).toBeGreaterThan(59_000);
+  expect(Date.parse(data.expiresAt) - Date.now()).toBeLessThanOrEqual(60_000);
+  expect(f.update).toHaveBeenCalledWith({ expires_at: data.expiresAt });
+  expect(data.requestId).toBeTruthy(); expect(data).not.toHaveProperty("otp");
   expect(f.send).toHaveBeenCalledWith(contactEmail, expect.stringMatching(/^\d{6}$/), "organizer");
   expect(f.rpc).toHaveBeenCalledWith("reserve_organizer_contact_otp", expect.objectContaining({ p_wallet: walletAddress, p_otp_hash: expect.stringMatching(/^[a-f0-9]{64}$/) }));
 });
@@ -75,4 +79,10 @@ it("does not issue a proof if a different wallet claims the email during verific
   vi.mocked(ensureEmailWallet).mockRejectedValueOnce(new VerificationError("EMAIL_ALREADY_USED",409));
   const response=await post({action:"verify",requestId,otp:"123456"});
   expect(response.status).toBe(409); expect(await response.json()).not.toHaveProperty("emailVerificationToken");
+});
+it("does not deliver a code if its one-minute database expiry cannot be saved", async () => {
+  f.eq.mockResolvedValue({ error: { code: "XX000" } });
+  const response = await post({ action: "request" });
+  expect(response.status).toBe(503);
+  expect(f.send).not.toHaveBeenCalled();
 });
