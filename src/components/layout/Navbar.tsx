@@ -35,8 +35,10 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: t.nav.home },
     { href: "/round", label: t.nav.round },
-    { href: "/register", label: t.nav.register },
-    { href: "/my", label: t.nav.my },
+    ...(!isPlatformOwner ? [
+      { href: "/register", label: t.nav.register },
+      { href: "/my", label: t.nav.my },
+    ] : []),
     ...(isConnected && isAdmin ? [{ href: dashboardHref, label: isPlatformOwner ? t.nav.platformDashboard : t.nav.organizerDashboard }] : []),
   ];
 

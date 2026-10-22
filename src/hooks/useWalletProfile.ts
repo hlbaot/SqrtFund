@@ -30,6 +30,24 @@ export function saveWalletProfile(address: string | undefined, chainId: number |
   return true;
 }
 
+export function switchWalletProfile(address: string | undefined, chainId: number | undefined, profile: WalletProfile): boolean {
+  if (!address || !chainId || !isWalletProfile(profile) || typeof window === "undefined") return false;
+  const key = walletProfileKey(address, chainId);
+  try { window.localStorage.setItem(key, profile); memoryFallback.delete(key); }
+  catch { memoryFallback.set(key, profile); }
+  window.dispatchEvent(new CustomEvent(changeEvent, { detail: { key } }));
+  return true;
+}
+
+export function clearWalletProfile(address: string | undefined, chainId: number | undefined): boolean {
+  if (!address || !chainId || typeof window === "undefined") return false;
+  const key = walletProfileKey(address, chainId);
+  try { window.localStorage.removeItem(key); memoryFallback.delete(key); }
+  catch { memoryFallback.delete(key); }
+  window.dispatchEvent(new CustomEvent(changeEvent, { detail: { key } }));
+  return true;
+}
+
 export function subscribeWalletProfile(address: string | undefined, chainId: number | undefined, listener: () => void) {
   if (!address || !chainId || typeof window === "undefined") return () => {};
   const key = walletProfileKey(address, chainId);
@@ -52,5 +70,7 @@ export function useWalletProfile(address?: string, chainId?: number, defaultProf
   const snapshot = useCallback(() => readWalletProfile(address, chainId), [address, chainId]);
   const saved = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
   const selectProfile = useCallback((profile: WalletProfile) => saveWalletProfile(address, chainId, profile), [address, chainId]);
-  return { profile: saved ?? defaultProfile, selectProfile };
+  const switchProfile = useCallback((profile: WalletProfile) => switchWalletProfile(address, chainId, profile), [address, chainId]);
+  const resetProfile = useCallback(() => clearWalletProfile(address, chainId), [address, chainId]);
+  return { profile: saved ?? defaultProfile, selectProfile, switchProfile, resetProfile };
 }

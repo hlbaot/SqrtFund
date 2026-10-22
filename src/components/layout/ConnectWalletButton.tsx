@@ -19,6 +19,8 @@ import {
   User,
   ShieldCheck,
   Award,
+  ShieldOff,
+  ArrowLeftRight,
 } from "lucide-react";
 import { ExplorerLink } from "@/components/tx/ExplorerLink";
 import dynamic from "next/dynamic";
@@ -70,7 +72,7 @@ export function ConnectWalletButton() {
     canCreateRound,
   } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
-  const { profile, selectProfile } = useWalletProfile(address, chainId,
+  const { profile, selectProfile, resetProfile, switchProfile } = useWalletProfile(address, chainId,
     defaultWalletProfile(isOrganizer || isRoundAdmin || hasManagedRounds || canCreateRound, isStudent));
   const choosingProfile = !isPlatformOwner && profile === null;
   const activeProfile = profile;
@@ -80,6 +82,7 @@ export function ConnectWalletButton() {
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const { avatar } = useAvatar(address);
   const [copied, setCopied] = useState(false);
+  const [isChangingRole, setIsChangingRole] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, right: 16 });
@@ -132,6 +135,21 @@ export function ConnectWalletButton() {
   useEffect(() => {
     isReadyRef.current = isReady;
   }, [isReady]);
+
+  const notifiedRevocationRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeProfile === "organizer" && myApp.isRevoked && myApp.application && notifiedRevocationRef.current !== myApp.application.id) {
+      notifiedRevocationRef.current = myApp.application.id;
+      txToast.error(
+        "organizer-revoked",
+        locale === "vi" ? "Quyền Organizer đã bị thu hồi" : "Organizer access revoked",
+        myApp.application.revocationReason
+          ? (locale === "vi" ? `Lí do: ${myApp.application.revocationReason}` : `Reason: ${myApp.application.revocationReason}`)
+          : (locale === "vi" ? "Mở menu ví để xem chi tiết lý do và gửi yêu cầu lại" : "Open wallet menu to view reason and re-apply"),
+        8000
+      );
+    }
+  }, [activeProfile, myApp.isRevoked, myApp.application, locale]);
 
   const handleConnect = async () => {
     const connector = connectors.find(c => c.id === "app.core.extension" || /core/i.test(c.name)) ?? connectors.find(c => c.id === "injected") ?? connectors[0];
@@ -214,58 +232,84 @@ export function ConnectWalletButton() {
         <span className="min-w-0 truncate whitespace-nowrap text-xs border border-line px-1.5 py-0.5">{isFuji ? t.common.testnetBadge : t.wallet.switchNetwork}</span>
         <span>{shortAddress(address, 4)}</span>
         <ChevronDown className={`h-3.5 w-3.5 text-muted transition-transform ${dropdownOpen ? "rotate-180" : ""}`} aria-hidden="true" />
-        {counts.activity > 0 && <span aria-label={fmt(t.wallet.newNotifications, { count: counts.activity })} className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-bg" />}
+        {(counts.activity > 0 || (activeProfile === "organizer" && myApp.isRevoked)) && (
+          <span
+            aria-label={myApp.isRevoked ? (locale === "vi" ? "Cảnh báo quyền ví" : "Wallet role alert") : fmt(t.wallet.newNotifications, { count: counts.activity })}
+            className={`absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full ring-2 ring-bg ${myApp.isRevoked ? "bg-destructive animate-pulse" : "bg-primary"}`}
+          />
+        )}
       </button>
       {dropdownOpen && createPortal(
         <div ref={panel} style={{ "--profile-top": `${position.top}px`, "--profile-right": `${position.right}px` } as React.CSSProperties}
           onKeyDown={event => { if (event.key === "Escape") { setDropdownOpen(false); trigger.current?.focus(); } }}
           onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !root.current?.contains(event.relatedTarget as Node | null)) setDropdownOpen(false); }}
-          id={menuId} role="dialog" aria-label={t.wallet.profile} className="fixed left-4 right-4 bottom-4 z-50 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-sm border border-line-strong bg-bg p-4 text-xs text-foreground shadow-2xl lg:left-auto lg:bottom-auto lg:right-[var(--profile-right)] lg:top-[var(--profile-top)] lg:w-84">
+          id={menuId} role="dialog" aria-label={t.wallet.profile} className="fixed right-[var(--profile-right)] top-[var(--profile-top)] z-50 w-[352px] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-var(--profile-top)-1rem)] overflow-y-auto rounded-lg border border-line bg-bg p-4 font-mono text-xs text-foreground shadow-2xl">
 
           {/* Header: Avatar + Network + Role Status */}
-          <div className="flex items-start gap-3 border-b border-line pb-3.5">
+          <div className="flex items-start gap-4">
             <button type="button" onClick={openAvatarPicker} aria-label={t.avatar.change}
-              className="group relative shrink-0 rounded-full cursor-pointer transition-transform hover:scale-105 active:scale-95 ring-2 ring-line-strong/60">
+              className="group relative shrink-0 rounded-full cursor-pointer transition-transform hover:scale-105 active:scale-95 ring-1 ring-line">
               <Avatar address={address} size={44} avatarId={avatar} />
               <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                 <Pencil className="h-3.5 w-3.5 text-white" aria-hidden="true" />
               </span>
             </button>
-            <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="min-w-0 flex-1 space-y-2">
               <div className="flex items-center justify-between gap-1.5">
-                <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted">
+                <div className="flex items-center gap-2 font-mono text-xs text-muted">
                   <span className={`h-1.5 w-1.5 rounded-full ${isFuji ? "bg-money animate-pulse" : "bg-amber-400"}`} />
                   <span>{isFuji ? "Avalanche Fuji" : t.wallet.switchNetwork}</span>
                 </div>
-                <ExplorerLink address={address} iconOnly />
+                <ExplorerLink address={address} iconOnly className="shrink-0 rounded-sm p-2 hover:bg-surface-2" />
               </div>
-              {isPlatformOwner || activeProfile ? <WalletRoleStatus profile={isPlatformOwner ? "platform" : activeProfile!} studentStatus={studentStatus} organizerStatus={organizerStatus} locale={locale} onRetry={refetchWalletRoles} />
-                : <p className="text-xs text-muted">{locale === "vi" ? "Chọn loại tài khoản để tiếp tục" : "Choose your account type to continue"}</p>}
+              {isPlatformOwner || activeProfile ? (
+                <WalletRoleStatus
+                  profile={isPlatformOwner ? "platform" : activeProfile!}
+                  studentStatus={studentStatus}
+                  organizerStatus={organizerStatus}
+                  locale={locale}
+                  onRetry={refetchWalletRoles}
+                  isRevoked={activeProfile === "organizer" && myApp.isRevoked}
+                />
+              ) : (
+                <p className="text-xs text-muted">{locale === "vi" ? "Chọn loại tài khoản để tiếp tục" : "Choose your account type to continue"}</p>
+              )}
             </div>
           </div>
 
-          {choosingProfile && <WalletProfilePicker locale={locale} onSelect={selectProfile} />}
+          {(choosingProfile || isChangingRole) && (
+            <WalletProfilePicker
+              locale={locale}
+              currentProfile={activeProfile}
+              onSelect={(newProfile) => {
+                switchProfile(newProfile);
+                setIsChangingRole(false);
+              }}
+              onCancel={activeProfile ? () => setIsChangingRole(false) : undefined}
+            />
+          )}
 
           {/* Address & Quick Copy Card */}
-          <div className="my-3 flex items-center justify-between gap-2 bg-surface-2/40 border border-line rounded-xs px-2.5 py-1.5">
-            <span className="font-mono text-xs text-foreground truncate select-all">
-              {address}
+          <div className="my-4 flex min-h-10 items-center justify-between gap-2 rounded-sm bg-surface-2/40 px-3 py-2">
+            <span className="font-mono text-xs text-foreground select-all" title={address}>
+              {shortAddress(address, 4)}
             </span>
             <button
               type="button"
               onClick={copyAddress}
-              aria-label={t.common.copyAddress}
-              className="flex items-center gap-1 shrink-0 text-[11px] font-mono text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
+              aria-label={copied ? t.wallet.copied : t.common.copyAddress}
+              title={copied ? t.wallet.copied : t.common.copyAddress}
+              className="flex items-center gap-1 shrink-0 text-[11px] font-mono text-muted hover:text-foreground rounded-sm p-2 hover:bg-surface-2 transition-colors cursor-pointer"
             >
               {copied ? (
                 <>
                   <Check className="h-3.5 w-3.5 text-money" />
-                  <span className="text-money">{t.wallet.copied}</span>
+                  <span className="sr-only" role="status">{t.wallet.copied}</span>
                 </>
               ) : (
                 <>
                   <Copy className="h-3.5 w-3.5" />
-                  <span>{t.common.copyAddress}</span>
+                  <span className="sr-only">{t.common.copyAddress}</span>
                 </>
               )}
             </button>
@@ -273,24 +317,21 @@ export function ConnectWalletButton() {
 
           {/* Available Balances Card */}
           {(avax || tokenBalance.isEnabled) && (
-            <div className="mb-3 p-2.5 bg-surface/60 border border-line rounded-xs space-y-1.5" aria-label={t.wallet.balance}>
-              <div className="flex items-center justify-between text-[11px] font-mono text-muted border-b border-line/40 pb-1">
-                <span>{locale === "vi" ? "Số dư khả dụng" : "Available Balance"}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-0.5">
+            <div className="mb-4" aria-label={t.wallet.balance}>
+              <div className="grid grid-cols-2 gap-2">
                 {avax && (
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] text-muted font-mono block">AVAX</span>
-                    <span className="font-mono text-sm font-semibold tabular-nums text-foreground block">
+                  <div className="min-w-0 space-y-2 rounded-sm border border-line/60 bg-surface/60 p-3">
+                    <span className="text-[10px] text-muted font-mono tracking-wider block">AVAX</span>
+                    <span className="font-mono text-lg font-semibold tabular-nums text-foreground block [overflow-wrap:anywhere]">
                       {Number(formatUnits(avax.value, avax.decimals)).toFixed(4)}
                     </span>
                   </div>
                 )}
-                <div className="space-y-0.5">
-                  <span className="text-[10px] text-muted font-mono block">USDC</span>
-                  <span className="font-mono text-sm font-semibold tabular-nums text-money block">
+                <div className="min-w-0 space-y-2 rounded-sm border border-line/60 bg-surface/60 p-3">
+                  <span className="text-[10px] text-muted font-mono tracking-wider block">USDC</span>
+                  <span className={`font-mono font-semibold tabular-nums text-money block [overflow-wrap:anywhere] ${usdc !== undefined ? "text-lg" : "text-xs"}`}>
                     {usdc !== undefined
-                      ? `${formatUsdcFixed(Number(formatUnits(usdc, 6)))}`
+                      ? `${formatUsdcFixed(Number(formatUnits(usdc, 6)), { includeSymbol: false })}`
                       : tokenBalance.isError
                       ? t.tokenBalance.error
                       : tokenBalance.isLoading
@@ -302,9 +343,28 @@ export function ConnectWalletButton() {
             </div>
           )}
 
+          {activeProfile === "organizer" && !isPlatformOwner && myApp.isRevoked && (
+            <div className="mb-4 space-y-2 rounded-sm border border-red-500/40 bg-red-500/10 p-3">
+              <p className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-red-400">
+                <ShieldOff className="h-4 w-4 shrink-0 text-red-400" aria-hidden="true" />
+                <span>{locale === "vi" ? "Quyền Organizer đã bị thu hồi" : "Organizer access revoked"}</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  setApplyModalOpen(true);
+                }}
+                className="flex min-h-8 items-center rounded-sm text-left text-[11px] font-medium text-red-400 hover:text-red-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-red-400 cursor-pointer"
+              >
+                {locale === "vi" ? "Xem chi tiết & Gửi yêu cầu lại" : "View details & Re-apply"}
+              </button>
+            </div>
+          )}
+
           {/* Student Verification Callout (if not verified) */}
           {activeProfile === "student" && !isPlatformOwner && !isStudent && (
-            <div className="mb-3 p-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/25 rounded-xs space-y-2">
+            <div className="mb-3 p-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/25 rounded-sm space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -321,7 +381,7 @@ export function ConnectWalletButton() {
               <Link
                 href="/verify"
                 onClick={() => setDropdownOpen(false)}
-                className="mono-label block w-full py-1.5 px-3 text-center text-xs font-semibold bg-primary text-black hover:bg-primary-hover rounded-xs transition-colors cursor-pointer"
+                className="mono-label block w-full py-1.5 px-3 text-center text-xs font-semibold bg-primary text-black hover:bg-primary-hover rounded-sm transition-colors cursor-pointer"
               >
                 {locale === "vi" ? "Xác thực bằng email trường" : "Verify university email"}
               </Link>
@@ -329,12 +389,12 @@ export function ConnectWalletButton() {
           )}
 
           {/* Navigation & Action Links */}
-          <div className="space-y-0.5 border-t border-line pt-2">
+          <div className="space-y-0 border-t border-line pt-2">
             {isPlatformOwner && (
               <Link
                 href="/admin?tab=platform"
                 onClick={() => setDropdownOpen(false)}
-                className="flex items-center justify-between p-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
+                className="flex items-center justify-between min-h-11 px-2 py-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-sm group"
               >
                 <span className="flex items-center gap-2 text-xs font-medium">
                   <ShieldCheck className="h-3.5 w-3.5 text-primary" />
@@ -344,11 +404,11 @@ export function ConnectWalletButton() {
               </Link>
             )}
 
-            {activeProfile === "organizer" && !isPlatformOwner && (canCreateRound || isRoundAdmin || hasManagedRounds) && (
+            {(isPlatformOwner || (activeProfile === "organizer" && (canCreateRound || isRoundAdmin || hasManagedRounds))) && (
               <Link
                 href="/admin?tab=organizer"
                 onClick={() => setDropdownOpen(false)}
-                className="flex items-center justify-between p-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
+                className="flex items-center justify-between min-h-11 px-2 py-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-sm group"
               >
                 <span className="flex items-center gap-2 text-xs font-medium">
                   <Award className="h-3.5 w-3.5 text-warning" />
@@ -362,7 +422,7 @@ export function ConnectWalletButton() {
               <Link
                 href="/admin?tab=organizer"
                 onClick={() => setDropdownOpen(false)}
-                className="flex items-center justify-between p-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
+                className="flex items-center justify-between min-h-11 px-2 py-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-sm group"
               >
                 <span className="flex items-center gap-2 text-xs font-medium">
                   <ShieldCheck className="h-3.5 w-3.5 text-primary" />
@@ -372,33 +432,47 @@ export function ConnectWalletButton() {
               </Link>
             )}
 
-            {activeProfile === "organizer" && !isPlatformOwner && !isOrganizer && (
+            {activeProfile === "organizer" && !isPlatformOwner && !isOrganizer && !myApp.isRevoked && (
               <button
                 type="button"
                 onClick={() => {
                   setDropdownOpen(false);
                   setApplyModalOpen(true);
                 }}
-                className="w-full flex items-center justify-between p-2 text-left hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
+                className="w-full flex min-h-11 items-center justify-between gap-2 px-2 py-2 text-left hover:bg-surface hover:text-foreground text-foreground cursor-pointer transition-colors rounded-sm group"
               >
-                <span className="flex items-center gap-2 text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                  <Building2 className="h-3.5 w-3.5 text-muted group-hover:text-primary transition-colors" />
+                <span className="flex items-center gap-2 text-xs font-medium">
+                  <Building2 className="h-3.5 w-3.5 shrink-0 text-muted" />
                   {t.applyOrganizer.btnMenu}
                 </span>
                 {myApp.isPending ? (
-                  <Badge variant="warning" className="text-[10px] px-1.5 py-0">
+                  <Badge variant="warning" className="shrink-0 rounded-sm text-[10px] px-1.5 py-0 normal-case tracking-normal">
                     {t.applyOrganizer.statusPendingBadge}
                   </Badge>
                 ) : (
-                  <span className="text-[10px] text-muted font-mono">{locale === "vi" ? "Đăng ký" : "Apply"} &rarr;</span>
+                  <span className="shrink-0 text-[10px] text-muted font-mono">{locale === "vi" ? "Đăng ký" : "Apply"} &rarr;</span>
                 )}
+              </button>
+            )}
+
+            {!isPlatformOwner && (
+              <button
+                type="button"
+                onClick={() => setIsChangingRole(prev => !prev)}
+                className="w-full flex items-center justify-between min-h-11 px-2 py-2 text-left hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-sm group"
+              >
+                <span className="flex items-center gap-2 text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                  <ArrowLeftRight className="h-3.5 w-3.5 text-muted group-hover:text-primary transition-colors" />
+                  {locale === "vi" ? "Chuyển đổi vai trò" : "Switch role"}
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted transition-transform ${isChangingRole ? "rotate-180" : ""}`} aria-hidden="true" />
               </button>
             )}
 
             <Link
               href="/my"
               onClick={() => { counts.markAllSeen(); setDropdownOpen(false); }}
-              className="flex items-center justify-between p-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
+              className="flex items-center justify-between min-h-11 px-2 py-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-sm group"
             >
               <span className="flex items-center gap-2 text-xs font-medium">
                 <User className="h-3.5 w-3.5 text-muted group-hover:text-foreground transition-colors" />
@@ -417,7 +491,7 @@ export function ConnectWalletButton() {
                 console.log("[LOGOUT_DEBUG] Disconnect button onClick");
                 handleDisconnect();
               }}
-              className="flex w-full items-center justify-center gap-2 py-2 px-3 text-xs text-muted hover:text-destructive hover:bg-destructive/10 cursor-pointer transition-colors rounded-xs"
+              className="flex min-h-11 w-full items-center gap-2 py-2 px-2 text-xs text-muted hover:text-foreground hover:bg-surface cursor-pointer transition-colors rounded-sm"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span>{t.nav.disconnect}</span>

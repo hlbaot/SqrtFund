@@ -32,8 +32,9 @@ import { Button } from "@/components/ui/Button";
 import { StatusAlert } from "@/components/ui/StatusAlert";
 import { AdminSkeleton } from "@/components/common/PageSkeletons";
 import { Container } from "@/components/layout/Container";
-import { Award, ShieldCheck, Layers, Info, Building2 } from "lucide-react";
+import { Award, ShieldCheck, Layers, Info, Building2, ShieldOff, Send } from "lucide-react";
 import { ApplyOrganizerModal } from "@/components/organizer/ApplyOrganizerModal";
+import { useMyOrganizerApplication } from "@/hooks/useOrganizerApplications";
 import type { Address } from "viem";
 
 export function AdminView() {
@@ -43,6 +44,7 @@ export function AdminView() {
   const { address, chainId, isConnected, status: accountStatus } = useAccount();
   const initialDeposit = useInitialPoolDeposit(isConnected ? address : undefined);
   const hasUnusedDeposit = initialDeposit.supported && (initialDeposit.credit ?? 0n) > 0n;
+  const myApp = useMyOrganizerApplication(isConnected ? address : undefined);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const closeApplyModal = useCallback(() => setApplyModalOpen(false), []);
   const [roundBusy, setRoundBusy] = useState(false);
@@ -66,9 +68,13 @@ export function AdminView() {
   } = useRole(selectedRound);
 
   // URL là nguồn duy nhất để menu ví, nút tab và Back/Forward luôn đồng bộ.
-  const activeTab = searchParams.get("tab") === "platform" ? "platform" : "organizer";
+  const requestedTab = searchParams.get("tab");
+  const activeTab = isPlatformOwner
+    ? (requestedTab === "organizer" ? "organizer" : "platform")
+    : "organizer";
 
   const switchTab = (tab: "organizer" | "platform") => {
+    if (tab === "platform" && !isPlatformOwner) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
     router.replace(`/admin?${params.toString()}`, { scroll: false });
@@ -103,7 +109,14 @@ export function AdminView() {
   const hasAnyAdminAccess = isPlatformOwner || isOrganizer || isRoundAdmin || isAdmin || role === "admin" || hasUnusedDeposit;
   // The already-deployed funding-only Factory still permits its owner to use this flow.
   const canUseCreationForm = canCreateRound || (initialDeposit.supported && initialDeposit.isOwner) || hasUnusedDeposit;
-  const displayRoles = roles?.length ? roles : role ? [role] : [];
+
+  useEffect(() => {
+    if (isConnected && !isAuthorizationLoading && hasAnyAdminAccess && requestedTab === "platform" && !isPlatformOwner) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", "organizer");
+      router.replace(`/admin?${params.toString()}`, { scroll: false });
+    }
+  }, [isConnected, isAuthorizationLoading, hasAnyAdminAccess, requestedTab, isPlatformOwner, searchParams, router]);
 
   useEffect(() => {
     if (accountStatus === "reconnecting" || accountStatus === "connecting" || isAuthorizationLoading) return;
@@ -225,18 +238,49 @@ export function AdminView() {
   if (!hasAnyAdminAccess) {
     return (
       <Container className="py-8 sm:py-10 space-y-6">
-        <StatusAlert tone="warning" title={t.admin.unauthorizedAdminTitle ?? "Access Restricted"}>
-          {t.admin.unauthorizedAdminDesc ?? "You need Platform Owner, Organizer, or Round Admin authorization to view this area."}
-        </StatusAlert>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" onClick={() => setApplyModalOpen(true)}>
-            <Building2 className="h-4 w-4 mr-2" />
-            {t.applyOrganizer.btnMenu}
-          </Button>
-          <Button variant="outline" onClick={() => router.push("/")}>
-            {t.admin.backToHome ?? "Back to Home"}
-          </Button>
-        </div>
+        {myApp.isRevoked ? (
+          <div className="p-5 border border-destructive/30 bg-destructive/5 rounded-xs space-y-4">
+            <div className="flex items-center gap-2 text-destructive font-bold text-base">
+              <ShieldOff className="h-5 w-5" />
+              <span>{locale === "vi" ? "Quyền Nhà tổ chức của bạn đã bị thu hồi" : "Organizer Permission Revoked"}</span>
+            </div>
+            <p className="text-sm text-muted leading-relaxed">
+              {locale === "vi"
+                ? "Platform Owner đã thu hồi quyền tạo và quản lý vòng gọi vốn của ví này. Bạn có thể xem chi tiết lí do bên dưới hoặc gửi lại yêu cầu cấp quyền."
+                : "The Platform Owner has revoked this wallet's organizer access. You can view details below or re-apply."}
+            </p>
+            {myApp.application?.revocationReason && (
+              <div className="p-3.5 bg-destructive/10 border border-destructive/20 rounded-xs text-xs font-mono">
+                <span className="font-semibold text-destructive">{locale === "vi" ? "Lí do thu hồi: " : "Revocation reason: "}</span>
+                <span className="text-foreground">{myApp.application.revocationReason}</span>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Button variant="primary" onClick={() => setApplyModalOpen(true)}>
+                <Send className="h-4 w-4 mr-2" />
+                {locale === "vi" ? "Xem chi tiết & Gửi yêu cầu lại" : "View Details & Re-apply"}
+              </Button>
+              <Button variant="outline" onClick={() => router.push("/")}>
+                {t.admin.backToHome ?? "Back to Home"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <StatusAlert tone="warning" title={t.admin.unauthorizedAdminTitle ?? "Access Restricted"}>
+              {t.admin.unauthorizedAdminDesc ?? "You need Platform Owner, Organizer, or Round Admin authorization to view this area."}
+            </StatusAlert>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="primary" onClick={() => setApplyModalOpen(true)}>
+                <Building2 className="h-4 w-4 mr-2" />
+                {t.applyOrganizer.btnMenu}
+              </Button>
+              <Button variant="outline" onClick={() => router.push("/")}>
+                {t.admin.backToHome ?? "Back to Home"}
+              </Button>
+            </div>
+          </>
+        )}
         {address && (
           <ApplyOrganizerModal
             isOpen={applyModalOpen}
@@ -262,31 +306,11 @@ export function AdminView() {
         data-aos-duration="600"
       >
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-              {activeTab === "platform"
-                ? (t.admin.platformTitle ?? "Platform Dashboard")
-                : (t.admin.organizerTitle ?? t.admin.title)}
-            </h1>
-            <div className="flex flex-wrap gap-1">
-              {displayRoles.map(r => (
-                <Badge
-                  key={r}
-                  variant={
-                    r === "platform_owner"
-                      ? "primary"
-                      : r === "organizer"
-                      ? "warning"
-                      : r === "admin"
-                      ? "warning"
-                      : "secondary"
-                  }
-                >
-                  {t.wallet[r] ?? r}
-                </Badge>
-              ))}
-            </div>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+            {activeTab === "platform"
+              ? (t.admin.platformTitle ?? "Platform Dashboard")
+              : (t.admin.organizerTitle ?? t.admin.title)}
+          </h1>
           <p className="mt-1 text-xs sm:text-sm text-muted">
             {activeTab === "platform"
               ? (t.admin.platformSubtitle ?? "Authorize organizers to deploy quadratic funding rounds on Avalanche Fuji.")
@@ -322,7 +346,7 @@ export function AdminView() {
           )}
         </button>
 
-        <button
+        {isPlatformOwner && <button
           type="button"
           role="tab"
           aria-selected={activeTab === "platform"}
@@ -340,11 +364,11 @@ export function AdminView() {
               Owner
             </Badge>
           )}
-        </button>
+        </button>}
       </div>
 
       {/* TAB 1: Platform Dashboard (Authorize / Revoke Organizers) */}
-      {activeTab === "platform" && (
+      {isPlatformOwner && activeTab === "platform" && (
         <PlatformDashboard
           factoryOwner={round.factoryOwner}
           isPlatformOwner={isPlatformOwner}

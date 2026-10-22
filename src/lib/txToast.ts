@@ -85,8 +85,8 @@ class TxToastStore {
     this.notify();
   }
 
-  error(id: string, title: string, description?: string) {
-    this.upsert({ id, type: "error", title, description }, ERROR_MS);
+  error(id: string, title: string, description?: string, duration = ERROR_MS) {
+    this.upsert({ id, type: "error", title, description }, duration);
   }
 
   info(id: string, title: string, description?: string) {
@@ -198,7 +198,9 @@ export class TransactionFlow {
     if (this.cancelled || this.failed) return;
     this.ids.add(args[0]);
     if (method === "success") txToast.success(...args, SUCCESS_MS, args[3] ? this.receipts.get(args[3].toLowerCase()) : undefined);
-    else txToast[method](...args);
+    else if (method === "pending") txToast.pending(...args);
+    else if (method === "error") txToast.error(args[0], args[1], args[2]);
+    else txToast.info(args[0], args[1], args[2]);
   }
   readonly toast = {
     pending: (...args: [string, string, string?, string?]) => this.show("pending", args),

@@ -1,3 +1,4 @@
+import { authorizeOrganizerReview } from "@/lib/server/organizerReviewAuthorization";
 import { NextResponse } from "next/server";
 import { isAddress } from "viem";
 import { verifyOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
@@ -9,7 +10,6 @@ import {
 } from "@/lib/server/organizerApplications";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
@@ -24,9 +24,8 @@ export async function GET(request: Request) {
     }
 
     const applications = await listOrganizerApplications({ walletAddress, status });
-    return NextResponse.json({ ok: true, applications }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ ok: true, applications });
   } catch (error) {
-    if (error instanceof VerificationError) return NextResponse.json({ ok: false, error: error.code }, { status: error.status, headers: { "Cache-Control": "no-store" } });
     console.error("[api/organizer-applications] GET error:", error);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
@@ -63,10 +62,11 @@ export async function POST(request: Request) {
     }
 
     // Check if wallet already has a pending application
-    const existing = await listOrganizerApplications({ walletAddress: walletAddress.trim(), status: "pending" });
-    if (existing.length > 0) {
+    const existing = await listOrganizerApplications({ walletAddress: walletAddress.trim() });
+    const activePending = existing.find(a => a.status === "pending");
+    if (activePending) {
       return NextResponse.json(
-        { ok: false, error: "APPLICATION_ALREADY_PENDING", existingApplication: existing[0] },
+        { ok: false, error: "APPLICATION_ALREADY_PENDING", existingApplication: activePending },
         { status: 409 }
       );
     }
@@ -94,13 +94,13 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
     }
 
-    const { id, status, txHash, reviewedBy } = body as Record<string, unknown>;
+    const { id, status, txHash, reviewedBy, revocationReason } = body as Record<string, unknown>;
 
     if (typeof id !== "string" || !id.trim()) {
       return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
 
-    if (status !== "approved" && status !== "rejected") {
+    if (status !== "approved" && status !== "rejected" && status !== "revoked") {
       return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 400 });
     }
 
@@ -108,19 +108,27 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ ok: false, error: "INVALID_REVIEWER_ADDRESS" }, { status: 400 });
     }
 
+    // Require revocation reason when revoking
+    if (status === "revoked" && (typeof revocationReason !== "string" || revocationReason.trim().length < 3)) {
+      return NextResponse.json({ ok: false, error: "REVOCATION_REASON_REQUIRED" }, { status: 400 });
+    }
+
+    const authorization = await authorizeOrganizerReview(body);
     const application = await updateOrganizerApplicationStatus(id.trim(), {
       status,
       txHash: typeof txHash === "string" ? txHash.trim() : null,
-      reviewedBy: typeof reviewedBy === "string" ? reviewedBy.trim() : null,
+      revocationReason: status === "revoked" && typeof revocationReason === "string" ? revocationReason.trim() : null,
+      reviewedBy: authorization.reviewedBy,
+      expectedUpdatedAt: authorization.expectedUpdatedAt,
     });
 
     if (!application) {
-      return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: "APPLICATION_CHANGED" }, { status: 409 });
     }
 
     return NextResponse.json({ ok: true, application });
   } catch (error) {
-    if (error instanceof VerificationError) return NextResponse.json({ ok: false, error: error.code }, { status: error.status, headers: { "Cache-Control": "no-store" } });
+    if (error instanceof VerificationError) return NextResponse.json({ ok: false, error: error.code }, { status: error.status });
     console.error("[api/organizer-applications] PATCH error:", error);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }

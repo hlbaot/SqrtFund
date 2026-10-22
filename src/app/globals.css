@@ -24,6 +24,8 @@
   --primary-foreground: var(--text);
   --accent: var(--money);
   --accent-foreground: var(--bg);
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
   --scroll-track: #0b0b12;
   --scroll-thumb: #e84142;
   --scroll-thumb-hover: #ff5a5b;
@@ -55,6 +57,8 @@
   --color-money: var(--money);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-scroll-track: var(--scroll-track);
   --color-scroll-thumb: var(--scroll-thumb);
   --color-scroll-thumb-hover: var(--scroll-thumb-hover);

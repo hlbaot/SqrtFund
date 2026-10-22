@@ -1,6 +1,5 @@
 "use client";
 import { isPublicProject } from "@/lib/projectVisibility";
-import { ContractExplorerLinks } from "@/components/tx/ContractExplorerLinks";
 import { VerificationStats } from "@/components/verify/VerificationStats";
 
 import { AOSInit } from "@/components/common/AOSInit";
@@ -9,6 +8,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/context/locale";
+import { useRole } from "@/hooks/useRole";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { RoundCard } from "@/components/round/RoundCard";
@@ -34,6 +34,7 @@ import { ChainLatticeBackground } from "@/components/background/DeferredLattice"
 export function HomeView() {
   const router = useRouter();
   const { t } = useLocale();
+  const { isPlatformOwner } = useRole();
   const {
     roundAddress,
     allRounds,
@@ -309,21 +310,23 @@ export function HomeView() {
               </p>
 
               <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
-                <a
-                  href="#current-round"
+                <Link
+                  href="/round"
                   className="gradient-border mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 px-6 py-2.5 text-foreground focus:outline-none sm:w-auto cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
                 >
                   <span>{t.homeIntro.primaryCta}</span>
                   <ArrowRight className="h-4 w-4" />
-                </a>
-
-                <Link
-                  href="/register"
-                  className="mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 border border-line-strong bg-surface px-6 py-2.5 text-muted transition-all hover:bg-surface-2 hover:border-line hover:text-foreground focus:outline-none sm:w-auto cursor-pointer active:scale-[0.98]"
-                >
-                  <Rocket className="h-4 w-4" />
-                  <span>{t.homeIntro.secondaryCta}</span>
                 </Link>
+
+                {!isPlatformOwner && (
+                  <Link
+                    href="/register"
+                    className="mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 border border-line-strong bg-surface px-6 py-2.5 text-muted transition-all hover:bg-surface-2 hover:border-line hover:text-foreground focus:outline-none sm:w-auto cursor-pointer active:scale-[0.98]"
+                  >
+                    <Rocket className="h-4 w-4" />
+                    <span>{t.homeIntro.secondaryCta}</span>
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -342,14 +345,6 @@ export function HomeView() {
         <Container className="py-[clamp(2.5rem,5vw,4.5rem)]" data-aos="fade-up" data-aos-duration="600">
           <NetworkStats />
           <VerificationStats />
-        </Container>
-      </section>
-
-      <section aria-labelledby="on-chain-title" className="border-y border-line bg-surface">
-        <Container className="space-y-4 py-8">
-          <h2 id="on-chain-title" className="text-xl font-bold text-foreground">{t.onChain.title}</h2>
-          <p className="text-sm text-muted">{t.onChain.description}</p>
-          <ContractExplorerLinks />
         </Container>
       </section>
 
