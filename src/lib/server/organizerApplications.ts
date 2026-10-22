@@ -1,5 +1,7 @@
 import "server-only";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
+import { emailIdentityHash } from "@/lib/emailIdentity";
+import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 
 export interface OrganizerApplication {
   id: string;
@@ -56,6 +58,9 @@ export async function createOrganizerApplication(input: ApplicationInput): Promi
 
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
+
+  // Không cho token cũ hoặc lỗi database lách ràng buộc email qua fallback memory.
+  await ensureEmailWallet(emailIdentityHash(email), wallet, true);
 
   try {
     const db = supabaseAdmin();

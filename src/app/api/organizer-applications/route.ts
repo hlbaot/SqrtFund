@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAddress } from "viem";
 import { verifyOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
+import { VerificationError } from "@/lib/verify/errors";
 import {
   createOrganizerApplication,
   listOrganizerApplications,
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, application }, { status: 201 });
   } catch (error) {
+    if (error instanceof VerificationError) return NextResponse.json({ ok: false, error: error.code }, { status: error.status });
     console.error("[api/organizer-applications] POST error:", error);
     return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }

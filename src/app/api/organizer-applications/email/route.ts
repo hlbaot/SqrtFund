@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { isAddress } from "viem";
 import { normalizeContactEmail, validContactEmail } from "@/lib/organizerContact";
+import { emailIdentityHash } from "@/lib/emailIdentity";
+import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { issueOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
 import { forwardedIp, generateOtp, hashOtp, hashValue, consumeError } from "@/lib/verify/otp";
@@ -23,6 +25,7 @@ export async function POST(request: Request) {
     const emailHash = hashValue(`organizer-contact:${email}`, "otp");
     const db = supabaseAdmin();
     if (action === "request") {
+      await ensureEmailWallet(emailIdentityHash(email), wallet, false, db);
       mailConfig();
       const id = randomUUID(), otp = generateOtp();
       const { data, error } = await db.rpc("reserve_organizer_contact_otp", {
@@ -49,6 +52,7 @@ export async function POST(request: Request) {
     if (error) throw databaseError(error);
     const rejected = consumeError(data);
     if (rejected) return failure(rejected.code, 400, rejected.attemptsLeft === undefined ? {} : { attemptsLeft: rejected.attemptsLeft });
+    await ensureEmailWallet(emailIdentityHash(email), wallet, true, db);
     return json({ ok: true, ...issueOrganizerEmailProof(email, wallet) });
   } catch (error) {
     logServerError("validate", error);

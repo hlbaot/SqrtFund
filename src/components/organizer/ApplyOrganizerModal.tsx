@@ -105,7 +105,12 @@ function OrganizerApplicationForm({
         if (data.error === "EMAIL_NOT_VERIFIED") {
           emailOtp.reset(); setFieldErrors({ email: otpRequired }); return;
         }
-        if (res.status === 409) {
+        if (data.error === "EMAIL_ALREADY_USED") {
+          emailOtp.reset();
+          setFieldErrors({ email: t.verification.emailErrors.EMAIL_ALREADY_USED });
+          return;
+        }
+        if (data.error === "APPLICATION_ALREADY_PENDING") {
           txToast.info("apply-org-pending", c.alreadyPendingTitle, c.alreadyPendingDesc);
           void refetch();
           return;

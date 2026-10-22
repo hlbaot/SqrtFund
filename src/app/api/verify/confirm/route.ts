@@ -1,4 +1,5 @@
 import { isAddress, type Address, type Hex } from "viem";
+import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
 import { consumeError, hashOtp, type ConsumeResult } from "@/lib/verify/otp";
 import { signVerification, validateRegistry } from "@/lib/verify/signer";
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
     const signature = await signVerification(row.address as Address, row.email_hash as Hex, expiry);
     // Persist uniqueness before releasing the signature, even for concurrent confirms.
     stage = "insert";
+    await ensureEmailWallet(row.email_hash, row.address, true, db);
     const { error: insertError } = await db.from("verifications").upsert({ ...row, verified_at: new Date().toISOString() },
       { onConflict: "email_hash", ignoreDuplicates: true });
     if (insertError) {
