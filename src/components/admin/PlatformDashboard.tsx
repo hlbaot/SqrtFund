@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { isAddress, type Address } from "viem";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { isAddress, type Address, type Hash } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { factoryAddress, TARGET_CHAIN_ID, ZERO_ADDRESS } from "@/lib/contracts/addresses";
@@ -86,6 +86,22 @@ export function PlatformDashboard({
   const [organizers, setOrganizers] = useState<OrganizerEntry[]>([]);
   const [isLoadingRegistry, setIsLoadingRegistry] = useState(false);
   const [registryError, setRegistryError] = useState(false);
+  const [historyStatus, setHistoryStatus] = useState({ complete: false, error: false });
+  const registryBusy = useRef(false);
+  const actionBusy = useRef(false);
+  const approvalHashes = useRef(new Map<string, Hash>());
+  // Luôn dùng toàn bộ đơn cho registry, kể cả khi đang lọc danh sách Chờ duyệt.
+  const { applications: allApplications } = useOrganizerApplicationsAdmin("all");
+  const knownWallets = allApplications.filter(app => app.status === "approved").map(app => app.walletAddress.toLowerCase()).sort().join(",");
+  const knownAddresses = useMemo(() => knownWallets ? knownWallets.split(",") as Address[] : [], [knownWallets]);
+  const pendingCount = allApplications.filter(app => app.status === "pending").length;
+  const mergeOrganizers = useCallback((entries: OrganizerEntry[]) => {
+    setOrganizers(previous => {
+      const merged = new Map(previous.map(entry => [entry.address.toLowerCase(), entry]));
+      entries.forEach(entry => merged.set(entry.address.toLowerCase(), entry));
+      return [...merged.values()];
+    });
+  }, []);
   const registryRequest = useRef(0);
   const isMounted = useRef(true);
 
@@ -95,6 +111,20 @@ export function PlatformDashboard({
       isMounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!publicClient || !knownAddresses.length) return;
+    let active = true;
+    // Không chờ lượt quét lịch sử đang chạy khi có đơn vừa được duyệt.
+    void publicClient.multicall({
+      contracts: knownAddresses.map(address => ({ address: factoryAddress, abi: roundFactoryAbi, functionName: "authorizedOrganizers" as const, args: [address] as const })),
+      allowFailure: true,
+    }).then(results => {
+      if (!active) return;
+      mergeOrganizers(knownAddresses.map((address, index) => ({ address, source: "manual", authorized: results[index]?.status === "success" ? Boolean(results[index].result) : undefined })));
+    }).catch(() => { if (active) setRegistryError(true); });
+    return () => { active = false; };
+  }, [publicClient, knownAddresses, mergeOrganizers]);
 
   const copyToClipboard = (text: string, key: string) => {
     void navigator.clipboard.writeText(text);
@@ -106,25 +136,37 @@ export function PlatformDashboard({
 
   // Lịch sử cấp/thu hồi lấy từ blockchain, không phụ thuộc localStorage.
   const refreshRegistry = useCallback(async () => {
-    if (!publicClient || !factoryAddress) return;
+    if (!publicClient || !factoryAddress || registryBusy.current) return;
+    registryBusy.current = true;
     const request = ++registryRequest.current;
     setIsLoadingRegistry(true);
     setRegistryError(false);
     try {
-      const entries = await loadOrganizerRegistry(publicClient, factoryAddress, allRounds, factoryOwner);
+      const entries = await loadOrganizerRegistry(publicClient, factoryAddress, allRounds, factoryOwner, {
+        knownAddresses,
+        onProgress: entries => {
+          if (isMounted.current && request === registryRequest.current) mergeOrganizers(entries);
+        },
+        onHistoryStatus: (complete, error) => {
+          if (isMounted.current && request === registryRequest.current) setHistoryStatus({ complete, error });
+        },
+      });
       if (isMounted.current && request === registryRequest.current) {
-        setOrganizers(entries);
+        mergeOrganizers(entries);
         setRegistryError(entries.some(entry => entry.authorized === undefined));
       }
     } catch {
       if (isMounted.current && request === registryRequest.current) setRegistryError(true);
     } finally {
+      registryBusy.current = false;
       if (isMounted.current && request === registryRequest.current) setIsLoadingRegistry(false);
     }
-  }, [publicClient, allRounds, factoryOwner]);
+  }, [publicClient, allRounds, factoryOwner, knownAddresses, mergeOrganizers]);
 
   useEffect(() => {
     void refreshRegistry();
+    const timer = setInterval(() => void refreshRegistry(), 15_000);
+    return () => clearInterval(timer);
   }, [refreshRegistry]);
 
   // Organizer Applications State
@@ -133,14 +175,15 @@ export function PlatformDashboard({
   const [busyAppId, setBusyAppId] = useState<string | null>(null);
   const {
     applications,
-    pendingCount,
     isLoading: isAppsLoading,
+    isError: isAppsError,
     approveApplication,
     rejectApplication,
     refetch: refetchApps,
   } = useOrganizerApplicationsAdmin(appsFilter);
 
   const handleApproveApplication = async (app: OrganizerApplication) => {
+    if (actionBusy.current) return;
     if (!isConnected || chainId !== TARGET_CHAIN_ID || !publicClient) {
       txToast.error("app-approve", "Please connect your wallet to Avalanche Fuji.");
       return;
@@ -150,45 +193,63 @@ export function PlatformDashboard({
       return;
     }
 
+    actionBusy.current = true;
     setBusyAppId(app.id);
     const flow = beginFlow("approve-application");
     const toastId = `approve-${app.id.slice(0, 8)}`;
     const title = c.grantingTitle ?? "Authorizing on Fuji...";
 
+    let granted = false;
     try {
-      flow.toast.pending(toastId, title, t.toasts.confirmInWallet);
-      const hash = await flow.wait(() =>
-        writeContractAsync({
-          address: factoryAddress,
-          abi: roundFactoryAbi,
-          functionName: "setOrganizer",
-          args: [app.walletAddress as Address, true],
-        })
-      );
+      // Khi giao dịch trước đã thành công nhưng PATCH lỗi, chỉ đồng bộ đơn.
+      granted = await flow.wait(() => publicClient.readContract({ address: factoryAddress, abi: roundFactoryAbi, functionName: "authorizedOrganizers", args: [app.walletAddress as Address] }));
+      let hash = approvalHashes.current.get(app.id);
+      if (!granted) {
+        flow.toast.pending(toastId, title, t.toasts.confirmInWallet);
+        hash = await flow.wait(() =>
+          writeContractAsync({
+            address: factoryAddress,
+            abi: roundFactoryAbi,
+            functionName: "setOrganizer",
+            args: [app.walletAddress as Address, true],
+            chainId: TARGET_CHAIN_ID,
+          })
+        );
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") {
-        throw new Error("Transaction reverted on-chain");
+        const confirmedHash = hash;
+        const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash: confirmedHash }), 120_000);
+        if (receipt.status !== "success") {
+          throw new Error("Transaction reverted on-chain");
+        }
+        approvalHashes.current.set(app.id, hash);
+        granted = true;
       }
 
+      mergeOrganizers([{ address: app.walletAddress as Address, source: "manual", authorized: true }]);
       await approveApplication(app.id, hash, address);
-      flow.toast.success(toastId, c.grantSuccessTitle ?? "Organizer authorized on-chain & application approved!", hash);
-      await Promise.all([refreshRegistry(), refetchApps()]);
+      flow.toast.success(toastId, c.grantSuccessTitle ?? "Organizer authorized on-chain & application approved!", shortAddress(app.walletAddress), hash);
+      await Promise.all([refreshRegistry(), queries.invalidateQueries()]);
     } catch (error) {
       flow.toast.error(
         toastId,
-        isUserRejected(error) ? t.wallet.connectionRejected : (c.grantingTitle ?? "Grant Failed"),
-        getContractErrorMessage(error, locale)
+        isUserRejected(error) ? t.wallet.connectionRejected : (locale === "vi" ? "Chưa hoàn tất phê duyệt" : "Approval incomplete"),
+        granted
+          ? (locale === "vi" ? "Quyền trên Fuji đã được cấp nhưng chưa cập nhật được đơn. Bấm duyệt lại để đồng bộ; không cần reload hoặc cấp quyền lần nữa." : "Permission is already granted on Fuji. Retry approval to sync the application without another grant transaction.")
+          : getContractErrorMessage(error, locale)
       );
     } finally {
+      flow.finish();
+      actionBusy.current = false;
       if (isMounted.current) setBusyAppId(null);
     }
   };
 
   const handleRejectApplication = async (app: OrganizerApplication) => {
+    if (actionBusy.current || !isPlatformOwner || authorizationError) return;
     if (!confirm(c.confirmRejectMsg ?? "Are you sure you want to reject this organizer application?")) {
       return;
     }
+    actionBusy.current = true;
     setBusyAppId(app.id);
     try {
       await rejectApplication(app.id, address);
@@ -198,6 +259,7 @@ export function PlatformDashboard({
       const msg = error instanceof Error ? error.message : "Failed to reject application";
       txToast.error("app-reject", msg);
     } finally {
+      actionBusy.current = false;
       if (isMounted.current) setBusyAppId(null);
     }
   };
@@ -205,6 +267,7 @@ export function PlatformDashboard({
   // Execute Grant or Revoke Organizer
   const handleSetOrganizer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (actionBusy.current) return;
     setFormError(null);
 
     const trimmed = targetAddress.trim();
@@ -227,6 +290,7 @@ export function PlatformDashboard({
       return;
     }
 
+    actionBusy.current = true;
     setIsSubmitting(true);
     const flow = beginFlow("set-organizer");
     const toastId = `organizer-${trimmed.slice(0, 8)}`;
@@ -274,6 +338,7 @@ export function PlatformDashboard({
       );
 
       setTargetAddress("");
+      mergeOrganizers([{ address: trimmed as Address, source: "manual", authorized: authorizeAction }]);
       await queries.invalidateQueries();
       await refreshRegistry();
 
@@ -291,6 +356,7 @@ export function PlatformDashboard({
       }
     } finally {
       flow.finish();
+      actionBusy.current = false;
       if (isMounted.current) setIsSubmitting(false);
     }
   };
@@ -497,7 +563,7 @@ export function PlatformDashboard({
               type="submit"
               variant={authorizeAction ? "primary" : "destructive"}
               fullWidth
-              disabled={isSubmitting || authorizationError || !isPlatformOwner || !targetAddress.trim()}
+              disabled={isSubmitting || busyAppId !== null || authorizationError || !isPlatformOwner || !targetAddress.trim()}
               isLoading={isSubmitting}
               className="text-xs font-bold py-2.5"
             >
@@ -660,9 +726,12 @@ export function PlatformDashboard({
           </div>
         </div>
 
+        {isAppsError && <StatusAlert tone="error" title={locale === "vi" ? "Không tải được đơn đăng ký" : "Could not load applications"}>
+          {locale === "vi" ? "Đang tự thử lại. Bạn cũng có thể bấm Làm mới để kiểm tra lại kết nối." : "Retrying automatically. You can also refresh to retry."}
+        </StatusAlert>}
         {applications.length === 0 ? (
           <p className="text-xs text-muted py-8 text-center">
-            {isAppsLoading ? (locale === "vi" ? "Đang tải đơn đăng ký..." : "Loading applications...") : (c.noApplications ?? "No applications found.")}
+            {isAppsLoading ? (locale === "vi" ? "Đang tải đơn đăng ký..." : "Loading applications...") : isAppsError ? "—" : (c.noApplications ?? "No applications found.")}
           </p>
         ) : (
           <Table>
@@ -756,7 +825,7 @@ export function PlatformDashboard({
                             type="button"
                             size="sm"
                             variant="primary"
-                            disabled={isBusy || !isPlatformOwner}
+                            disabled={busyAppId !== null || isSubmitting || !isPlatformOwner || authorizationError}
                             onClick={() => void handleApproveApplication(app)}
                             className="text-xs py-1 px-2.5 h-auto font-semibold"
                           >
@@ -767,7 +836,7 @@ export function PlatformDashboard({
                             type="button"
                             size="sm"
                             variant="outline"
-                            disabled={isBusy || !isPlatformOwner}
+                            disabled={busyAppId !== null || isSubmitting || !isPlatformOwner || authorizationError}
                             onClick={() => void handleRejectApplication(app)}
                             className="text-xs py-1 px-2.5 h-auto text-destructive border-destructive/30 hover:bg-destructive/10"
                           >
@@ -777,7 +846,11 @@ export function PlatformDashboard({
                         </div>
                       ) : (
                         <span className="text-[11px] text-muted font-mono">
-                          {isApproved ? "On-chain Active" : "Declined"}
+                          {isApproved
+                            ? organizers.find(org => org.address.toLowerCase() === app.walletAddress.toLowerCase())?.authorized === true
+                              ? "On-chain Active"
+                              : (locale === "vi" ? "Xem quyền hiện tại bên dưới" : "See current permissions below")
+                            : "Declined"}
                         </span>
                       )}
                     </TableCell>
@@ -845,8 +918,13 @@ export function PlatformDashboard({
           </Button>
         </div>
 
-        {registryError && <StatusAlert tone="error" title={locale === "vi" ? "Không tải đầy đủ quyền Organizer" : "Organizer permissions could not be fully loaded"}>
+        {(registryError || organizers.some(org => org.authorized === undefined)) && <StatusAlert tone="error" title={locale === "vi" ? "Không tải đầy đủ quyền Organizer" : "Organizer permissions could not be fully loaded"}>
           {locale === "vi" ? "Dữ liệu có thể chưa cập nhật. Bấm Làm mới để thử lại; lỗi đọc không có nghĩa là quyền đã bị thu hồi." : "Data may be outdated. Refresh to retry; a failed read does not mean permissions were revoked."}
+        </StatusAlert>}
+        {!historyStatus.complete && <StatusAlert tone={historyStatus.error ? "warning" : "info"} title={locale === "vi" ? "Đang bổ sung lịch sử Organizer" : "Loading additional organizer history"}>
+          {locale === "vi"
+            ? (historyStatus.error ? "RPC chưa trả đủ lịch sử. Các ví đã biết vẫn được kiểm tra quyền trực tiếp; hệ thống sẽ tự thử lại." : "Hệ thống đang quét lịch sử theo giới hạn RPC Fuji. Các ví đã biết được hiển thị trước và danh sách tự cập nhật.")
+            : "History is scanned in batches within Fuji RPC limits. Known wallets are checked directly; the list updates automatically."}
         </StatusAlert>}
         {authorizationError && <StatusAlert tone="warning" title={locale === "vi" ? "Factory chưa sẵn sàng cho Multi-Organizer" : "Factory authorization unavailable"}>
           {locale === "vi" ? "Kiểm tra RPC và cấu hình Factory đã deploy, đặc biệt giá trị ghi đè trong .env.local." : "Check the RPC and verified Factory configuration, including .env.local overrides."}
@@ -883,9 +961,9 @@ export function PlatformDashboard({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {org.authorized === undefined ? (
+                      {org.authorized === undefined && !isOwner ? (
                         <Badge variant="default">{locale === "vi" ? "Chưa xác định" : "Unknown"}</Badge>
-                      ) : org.authorized ? (
+                      ) : org.authorized || isOwner ? (
                         <Badge variant="primary" className="text-[11px]">
                           {c.statusAuthorized ?? "Authorized"}
                         </Badge>
@@ -896,7 +974,7 @@ export function PlatformDashboard({
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {isPlatformOwner && !authorizationError && !registryError && org.authorized !== undefined && (
+                      {isPlatformOwner && !isOwner && !authorizationError && org.authorized !== undefined && (
                         <button
                           type="button"
                           onClick={() => populateForm(org.address, !org.authorized)}
