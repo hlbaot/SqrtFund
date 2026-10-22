@@ -5,6 +5,7 @@ const f = vi.hoisted(() => ({
   operations: [] as { table: string; method: string; value: unknown }[],
 }));
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/server/emailWalletIdentity", () => ({ ensureEmailWallet: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/verify/supabaseAdmin", () => ({ supabaseAdmin: () => ({ from: f.from, rpc: f.rpc }) }));
 vi.mock("@/lib/verify/rateLimit", () => ({ reserveOtp: f.reserve }));
 vi.mock("@/lib/verify/mailer", () => ({ sendOtp: f.send }));
@@ -12,6 +13,7 @@ vi.mock("@/lib/verify/signer", () => ({ validateRegistry: f.validate, signVerifi
 import { GET as domainConfig, POST as requestOtp } from "@/app/api/verify/request-otp/route";
 import { POST as confirm } from "@/app/api/verify/confirm/route";
 import { VerificationError } from "@/lib/verify/errors";
+import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { hashOtp } from "@/lib/verify/otp";
 const address = "0x1111111111111111111111111111111111111111";
 const registry = "0x2222222222222222222222222222222222222222";
@@ -185,4 +187,16 @@ describe("confirm boundary", () => {
     expect((await confirm(req({ requestId: "bad", otp: "012345" }))).status).toBe(400);
     expect((await confirm(req({ requestId: id, otp: "not-a-code" }))).status).toBe(400); expect(f.rpc).not.toHaveBeenCalled();
   });
+});
+
+it("blocks Student registration if the email belongs to a different Organizer wallet", async () => {
+  vi.mocked(ensureEmailWallet).mockRejectedValueOnce(new VerificationError("EMAIL_ALREADY_USED",409));
+  const response=await requestOtp(req({email:"a@hust.edu.vn",address}));
+  expect(response.status).toBe(409); expect(f.send).not.toHaveBeenCalled();
+});
+it("never releases a Student signature if a competing wallet claimed the email", async () => {
+  result(row); f.rpc.mockResolvedValue({data:{status:"OK"},error:null});
+  vi.mocked(ensureEmailWallet).mockRejectedValueOnce(new VerificationError("EMAIL_ALREADY_USED",409));
+  const response=await confirm(req({requestId:id,otp:"123456"}));
+  expect(response.status).toBe(409); expect(await response.json()).not.toHaveProperty("signature");
 });

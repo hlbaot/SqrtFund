@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/server/emailWalletIdentity", () => ({ ensureEmailWallet: vi.fn().mockResolvedValue(undefined) }));
 
+import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
+import { VerificationError } from "@/lib/verify/errors";
 import { issueOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
 
 beforeEach(() => vi.stubEnv("OTP_SECRET", "o".repeat(32)));
@@ -186,4 +189,11 @@ describe("Organizer Applications API", () => {
     expect(response.status).toBe(403);
   });
 
+});
+
+it("rejects an old email proof after email ownership is bound to another wallet", async () => {
+  const wallet=`0x${"3".repeat(40)}`; const email="already-used@school.edu.vn";
+  vi.mocked(ensureEmailWallet).mockRejectedValueOnce(new VerificationError("EMAIL_ALREADY_USED",409));
+  const response=await POST(new Request("http://localhost/api/organizer-applications",{method:"POST",body:JSON.stringify({walletAddress:wallet,organizationName:"Test Club",contactEmail:email,reason:"Organize a funding round",emailVerificationToken:issueOrganizerEmailProof(email,wallet).emailVerificationToken})}));
+  expect(response.status).toBe(409); expect(await response.json()).toMatchObject({error:"EMAIL_ALREADY_USED"});
 });

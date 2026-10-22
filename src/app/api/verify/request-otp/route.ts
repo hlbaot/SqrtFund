@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { isAddress, keccak256, toBytes } from "viem";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
 import { emailDomainPolicy, emailDomain, isAllowedEmail, normalizeEmail } from "@/lib/verify/domain";
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
     const address = body.address.toLowerCase();
     stage = "registry"; const registry = (await validateRegistry()).toLowerCase();
     const db = supabaseAdmin(); const emailHash = keccak256(toBytes(email));
+    await ensureEmailWallet(emailHash, address, false, db);
     stage = "insert";
     const { data: owner, error: ownerError } = await db.from("verifications").select("address").eq("email_hash", emailHash).maybeSingle();
     if (ownerError) throw databaseError(ownerError);

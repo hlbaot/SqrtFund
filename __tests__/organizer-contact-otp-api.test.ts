@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const f = vi.hoisted(() => ({ rpc: vi.fn(), send: vi.fn(), update: vi.fn(), eq: vi.fn() }));
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/server/emailWalletIdentity", () => ({ ensureEmailWallet: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/verify/supabaseAdmin", () => ({ supabaseAdmin: () => ({ rpc: f.rpc, from: () => ({ update: f.update }) }) }));
 vi.mock("@/lib/verify/mailer", () => ({ sendOtp: f.send }));
 import { POST } from "@/app/api/organizer-applications/email/route";
+import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
+import { VerificationError } from "@/lib/verify/errors";
 import { hashOtp } from "@/lib/verify/otp";
 import { verifyOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
 const walletAddress = `0x${"1".repeat(40)}`, contactEmail = "contact@gmail.com";
@@ -61,4 +64,15 @@ it("rejects cross-origin OTP requests before sending mail", async () => {
     method: "POST", headers: { Origin: "https://other.example" }, body: JSON.stringify({ action: "request", walletAddress, contactEmail }),
   }));
   expect(response.status).toBe(400); expect(f.rpc).not.toHaveBeenCalled(); expect(f.send).not.toHaveBeenCalled();
+});
+
+it("blocks sending OTP for email bound to a different wallet", async () => {
+  vi.mocked(ensureEmailWallet).mockRejectedValueOnce(new VerificationError("EMAIL_ALREADY_USED",409));
+  const response = await post({action:"request"});
+  expect(response.status).toBe(409); expect(f.send).not.toHaveBeenCalled(); expect(f.rpc).not.toHaveBeenCalled();
+});
+it("does not issue a proof if a different wallet claims the email during verification", async () => {
+  vi.mocked(ensureEmailWallet).mockRejectedValueOnce(new VerificationError("EMAIL_ALREADY_USED",409));
+  const response=await post({action:"verify",requestId,otp:"123456"});
+  expect(response.status).toBe(409); expect(await response.json()).not.toHaveProperty("emailVerificationToken");
 });
