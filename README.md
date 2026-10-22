@@ -217,7 +217,7 @@ SqrtFund vận hành thử nghiệm trên mạng Avalanche Fuji với MockUSDC (
 | Contract | Địa chỉ | Explorer |
 | :--- | :--- | :--- |
 | **StudentRegistry** | `0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e` | [Snowtrace](https://testnet.snowtrace.io/address/0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e) |
-| **RoundFactory** | `0xbC077E28826D0738E56491800bdb8D5725F9e5b3` | [Snowtrace](https://testnet.snowtrace.io/address/0xbC077E28826D0738E56491800bdb8D5725F9e5b3) |
+| **RoundFactory** | `0xA8F91a1e7DD90F64c105c3CAa8FBe153c6bfc55f` | [Snowtrace](https://testnet.snowtrace.io/address/0xA8F91a1e7DD90F64c105c3CAa8FBe153c6bfc55f) |
 | **MockUSDC** | `0xFf56491e29085043DbB11cd01D54cC1449A3d686` | [Snowtrace](https://testnet.snowtrace.io/address/0xFf56491e29085043DbB11cd01D54cC1449A3d686) |
 
 Bạn có thể kiểm tra trực tiếp các hợp đồng đã triển khai bằng lệnh `cast` của Foundry:
@@ -229,7 +229,7 @@ cast call 0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e "attester()(address)" \
 # Kỳ vọng: 0x5C2001c91aEFFaEDf9ef438cA50Bcddd23ce6181
 
 # 2. Kiểm tra RoundFactory gắn với đúng StudentRegistry
-cast call 0xbC077E28826D0738E56491800bdb8D5725F9e5b3 "studentRegistry()(address)" \
+cast call 0xA8F91a1e7DD90F64c105c3CAa8FBe153c6bfc55f "studentRegistry()(address)" \
   --rpc-url https://api.avax-test.network/ext/bc/C/rpc
 # Kỳ vọng: 0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e
 
