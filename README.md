@@ -43,11 +43,20 @@ trong đó $d_{i,j}$ là khoản sinh viên $i$ góp cho dự án $j$. Dự án 
 | :--- | :--- |
 | **Sinh viên đã xác minh** | Xác minh email trường một lần; góp 1–5 USDC cho dự án (từng dự án hoặc theo lô), trong giới hạn ngân sách của vòng. |
 | **Chủ dự án / CLB** | Là sinh viên đã xác minh, đăng ký dự án, theo dõi matching dự kiến theo thời gian thực, và nhận tiền góp cộng matching sau khi vòng được chốt. |
-| **Admin vòng / Nhà tài trợ** | Tạo vòng qua `RoundFactory`, nạp quỹ đối ứng, duyệt hoặc từ chối dự án, chốt vòng, và có thể hủy vòng trước khi chốt. |
+| **Nhà tổ chức (Organizer / Round Admin)** | Đăng ký làm Organizer (xác thực email liên hệ qua OTP). Sau khi được Platform Owner phê duyệt on-chain, có quyền nạp tiền vào pool trước (`depositPool`), tạo vòng QF mới qua `RoundFactory`, duyệt/từ chối dự án, chốt vòng, hoặc hủy vòng trước khi chốt. Nếu bị thu hồi quyền, có thể xem chi tiết lí do và nộp đơn gửi lại yêu cầu cấp quyền (Re-apply). |
+| **Chủ sở hữu nền tảng (Platform Owner)** | Quản trị viên tối cao của `RoundFactory`. Xem xét danh sách đơn đăng ký Organizer, phê duyệt quyền on-chain (`setOrganizer(wallet, true)`), từ chối đơn, hoặc thu hồi quyền on-chain (`setOrganizer(wallet, false)`) kèm lý do giải trình. **Chỉ những đơn đã được phê duyệt thành công (`status = "approved"`) mới có thể thực hiện thao tác thu hồi quyền.** |
 
 ### Tính năng
 
 * **Xác minh sinh viên:** Email trường (`.edu`, `.edu.vn`) + OTP + attestation EIP-712, lưu một lần trong `StudentRegistry` dùng chung và có hiệu lực cho mọi vòng.
+* **Đăng ký và Quản trị Organizer:**
+  * Sinh viên / tổ chức nộp đơn đăng ký làm Organizer kèm xác thực OTP email liên hệ.
+  * Ràng buộc **1 email ↔ 1 ví** cố định; khi bị thu hồi quyền email vẫn gắn với ví ban đầu để bảo vệ danh tính và hỗ trợ nộp lại (Re-apply).
+  * **Platform Dashboard:** Platform Owner quản lý đơn theo tab (*Tất cả, Chờ duyệt, Đã duyệt, Từ chối, Đã thu hồi*).
+  * **Quy tắc thu hồi quyền:** **Chỉ những đơn đã được phê duyệt thành công (`status = "approved"`) mới có thể thực hiện thao tác thu hồi quyền.**
+  * **Modal thu hồi quyền:** Platform Owner xác nhận địa chỉ ví, thông tin tổ chức và bắt buộc nhập lí do thu hồi (tối thiểu 3 ký tự). Giao dịch gọi `setOrganizer(wallet, false)` on-chain và lưu lý do vào cơ sở dữ liệu.
+  * **Giao diện khi bị thu hồi (Organizer View):** Hiển thị thông báo "Đã bị thu hồi quyền", nút "Xem chi tiết" để đọc lí do Admin đã nhập, và nút "Gửi yêu cầu lại" (Re-apply) để chỉnh sửa và gửi đơn mới cho Admin xét duyệt lại.
+* **Prefunded Factory (Nạp quỹ trước khi tạo vòng):** Organizer nạp quỹ đối ứng vào Factory trước (`depositPool`), sau đó tạo vòng với ngân sách đã nạp, đảm bảo vòng luôn có đủ quỹ bảo chứng mà không gặp lỗi thiếu allowance hay revert khi khởi tạo.
 * **Factory nhiều vòng:** Mỗi vòng là một contract `QFRound` riêng, có thời gian, giới hạn góp, ngân sách và trần matching riêng.
 * **Duyệt dự án:** Sinh viên đã xác minh đăng ký dự án; admin vòng duyệt hoặc từ chối vĩnh viễn trên chain.
 * **Góp đơn lẻ và theo lô:** `donate` cho một dự án hoặc `donateMany` để chia ngân sách cho nhiều dự án trong một giao dịch duy nhất (cần approve ERC-20 nếu allowance chưa đủ).
@@ -217,7 +226,7 @@ SqrtFund vận hành thử nghiệm trên mạng Avalanche Fuji với MockUSDC (
 | Contract | Địa chỉ | Explorer |
 | :--- | :--- | :--- |
 | **StudentRegistry** | `0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e` | [Snowtrace](https://testnet.snowtrace.io/address/0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e) |
-| **RoundFactory** | `0xA8F91a1e7DD90F64c105c3CAa8FBe153c6bfc55f` | [Snowtrace](https://testnet.snowtrace.io/address/0xA8F91a1e7DD90F64c105c3CAa8FBe153c6bfc55f) |
+| **RoundFactory** | `0xB2A91fd342d4C81061A97C42A789253d2252D85E` | [Snowtrace](https://testnet.snowtrace.io/address/0xB2A91fd342d4C81061A97C42A789253d2252D85E) |
 | **MockUSDC** | `0xFf56491e29085043DbB11cd01D54cC1449A3d686` | [Snowtrace](https://testnet.snowtrace.io/address/0xFf56491e29085043DbB11cd01D54cC1449A3d686) |
 
 Bạn có thể kiểm tra trực tiếp các hợp đồng đã triển khai bằng lệnh `cast` của Foundry:
@@ -229,7 +238,7 @@ cast call 0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e "attester()(address)" \
 # Kỳ vọng: 0x5C2001c91aEFFaEDf9ef438cA50Bcddd23ce6181
 
 # 2. Kiểm tra RoundFactory gắn với đúng StudentRegistry
-cast call 0xA8F91a1e7DD90F64c105c3CAa8FBe153c6bfc55f "studentRegistry()(address)" \
+cast call 0xB2A91fd342d4C81061A97C42A789253d2252D85E "studentRegistry()(address)" \
   --rpc-url https://api.avax-test.network/ext/bc/C/rpc
 # Kỳ vọng: 0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e
 
@@ -285,7 +294,13 @@ Sao chép `.env.example` thành `.env.local` và điền cấu hình phù hợp:
 
 ### Cơ sở dữ liệu
 
-Thực thi file migration `supabase/migrations/0001_verification.sql` trong SQL Editor của Supabase. File này sẽ khởi tạo bảng lưu trữ OTP, dữ liệu xác minh và các hàm khóa advisory chống tranh chấp.
+Thực thi lần lượt các file migration trong thư mục `supabase/migrations/` trong SQL Editor của Supabase:
+
+1. `0001_verification.sql`: Khởi tạo bảng `otp_requests`, `verifications`, chỉ mục và hàm khóa advisory chống race-condition khi xác minh sinh viên.
+2. `0002_organizer_applications.sql`: Tạo bảng `organizer_applications` lưu trữ hồ sơ đăng ký Organizer của các câu lạc bộ/tổ chức.
+3. `0003_organizer_contact_otps.sql`: Bảng `organizer_contact_otps` phục vụ xác thực OTP qua email liên hệ của người nộp đơn Organizer.
+4. `0004_email_wallet_identity.sql`: Bảng `email_wallet_bindings` và hàm `enforce_email_wallet` thiết lập ràng buộc định danh **1 email ↔ 1 ví** cố định chống tấn công Sybil.
+5. `0005_revocation_reason.sql`: Mở rộng trạng thái `revoked`, bổ sung cột `revocation_reason` và chỉ mục phục vụ quy trình thu hồi quyền và kháng nghị/nộp lại của Organizer.
 
 ### Chạy và kiểm thử
 

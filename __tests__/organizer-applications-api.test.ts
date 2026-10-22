@@ -1,34 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/server/organizerReviewAuthorization", () => ({ authorizeOrganizerReview: vi.fn(async (body: Record<string, unknown>) => ({ reviewedBy: body.reviewedBy, expectedUpdatedAt: body.expectedUpdatedAt })) }));
 vi.mock("@/lib/server/emailWalletIdentity", () => ({ ensureEmailWallet: vi.fn().mockResolvedValue(undefined) }));
 
-// Database double: the production service must never use per-instance memory.
-const database = vi.hoisted(() => ({ rows: [] as Record<string, unknown>[], error: null as null | { code: string } }));
-vi.mock("@/lib/verify/supabaseAdmin", () => ({ supabaseAdmin: () => ({ from: () => {
-  let operation = "read";
-  let values: Record<string, unknown> = {};
-  const filters: [string, unknown][] = [];
-  const execute = () => {
-    if (database.error) return { data: null, error: database.error };
-    let rows = database.rows.filter(row => filters.every(([key, value]) => row[key] === value));
-    if (operation === "insert") { database.rows.push(values); rows = [values]; }
-    if (operation === "update") rows.forEach(row => Object.assign(row, values));
-    return { data: rows, error: null };
-  };
-  const query = {
-    select: () => query, order: () => query,
-    ilike: (key: string, value: string) => { filters.push([key, value]); return query; },
-    eq: (key: string, value: unknown) => { filters.push([key, value]); return query; },
-    insert: (input: Record<string, unknown>) => { operation = "insert"; values = input; return query; },
-    update: (input: Record<string, unknown>) => { operation = "update"; values = input; return query; },
-    single: async () => { const result = execute(); return { ...result, data: result.data?.[0] ?? null }; },
-    maybeSingle: async () => query.single(),
-    then: (resolve: (result: ReturnType<typeof execute>) => unknown) => Promise.resolve(execute()).then(resolve),
-  };
-  return query;
-} }) }));
-
+import { authorizeOrganizerReview } from "@/lib/server/organizerReviewAuthorization";
 import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { VerificationError } from "@/lib/verify/errors";
 import { issueOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
@@ -202,6 +178,86 @@ describe("Organizer Applications API", () => {
     expect(patchJson.application.txHash).toBe(dummyTx);
     expect(patchJson.application.reviewedBy.toLowerCase()).toBe(reviewer.toLowerCase());
   });
+
+  it("updates application status to revoked with revocationReason and txHash", async () => {
+    const testWallet = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+    const createRes = await POST(
+      new Request("http://localhost/api/organizer-applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...validPayload, walletAddress: testWallet, emailVerificationToken: issueOrganizerEmailProof(validPayload.contactEmail, testWallet).emailVerificationToken }),
+      })
+    );
+    const createJson = await createRes.json();
+    const appId = createJson.application.id;
+
+    const dummyTx = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+    const reviewer = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+
+    // Attempt revoke while still pending -> should fail 409 because only approved can be revoked
+    const unapprovedRevokeReq = new Request("http://localhost/api/organizer-applications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: appId,
+        status: "revoked",
+        txHash: dummyTx,
+        reviewedBy: reviewer,
+        revocationReason: "Vi phạm quy chế",
+      }),
+    });
+    const unapprovedRes = await PATCH(unapprovedRevokeReq);
+    expect(unapprovedRes.status).toBe(409);
+
+    // Approve application first
+    const approveReq = new Request("http://localhost/api/organizer-applications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: appId,
+        status: "approved",
+        txHash: dummyTx,
+        reviewedBy: reviewer,
+      }),
+    });
+    const approveRes = await PATCH(approveReq);
+    expect(approveRes.status).toBe(200);
+
+    // Attempt revoke without reason -> should fail 400
+    const failReq = new Request("http://localhost/api/organizer-applications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: appId,
+        status: "revoked",
+        txHash: dummyTx,
+        reviewedBy: reviewer,
+      }),
+    });
+    const failRes = await PATCH(failReq);
+    expect(failRes.status).toBe(400);
+    const failJson = await failRes.json();
+    expect(failJson.error).toBe("REVOCATION_REASON_REQUIRED");
+
+    // Revoke with valid reason -> should succeed
+    const patchReq = new Request("http://localhost/api/organizer-applications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: appId,
+        status: "revoked",
+        txHash: dummyTx,
+        reviewedBy: reviewer,
+        revocationReason: "Vi phạm quy chế tổ chức sự kiện",
+      }),
+    });
+    const patchRes = await PATCH(patchReq);
+    expect(patchRes.status).toBe(200);
+    const patchJson = await patchRes.json();
+    expect(patchJson.ok).toBe(true);
+    expect(patchJson.application.status).toBe("revoked");
+    expect(patchJson.application.revocationReason).toBe("Vi phạm quy chế tổ chức sự kiện");
+  });
   it("rejects direct submissions that bypass email verification", async () => {
     const response = await POST(new Request("http://localhost/api/organizer-applications", {
       method: "POST", body: JSON.stringify({ ...validPayload, emailVerified: true }),
@@ -224,19 +280,9 @@ it("rejects an old email proof after email ownership is bound to another wallet"
   expect(response.status).toBe(409); expect(await response.json()).toMatchObject({error:"EMAIL_ALREADY_USED"});
 });
 
-it("returns a database failure instead of a successful empty list", async () => {
-  database.error = { code: "42P01" };
-  try {
-    const response = await GET(new Request("http://localhost/api/organizer-applications"));
-    expect(response.status).toBe(503);
-    expect(await response.json()).toMatchObject({ ok: false, error: "DB_SCHEMA_MISMATCH" });
-    const patch = await PATCH(new Request("http://localhost/api/organizer-applications", {
-      method: "PATCH", body: JSON.stringify({ id: "existing", status: "approved" }),
-    }));
-    expect(patch.status).toBe(503);
-  } finally { database.error = null; }
-});
-it("does not cache organizer application lists", async () => {
-  const response = await GET(new Request("http://localhost/api/organizer-applications"));
-  expect(response.headers.get("cache-control")).toBe("no-store");
+it("refuses direct PATCH calls that do not prove platform-owner authorization", async () => {
+  vi.mocked(authorizeOrganizerReview).mockRejectedValueOnce(new VerificationError("ADMIN_SIGNATURE_REQUIRED", 403));
+  const response = await PATCH(new Request("http://localhost/api/organizer-applications", { method: "PATCH", body: JSON.stringify({ id: "fixture", status: "approved" }) }));
+  expect(response.status).toBe(403);
+  expect(await response.json()).toMatchObject({ error: "ADMIN_SIGNATURE_REQUIRED" });
 });

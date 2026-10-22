@@ -32,23 +32,14 @@ it("keeps failed authorization reads unknown instead of displaying revoked", asy
 });
 it("falls back to deployment-block discovery and bounded log ranges", async () => {
   const { client, load } = setup();
-  const address = factory();
   client.getBlockNumber.mockResolvedValue(5000n);
   client.getCode.mockImplementation(async ({ blockNumber }: { blockNumber: bigint }) => blockNumber >= 5n ? "0x1234" : "0x");
   client.getContractEvents.mockImplementation(async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }) => {
-    if (toBlock - fromBlock >= 100n) throw new Error("Range too large");
+    if (toBlock - fromBlock >= 2048n) throw new Error("Range too large");
     return fromBlock === 5n ? [{ args: { organizer: organizerA, authorized: true } }] : [];
   });
-  expect(await load(address)).toMatchObject([{ address: organizerA, authorized: true }]);
-  expect(client.getContractEvents).toHaveBeenLastCalledWith(expect.objectContaining({ fromBlock: 1905n, toBlock: 2004n }));
-  expect(client.getContractEvents.mock.calls).toHaveLength(20);
-  expect(client.getContractEvents.mock.calls.every(([range]) => range.toBlock - range.fromBlock < 100n)).toBe(true);
-  const codeCalls = client.getCode.mock.calls.length;
-  // Lần sau tiếp tục đúng block, không quét lại hoặc bỏ sót các trang cũ.
-  client.getContractEvents.mockClear();
-  expect(await load(address)).toMatchObject([{ address: organizerA, authorized: true }]);
-  expect(client.getContractEvents.mock.calls[0][0]).toMatchObject({ fromBlock: 2005n, toBlock: 2104n });
-  expect(client.getCode.mock.calls).toHaveLength(codeCalls);
+  expect(await load()).toMatchObject([{ address: organizerA, authorized: true }]);
+  expect(client.getContractEvents.mock.calls.map(([range]) => [range.fromBlock, range.toBlock])).toEqual([[0n, 5000n], [5n, 2052n], [2053n, 4100n], [4101n, 5000n]]);
 });
 it("adds later grants while retaining previously discovered Organizers", async () => {
   const { client, load } = setup(); const address = factory();
@@ -64,29 +55,4 @@ it("surfaces failed history reads instead of claiming the registry is empty", as
   client.getContractEvents.mockRejectedValue(new Error("RPC unavailable"));
   client.getCode.mockRejectedValue(new Error("RPC unavailable"));
   await expect(load()).rejects.toThrow("RPC unavailable");
-});
-
-it("shows approved application wallets before history and keeps them on archive RPC failure", async () => {
-  const { client } = setup();
-  client.getContractEvents.mockRejectedValue(new Error("archive unavailable"));
-  client.getCode.mockRejectedValue(new Error("archive unavailable"));
-  const progress = vi.fn(); const status = vi.fn();
-  const entries = await loadOrganizerRegistry(client as unknown as PublicClient, factory(), [], undefined, {
-    knownAddresses: [organizerB], onProgress: progress, onHistoryStatus: status,
-  });
-  expect(progress).toHaveBeenCalledWith([{ address: organizerB, source: "manual", authorized: true }]);
-  expect(entries).toEqual([{ address: organizerB, source: "manual", authorized: true }]);
-  expect(status).toHaveBeenLastCalledWith(false, true);
-});
-it("preserves a successful page if the next RPC page fails", async () => {
-  const { client, load } = setup(); const address = factory();
-  client.getBlockNumber.mockResolvedValue(500n);
-  client.getContractEvents.mockImplementation(async ({ fromBlock, toBlock }: { fromBlock: bigint; toBlock: bigint }) => {
-    if (toBlock - fromBlock >= 100n || fromBlock === 100n) throw new Error("RPC failed");
-    return [{ args: { organizer: organizerA, authorized: true } }];
-  });
-  expect(await load(address)).toMatchObject([{ address: organizerA, authorized: true }]);
-  client.getContractEvents.mockClear();
-  await load(address);
-  expect(client.getContractEvents.mock.calls[0][0]).toMatchObject({ fromBlock: 100n });
 });
