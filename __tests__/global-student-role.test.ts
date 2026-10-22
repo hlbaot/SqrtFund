@@ -55,11 +55,11 @@ it("renders the real admin navigation link despite a failed student lookup", () 
   f.factoryOwner = "0x1111111111111111111111111111111111111111";
   f.read.mockReturnValue({data:undefined,isLoading:false,isError:true,refetch:vi.fn()});
   const html = renderToStaticMarkup(createElement(Navbar));
-  expect(html).toContain('href="/admin"'); expect(html).toContain("Quản trị");
+  expect(html).toContain('href="/admin?tab=platform"'); expect(html).toContain("Cấp quyền Organizer");
 });
 it("does not expose admin navigation to an unrelated student wallet", () => {
   f.factoryOwner = "0x3333333333333333333333333333333333333333";
-  expect(renderToStaticMarkup(createElement(Navbar))).not.toContain('href="/admin"');
+  expect(renderToStaticMarkup(createElement(Navbar))).not.toContain('/admin');
 });
 
 function Authorization() {

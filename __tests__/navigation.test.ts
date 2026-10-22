@@ -16,4 +16,9 @@ describe("header route matching", () => {
     expect(matchesNavRoute("/rounds", "/round")).toBe(true);
     expect(matchesNavRoute("/round-other", "/round")).toBe(false);
   });
+  it("keeps the dashboard selected for role-specific tab links", () => {
+    expect(matchesNavRoute("/admin", "/admin?tab=organizer")).toBe(true);
+    expect(matchesNavRoute("/admin", "/admin?tab=platform")).toBe(true);
+    expect(matchesNavRoute("/my", "/admin?tab=organizer")).toBe(false);
+  });
 });

@@ -18,7 +18,7 @@ import { Container } from "./Container";
 
 export function Navbar() {
   const pathname = usePathname();
-  const { role, isReady, isConnected, isAdmin } = useRole();
+  const { role, isReady, isConnected, isAdmin, isPlatformOwner } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
   const { t } = useLocale();
   const { roundAddress, status, isLoading: isRoundLoading, isError: isRoundError } = useRound();
@@ -31,12 +31,13 @@ export function Navbar() {
   }
   const [showAnnouncement, setShowAnnouncement] = useState(true);
 
+  const dashboardHref = isPlatformOwner ? "/admin?tab=platform" : "/admin?tab=organizer";
   const navLinks = [
     { href: "/", label: t.nav.home },
     { href: "/round", label: t.nav.round },
     { href: "/register", label: t.nav.register },
     { href: "/my", label: t.nav.my },
-    ...(isConnected && isAdmin ? [{ href: "/admin", label: t.nav.admin }] : []),
+    ...(isConnected && isAdmin ? [{ href: dashboardHref, label: isPlatformOwner ? t.nav.platformDashboard : t.nav.organizerDashboard }] : []),
   ];
 
   return (
@@ -88,7 +89,7 @@ export function Navbar() {
         >
           {navLinks.map(link => (
             <NavLink key={link.href} {...link} pathname={pathname} pendingHref={pendingHref}
-              count={link.href === "/admin" ? counts.admin : link.href === "/my" ? counts.activity : 0}
+              count={link.href === dashboardHref ? counts.admin : link.href === "/my" ? counts.activity : 0}
               onNavigate={href => { if (href === "/my") counts.markAllSeen(); setPendingHref(href); }} />
           ))}
         </nav>
@@ -117,7 +118,7 @@ export function Navbar() {
             <nav className="flex flex-col space-y-1.5" aria-label={t.nav.mobileNavigation}>
               {navLinks.map(link => (
                 <NavLink key={link.href} {...link} mobile pathname={pathname} pendingHref={pendingHref}
-                  count={link.href === "/admin" ? counts.admin : link.href === "/my" ? counts.activity : 0}
+                  count={link.href === dashboardHref ? counts.admin : link.href === "/my" ? counts.activity : 0}
                   onNavigate={href => { if (href === "/my") counts.markAllSeen(); setPendingHref(href); setMobileMenuOpen(false); }} />
               ))}
             </nav>
