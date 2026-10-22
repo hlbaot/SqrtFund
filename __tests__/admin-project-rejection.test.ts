@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { AdminView } from "@/views/admin";
 import { copy } from "@/lib/copy";
 import { projectReviewCopy } from "@/lib/projectReview";
-const state = vi.hoisted(() => ({ supports: true, finalized: false, cancelled: false, approved: false, wallet: "0x1111111111111111111111111111111111111111", now: 1000, tab: "organizer", authLoading: false, authError: false, access: true, canCreate: true, fundingOwner: false, credit: 0n }));
+const state = vi.hoisted(() => ({ supports: true, finalized: false, cancelled: false, approved: false, wallet: "0x1111111111111111111111111111111111111111", now: 1000, tab: "organizer", platformOwner: false, authLoading: false, authError: false, access: true, canCreate: true, fundingOwner: false, credit: 0n }));
 vi.mock("@/hooks/useCurrentTimestamp", () => ({ useCurrentTimestamp: () => state.now }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), useSearchParams: () => new URLSearchParams({ tab: state.tab }) }));
 vi.mock("wagmi", () => ({
@@ -13,9 +13,9 @@ vi.mock("wagmi", () => ({
   useWriteContract: () => ({}),
   useReadContracts: () => ({ data: [{ status: "success", result: "Demo round" }, { status: "success", result: "Previous round" }] }),
 }));
-vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}) }));
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}), useQuery: () => ({ data: null, isLoading: false, isError: false }) }));
 vi.mock("@/hooks/useTxFlow", () => ({ useTxFlow: () => vi.fn() }));
-vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ role: state.access ? "admin" : "guest", canCreateRound: state.canCreate, isAuthorizationLoading: state.authLoading, isAuthorizationError: state.authError }) }));
+vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ role: state.access ? "admin" : "guest", isPlatformOwner: state.platformOwner, canCreateRound: state.canCreate, isAuthorizationLoading: state.authLoading, isAuthorizationError: state.authError }) }));
 vi.mock("@/hooks/useAdminRounds", () => ({ useAdminRounds: () => ({
   roundAddress: "0x2222222222222222222222222222222222222222",
   rounds: [
@@ -50,8 +50,9 @@ vi.mock("@/components/admin/DepositPoolForm", () => ({ DepositPoolForm: () => nu
 vi.mock("@/components/admin/MintTestUsdcForm", () => ({ MintTestUsdcForm: () => null }));
 vi.mock("@/components/admin/FinalizeButton", () => ({ FinalizeButton: () => null }));
 vi.mock("@/components/round/RoundCancellationPanel", () => ({ RoundCancellationPanel: () => null }));
+vi.mock("@/components/organizer/ApplyOrganizerModal", () => ({ ApplyOrganizerModal: () => null }));
 vi.mock("@/components/common/AOSInit", () => ({ AOSInit: () => null }));
-beforeEach(() => Object.assign(state, { supports: true, finalized: false, cancelled: false, approved: false, wallet: "0x1111111111111111111111111111111111111111", now: 1000, tab: "organizer", authLoading: false, authError: false, access: true, canCreate: true, fundingOwner: false, credit: 0n }));
+beforeEach(() => Object.assign(state, { supports: true, finalized: false, cancelled: false, approved: false, wallet: "0x1111111111111111111111111111111111111111", now: 1000, tab: "organizer", platformOwner: false, authLoading: false, authError: false, access: true, canCreate: true, fundingOwner: false, credit: 0n }));
 const render = () => renderToStaticMarkup(createElement(AdminView));
 it("renders one round selector and one control panel even with multiple rounds", () => {
   const html = render();
@@ -92,7 +93,8 @@ it("replaces both actions as the clock reaches endTime without changing the roun
   expect(labels).not.toContain(copy.vi.rejection.action); expect(labels).not.toContain(copy.vi.admin.approveBtn);
 });
 
-it("follows dashboard tab changes from the wallet menu URL", () => {
+it("allows only the platform owner to follow platform dashboard URLs", () => {
+  state.platformOwner = true;
   expect(render()).not.toContain("PlatformMarker"); state.tab = "platform";
   expect(render()).toContain("PlatformMarker"); state.tab = "organizer";
   expect(render()).not.toContain("PlatformMarker");
@@ -127,4 +129,18 @@ it("keeps the creation form available to the owner of the already-deployed fundi
 it("keeps refundable deposits accessible after Organizer authorization is revoked", () => {
   state.access = false; state.canCreate = false; state.credit = 25_000_000n;
   expect(render()).toContain("CreateRoundMarker");
+});
+
+it("hides platform controls for an Organizer even with a direct platform URL", () => {
+  state.tab = "platform";
+  const html = render();
+  expect(html).not.toContain("PlatformMarker");
+  expect(html).not.toContain(copy.vi.admin.tabPlatform);
+  expect(html).toContain("CreateRoundMarker");
+});
+it("does not expose the platform dashboard to Student or guest accounts", () => {
+  state.tab = "platform"; state.access = false; state.canCreate = false;
+  const html = render();
+  expect(html).not.toContain("PlatformMarker");
+  expect(html).not.toContain(copy.vi.admin.tabPlatform);
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { formatEther } from "viem";
+import { formatEther, isHash } from "viem";
 import { createPortal } from "react-dom";
 import { useToast } from "@/lib/context/toast";
 import { useLocale } from "@/lib/context/locale";
@@ -21,6 +21,7 @@ export function ToastContainer() {
       className="fixed bottom-4 left-4 z-[2147483647] flex flex-col gap-2 pointer-events-none w-[calc(100vw-2rem)] max-w-sm"
     >
       {toasts.map((toast) => {
+        const txHash = typeof toast.txHash === "string" && isHash(toast.txHash) ? toast.txHash : undefined;
         const isSuccess = toast.type === "success";
         const isError = toast.type === "error";
         const isPending = toast.type === "pending";
@@ -54,14 +55,14 @@ export function ToastContainer() {
                 </p>
               )}
               {toast.feeWei !== undefined && <p className="mt-1 break-all text-xs text-muted">{t.phase2.actualFee}: {formatEther(toast.feeWei)} AVAX</p>}
-              {toast.txHash && (
+              {txHash && (
                 <a
-                  href={getExplorerTxUrl(toast.txHash)}
+                  href={getExplorerTxUrl(txHash)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-money hover:underline"
                 >
-                  <span>Snowtrace: {shortAddress(toast.txHash, 6)}</span>
+                  <span>Snowtrace: {shortAddress(txHash, 6)}</span>
                   <ExternalLink className="h-3 w-3" />
                 </a>
               )}

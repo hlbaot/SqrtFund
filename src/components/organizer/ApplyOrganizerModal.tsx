@@ -20,6 +20,9 @@ import {
   FileText,
   Wallet,
   Clock,
+  ShieldOff,
+  Eye,
+  Send,
 } from "lucide-react";
 
 interface ApplyOrganizerModalProps {
@@ -46,6 +49,7 @@ function OrganizerApplicationForm({
   const {
     application,
     isPending,
+    isRevoked,
     refetch,
   } = useMyOrganizerApplication(walletAddress);
 
@@ -58,6 +62,10 @@ function OrganizerApplicationForm({
   const emailOtp = useOrganizerEmailOtp(walletAddress, email);
   const vi = locale === "vi";
   const otpRequired = vi ? "Vui lòng xác thực email liên hệ bằng OTP trước khi gửi đơn." : "Verify your contact email with an OTP before submitting.";
+
+  // Revocation detail state
+  const [showRevocationDetails, setShowRevocationDetails] = useState(false);
+  const [isReapplying, setIsReapplying] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +226,87 @@ function OrganizerApplicationForm({
                 {t.admin.closeBtn}
               </Button>
             </div>
+          </div>
+        ) : isRevoked && application && !isReapplying ? (
+          /* State 3.5: Revoked - show revocation notice */
+          <div className="space-y-4 py-2">
+            <div className="p-4 border border-destructive/40 bg-destructive/5 rounded-xs space-y-3">
+              <div className="flex items-center gap-2 text-destructive font-semibold">
+                <ShieldOff className="h-4 w-4" />
+                <span>{vi ? "Đã bị thu hồi quyền" : "Permission Revoked"}</span>
+              </div>
+              <p className="text-sm text-muted leading-relaxed">
+                {vi
+                  ? "Quyền nhà tổ chức của bạn đã bị thu hồi bởi Platform Owner. Bạn có thể xem chi tiết hoặc gửi lại yêu cầu cấp quyền."
+                  : "Your organizer permission has been revoked by the Platform Owner. You can view details or re-apply for permission."}
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowRevocationDetails(true)}
+                  className="text-xs text-primary hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <Eye className="h-3 w-3" />
+                  {vi ? "Xem chi tiết" : "View Details"}
+                </button>
+              </div>
+            </div>
+
+            {/* Revocation Details Sub-dialog */}
+            {showRevocationDetails && (
+              <div className="p-4 border border-line bg-surface/50 rounded-xs space-y-4 animate-in fade-in">
+                <div className="space-y-2">
+                  <label className="text-xs font-mono uppercase tracking-wider text-muted">
+                    {vi ? "Lí do thu hồi" : "Revocation Reason"}
+                  </label>
+                  <div className="p-3 border border-destructive/20 bg-destructive/5 rounded-xs text-sm leading-relaxed">
+                    {application.revocationReason || (vi ? "Không có lí do cụ thể" : "No specific reason provided")}
+                  </div>
+                </div>
+                <div className="text-xs text-muted font-mono space-y-1">
+                  <p>
+                    <span className="text-foreground">{vi ? "Tổ chức:" : "Organization:"}</span> {application.organizationName}
+                  </p>
+                  <p>
+                    <span className="text-foreground">{vi ? "Địa chỉ ví:" : "Wallet:"}</span> {application.walletAddress}
+                  </p>
+                  {application.reviewedAt && (
+                    <p>
+                      <span className="text-foreground">{vi ? "Ngày thu hồi:" : "Revoked at:"}</span> {new Date(application.reviewedAt).toLocaleString(vi ? "vi-VN" : "en-US")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-line">
+                  <Button type="button" variant="outline" onClick={() => setShowRevocationDetails(false)}>
+                    {vi ? "Huỷ" : "Cancel"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => { setShowRevocationDetails(false); setIsReapplying(true); }}
+                  >
+                    <Send className="h-3.5 w-3.5 mr-1.5" />
+                    {vi ? "Gửi yêu cầu lại" : "Re-apply"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!showRevocationDetails && (
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={onClose}>
+                  {t.admin.closeBtn}
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => setIsReapplying(true)}
+                >
+                  <Send className="h-3.5 w-3.5 mr-1.5" />
+                  {vi ? "Gửi yêu cầu lại" : "Re-apply"}
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           /* State 4: Standard application form */

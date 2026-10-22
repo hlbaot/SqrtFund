@@ -5,6 +5,7 @@ import { Inbox, Search } from "lucide-react";
 import { useLocale } from "@/lib/context/locale";
 import { filterReviewProjects, projectReviewCopy, projectReviewStatus, type ReviewFilter } from "@/lib/projectReview";
 import { PendingProjectCard, type PendingProjectCardProps, type ReviewProject } from "./PendingProjectCard";
+import { Button } from "@/components/ui/Button";
 import { StatusAlert } from "@/components/ui/StatusAlert";
 
 type ReviewListProps = Omit<PendingProjectCardProps, "project" | "expanded" | "onToggle" | "onAction"> & {
@@ -12,27 +13,66 @@ type ReviewListProps = Omit<PendingProjectCardProps, "project" | "expanded" | "o
   onAction: (project: ReviewProject, action: "approve" | "reject") => void;
 };
 
-/** The scroll region preserves the surrounding admin controls even with 50 records. */
+const PROJECTS_PAGE_SIZE = 4;
+
+/** Keep the latest submissions first and limit each review page to four projects. */
 export function ProjectReviewList({ projects, isLoading, isError, onRetry, ...actions }: ReviewListProps) {
   const { t, locale } = useLocale();
   const c = projectReviewCopy[locale];
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ReviewFilter>("all");
+  const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const searchId = useId();
   const filterId = useId();
   const resultsId = useId();
   const filtered = filterReviewProjects(projects, query, filter, actions.round, actions.now);
+  // Project IDs increase with each registration in the selected round.
+  const sorted = [...filtered].sort((a, b) => BigInt(a.id) > BigInt(b.id) ? -1 : BigInt(a.id) < BigInt(b.id) ? 1 : 0);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PROJECTS_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * PROJECTS_PAGE_SIZE;
+  const visibleProjects = sorted.slice(pageStart, pageStart + PROJECTS_PAGE_SIZE);
   const options: ReviewFilter[] = ["all", "pending", ...(["approved", "rejected", "expired"] as const).filter(status => projects.some(project => projectReviewStatus(project, actions.round, actions.now) === status) || filter === status)];
   const inputStyle = "min-h-9 rounded-sm border border-line bg-bg/60 px-3 text-xs text-foreground transition-colors hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
   return <section aria-label={t.admin.projectsQueueTitle} className="space-y-4 border border-line bg-surface p-4 sm:p-5">
     <h2 className="text-sm font-semibold tracking-tight text-foreground">{t.admin.projectsQueueTitle}</h2>
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-      <div className="min-w-0 flex-1"><label htmlFor={searchId} className="mb-1.5 block text-[11px] text-muted">{c.search}</label><div className="relative"><Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-muted" aria-hidden="true" /><input id={searchId} type="search" value={query} onChange={event => setQuery(event.target.value)} aria-controls={resultsId} className={`${inputStyle} w-full pl-9`} /></div></div>
-      <div><label htmlFor={filterId} className="mb-1.5 block text-[11px] text-muted">{c.filter}</label><select id={filterId} value={filter} onChange={event => setFilter(event.target.value as ReviewFilter)} aria-controls={resultsId} className={`${inputStyle} w-full sm:min-w-36`}>{options.map(option => <option key={option} value={option}>{c[option]}</option>)}</select></div>
+      <div className="min-w-0 flex-1"><label htmlFor={searchId} className="mb-1.5 block text-[11px] text-muted">{c.search}</label><div className="relative"><Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-muted" aria-hidden="true" /><input id={searchId} type="search" value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} aria-controls={resultsId} className={`${inputStyle} w-full pl-9`} /></div></div>
+      <div><label htmlFor={filterId} className="mb-1.5 block text-[11px] text-muted">{c.filter}</label><select id={filterId} value={filter} onChange={event => { setFilter(event.target.value as ReviewFilter); setPage(1); }} aria-controls={resultsId} className={`${inputStyle} w-full sm:min-w-36`}>{options.map(option => <option key={option} value={option}>{c[option]}</option>)}</select></div>
     </div>
-    <p aria-live="polite" className="text-xs text-muted">{isLoading ? c.loading : c.count.replace("{shown}", String(filtered.length)).replace("{total}", String(projects.length))}</p>
-    {isError ? <StatusAlert tone="error" title={c.readError}>{onRetry && <button type="button" onClick={onRetry} className="rounded-sm font-semibold underline transition-colors hover:text-primary focus-visible:outline focus-visible:outline-primary">{c.retry}</button>}</StatusAlert> : <ProjectReviewResults id={resultsId} projects={filtered} isLoading={isLoading} isFiltered={Boolean(query.trim()) || filter !== "all"} expanded={expanded} onToggle={id => setExpanded(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; })} {...actions} />}
+    <p aria-live="polite" className="text-xs text-muted">{isLoading ? c.loading : c.count.replace("{shown}", String(visibleProjects.length)).replace("{total}", String(projects.length))}</p>
+    {isError ? <StatusAlert tone="error" title={c.readError}>{onRetry && <button type="button" onClick={onRetry} className="rounded-sm font-semibold underline transition-colors hover:text-primary focus-visible:outline focus-visible:outline-primary">{c.retry}</button>}</StatusAlert> : <ProjectReviewResults id={resultsId} projects={visibleProjects} isLoading={isLoading} isFiltered={Boolean(query.trim()) || filter !== "all"} expanded={expanded} onToggle={id => setExpanded(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; })} {...actions} />}
+    {!isLoading && !isError && totalPages > 1 && (
+      <div className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-mono text-xs text-muted" role="status">
+          {locale === "vi" ? "Hiển thị" : "Showing"} {pageStart + 1}–{Math.min(pageStart + PROJECTS_PAGE_SIZE, sorted.length)} / {sorted.length}
+        </p>
+        <nav aria-label={locale === "vi" ? "Phân trang duyệt dự án" : "Project review pagination"} className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="ghost" size="sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} aria-controls={resultsId}>
+            {locale === "vi" ? "Trước" : "Previous"}
+          </Button>
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map(pageNumber => (
+            <Button
+              key={pageNumber}
+              type="button"
+              variant={pageNumber === currentPage ? "primary" : "ghost"}
+              size="sm"
+              aria-label={`${locale === "vi" ? "Trang" : "Page"} ${pageNumber}`}
+              aria-current={pageNumber === currentPage ? "page" : undefined}
+              aria-controls={resultsId}
+              onClick={() => setPage(pageNumber)}
+              className="min-w-10 font-mono"
+            >
+              {pageNumber}
+            </Button>
+          ))}
+          <Button type="button" variant="ghost" size="sm" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)} aria-controls={resultsId}>
+            {locale === "vi" ? "Sau" : "Next"}
+          </Button>
+        </nav>
+      </div>
+    )}
   </section>;
 }
 
@@ -41,7 +81,7 @@ export function ProjectReviewResults({ id, projects, isLoading, isFiltered, expa
 }) {
   const { locale } = useLocale(); const c = projectReviewCopy[locale];
   return <div id={id} role="region" tabIndex={0} aria-label={c.list} aria-busy={isLoading} className="max-h-[70vh] overflow-y-auto overscroll-contain rounded-sm p-0.5 [scrollbar-width:thin] [scrollbar-color:var(--line-strong)_var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-    {isLoading ? <div className="grid items-start gap-2.5 lg:grid-cols-2" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <div key={index} className="flex h-[100px] animate-pulse items-center gap-3 rounded-sm border border-line bg-surface-2/40 px-3"><div className="flex-1 space-y-2"><div className="h-4 w-2/3 rounded bg-line-strong" /><div className="h-3 w-1/2 rounded bg-surface-2" /></div><div className="h-7 w-20 rounded bg-surface-2" /></div>)}</div>
+    {isLoading ? <div className="grid items-start gap-2.5 lg:grid-cols-2" aria-hidden="true">{Array.from({ length: PROJECTS_PAGE_SIZE }, (_, index) => <div key={index} className="flex h-[100px] animate-pulse items-center gap-3 rounded-sm border border-line bg-surface-2/40 px-3"><div className="flex-1 space-y-2"><div className="h-4 w-2/3 rounded bg-line-strong" /><div className="h-3 w-1/2 rounded bg-surface-2" /></div><div className="h-7 w-20 rounded bg-surface-2" /></div>)}</div>
       : projects.length === 0 ? <div role="status" className="flex min-h-36 flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-line-strong p-6 text-center text-xs text-muted"><Inbox className="h-7 w-7 text-muted" aria-hidden="true" /><p>{isFiltered ? c.noResults : c.empty}</p></div>
         : <div className="grid items-start gap-2.5 lg:grid-cols-2">{projects.map(project => <PendingProjectCard key={project.id} project={project} expanded={expanded.has(project.id)} onToggle={() => onToggle(project.id)} {...actions} onAction={action => onAction(project, action)} />)}</div>}
   </div>;

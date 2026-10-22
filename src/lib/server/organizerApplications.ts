@@ -10,8 +10,9 @@ export interface OrganizerApplication {
   contactEmail: string;
   emailVerifiedAt?: string | null;
   reason: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "revoked";
   txHash?: string | null;
+  revocationReason?: string | null;
   reviewedBy?: string | null;
   reviewedAt?: string | null;
   createdAt: string;
@@ -41,8 +42,9 @@ function mapRow(row: Record<string, unknown>): OrganizerApplication {
     contactEmail: String(row.contact_email),
     emailVerifiedAt: row.email_verified_at ? String(row.email_verified_at) : null,
     reason: String(row.reason),
-    status: (row.status as "pending" | "approved" | "rejected") || "pending",
+    status: (row.status as "pending" | "approved" | "rejected" | "revoked") || "pending",
     txHash: row.tx_hash ? String(row.tx_hash) : null,
+    revocationReason: row.revocation_reason ? String(row.revocation_reason) : null,
     reviewedBy: row.reviewed_by ? String(row.reviewed_by) : null,
     reviewedAt: row.reviewed_at ? String(row.reviewed_at) : null,
     createdAt: String(row.created_at || new Date().toISOString()),
@@ -132,7 +134,11 @@ export async function listOrganizerApplications(options?: {
       query = query.ilike("wallet_address", filterWallet);
     }
     if (filterStatus && filterStatus !== "all") {
-      query = query.eq("status", filterStatus);
+      if (filterStatus === "revoked") {
+        query = query.eq("status", "revoked");
+      } else {
+        query = query.eq("status", filterStatus);
+      }
     }
 
     const { data, error } = await query;
@@ -171,34 +177,40 @@ function getFallbackApplications(wallet?: string, status?: string): OrganizerApp
 export async function updateOrganizerApplicationStatus(
   id: string,
   updates: {
-    status: "approved" | "rejected";
+    status: "approved" | "rejected" | "revoked";
     txHash?: string | null;
+    revocationReason?: string | null;
     reviewedBy?: string | null;
+    expectedUpdatedAt?: string;
   }
 ): Promise<OrganizerApplication | null> {
   const now = new Date().toISOString();
 
   try {
     const db = supabaseAdmin();
-    const { data, error } = await db
+    let query = db
       .from("organizer_applications")
       .update({
         status: updates.status,
         tx_hash: updates.txHash || null,
+        revocation_reason: updates.revocationReason || null,
         reviewed_by: updates.reviewedBy?.toLowerCase() || null,
         reviewed_at: now,
         updated_at: now,
       })
-      .eq("id", id)
-      .select()
-      .maybeSingle();
+      .eq("id", id);
+    if (updates.status === "revoked") query = query.eq("status", "approved");
+    if (updates.expectedUpdatedAt) query = query.eq("updated_at", updates.expectedUpdatedAt);
+    const { data, error } = await query.select().maybeSingle();
 
     if (error) {
       console.warn("[organizerApplications] Supabase update failed, updating fallback:", error.message);
       const app = fallbackStore.get(id);
-      if (app) {
+      if (app && (!updates.expectedUpdatedAt || app.updatedAt === updates.expectedUpdatedAt)) {
+        if (updates.status === "revoked" && app.status !== "approved") return null;
         app.status = updates.status;
         app.txHash = updates.txHash || null;
+        app.revocationReason = updates.revocationReason || null;
         app.reviewedBy = updates.reviewedBy?.toLowerCase() || null;
         app.reviewedAt = now;
         app.updatedAt = now;
@@ -207,15 +219,37 @@ export async function updateOrganizerApplicationStatus(
       return null;
     }
 
-    if (data) return mapRow(data as Record<string, unknown>);
+    if (data) {
+      if (updates.status === "revoked") {
+        const wallet = String((data as Record<string, unknown>).wallet_address);
+        if (wallet) {
+          await db
+            .from("organizer_applications")
+            .update({
+              status: "revoked",
+              tx_hash: updates.txHash || null,
+              revocation_reason: updates.revocationReason || null,
+              reviewed_by: updates.reviewedBy?.toLowerCase() || null,
+              reviewed_at: now,
+              updated_at: now,
+            })
+            .ilike("wallet_address", wallet)
+            .eq("status", "approved");
+        }
+      }
+      return mapRow(data as Record<string, unknown>);
+    }
+    if (updates.expectedUpdatedAt) return null;
   } catch {
     // ignore
   }
 
   const app = fallbackStore.get(id);
-  if (app) {
+  if (app && (!updates.expectedUpdatedAt || app.updatedAt === updates.expectedUpdatedAt)) {
+    if (updates.status === "revoked" && app.status !== "approved") return null;
     app.status = updates.status;
     app.txHash = updates.txHash || null;
+    app.revocationReason = updates.revocationReason || null;
     app.reviewedBy = updates.reviewedBy?.toLowerCase() || null;
     app.reviewedAt = now;
     app.updatedAt = now;

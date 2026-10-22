@@ -1,5 +1,8 @@
 "use client";
 
+import { useAccount, useSignMessage } from "wagmi";
+import { organizerReviewMessage } from "@/lib/organizerReview";
+import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { OrganizerApplication } from "@/lib/server/organizerApplications";
 
@@ -25,20 +28,24 @@ export function useMyOrganizerApplication(walletAddress?: string) {
   const app = query.data ?? null;
   const isPending = app?.status === "pending";
   const isApproved = app?.status === "approved";
-  const isRejected = app?.status === "rejected";
+  const isRejected = app?.status === "rejected" && !app?.revocationReason;
+  const isRevoked = app?.status === "revoked" || (app?.status === "rejected" && Boolean(app?.revocationReason));
 
   return {
     application: app,
     isPending,
     isApproved,
     isRejected,
+    isRevoked,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
   };
 }
 
-export function useOrganizerApplicationsAdmin(statusFilter?: string) {
+export function useOrganizerApplicationsAdmin(statusFilter?: string, enabled = true) {
+  const { address, chainId } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -55,6 +62,7 @@ export function useOrganizerApplicationsAdmin(statusFilter?: string) {
       }
       return json.applications;
     },
+    enabled,
     staleTime: 10_000,
   });
 
@@ -63,17 +71,31 @@ export function useOrganizerApplicationsAdmin(statusFilter?: string) {
       id,
       status,
       txHash,
-      reviewedBy,
+      revocationReason,
     }: {
       id: string;
-      status: "approved" | "rejected";
+      status: "approved" | "rejected" | "revoked";
       txHash?: string;
       reviewedBy?: string;
+      revocationReason?: string;
     }) => {
+      if (!enabled || !address || chainId !== TARGET_CHAIN_ID) throw new Error("PLATFORM_OWNER_ONLY");
+      const application = query.data?.find(app => app.id === id);
+      if (!application) throw new Error("APPLICATION_CHANGED");
+      const review = {
+        id,
+        status,
+        txHash: txHash ?? null,
+        revocationReason: revocationReason ?? null,
+        reviewedBy: address,
+        expectedUpdatedAt: application.updatedAt,
+        issuedAt: Date.now(),
+      };
+      const signature = await signMessageAsync({ account: address, message: organizerReviewMessage(review, factoryAddress, TARGET_CHAIN_ID) });
       const res = await fetch("/api/organizer-applications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status, txHash, reviewedBy }),
+        body: JSON.stringify({ ...review, signature }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -99,7 +121,9 @@ export function useOrganizerApplicationsAdmin(statusFilter?: string) {
     isUpdating: updateMutation.isPending,
     approveApplication: (id: string, txHash?: string, reviewedBy?: string) =>
       updateMutation.mutateAsync({ id, status: "approved", txHash, reviewedBy }),
-    rejectApplication: (id: string, reviewedBy?: string) =>
-      updateMutation.mutateAsync({ id, status: "rejected", reviewedBy }),
+    rejectApplication: (id: string, reviewedBy?: string, txHash?: string) =>
+      updateMutation.mutateAsync({ id, status: "rejected", reviewedBy, txHash }),
+    revokeApplication: (id: string, txHash: string, revocationReason: string, reviewedBy?: string) =>
+      updateMutation.mutateAsync({ id, status: "revoked", txHash, revocationReason, reviewedBy }),
   };
 }

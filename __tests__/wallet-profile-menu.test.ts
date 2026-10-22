@@ -7,6 +7,9 @@ const f = vi.hoisted(() => ({
   profile: null as "student" | "organizer" | null,
   authorized: false,
   student: false,
+  revoked: false,
+  pending: false,
+  platformOwner: false,
   booleanStates: 0,
 }));
 // Open the real dropdown in server-rendered tests without invoking wallet or DOM effects.
@@ -25,6 +28,7 @@ vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}) }));
 vi.mock("@/hooks/useRole", () => ({ useRole: () => ({
   role: f.authorized ? "organizer" : "guest", isReady: true, isStudent: f.student,
   isOrganizer: f.authorized, canCreateRound: f.authorized,
+  isPlatformOwner: f.platformOwner,
   studentStatus: f.student ? "confirmed" : "absent", organizerStatus: f.authorized ? "confirmed" : "absent",
 }) }));
 vi.mock("@/hooks/useWalletProfile", () => ({
@@ -35,7 +39,10 @@ vi.mock("@/lib/walletSession", () => ({}));
 vi.mock("@/hooks/useAvatar", () => ({ useAvatar: () => ({ avatar: "auto" }) }));
 vi.mock("@/hooks/useTokenBalance", () => ({ useTokenBalance: () => ({}) }));
 vi.mock("@/hooks/useNotificationCounts", () => ({ useNotificationCounts: () => ({ admin: 0, activity: 0 }) }));
-vi.mock("@/hooks/useOrganizerApplications", () => ({ useMyOrganizerApplication: () => ({}) }));
+vi.mock("@/hooks/useOrganizerApplications", () => ({ useMyOrganizerApplication: () => ({
+  isRevoked: f.revoked, isPending: f.pending,
+  application: { revocationReason: "Private revocation reason" },
+}) }));
 vi.mock("@/components/organizer/ApplyOrganizerModal", () => ({ ApplyOrganizerModal: () => null }));
 vi.mock("@/components/ui/Avatar", () => ({ Avatar: () => null }));
 vi.mock("@/components/tx/ExplorerLink", () => ({ ExplorerLink: () => null }));
@@ -44,11 +51,22 @@ vi.mock("@/lib/context/locale", async () => {
   return { useLocale: () => ({ t: copy.vi, locale: "vi" }) };
 });
 beforeEach(() => {
-  f.profile = null; f.authorized = false; f.student = false; f.booleanStates = 0;
+  f.profile = null; f.authorized = false; f.student = false; f.revoked = false; f.pending = false; f.platformOwner = false; f.booleanStates = 0;
   vi.stubGlobal("document", { body: {} });
 });
 afterEach(() => vi.unstubAllGlobals());
 const render = () => renderToStaticMarkup(createElement(ConnectWalletButton));
+
+it("keeps round creation and platform access available to the platform owner", () => {
+  f.platformOwner = true;
+  const html = render();
+  expect(html).toContain('href="/admin?tab=organizer"');
+  expect(html).toContain('href="/admin?tab=platform"');
+  expect(html).toContain("Tạo round");
+  expect(html).toContain('href="/my"');
+  expect(html).not.toContain('href="/register"');
+  expect(html).not.toContain("Chuyển đổi vai trò");
+});
 
 it("lets an unassigned wallet choose Student or Organizer before displaying profile actions", () => {
   const html = render();
@@ -92,4 +110,37 @@ it("shows only the chosen profile even when a wallet holds both roles", () => {
   expect(html).not.toContain("Đã được cấp quyền");
   expect(html).not.toContain('href="/admin?tab=organizer"');
   expect(html).not.toContain('href="/verify"');
+});
+
+it("shows a single revocation banner and role switch without exposing the reason", () => {
+  f.profile = "organizer"; f.revoked = true;
+  const html = render();
+  expect(html.match(/Quyền Organizer đã bị thu hồi/g)).toHaveLength(1);
+  expect(html.match(/Xem chi tiết &amp; Gửi yêu cầu lại/g)).toHaveLength(1);
+  expect(html.match(/Chuyển đổi vai trò/g)).toHaveLength(1);
+  expect(html).not.toContain("Private revocation reason");
+  expect(html).not.toContain("Chi tiết thu hồi &amp; Nộp lại");
+  expect(html).not.toContain("Đã bị thu hồi quyền");
+  expect(html).not.toContain("Đã thu hồi");
+  expect(html).not.toContain("Đổi vai trò");
+  expect(html).not.toContain("Đăng ký làm Organizer");
+  expect(html.indexOf("0x1234...7890", html.indexOf('role="dialog"')))
+    .toBeLessThan(html.indexOf("Quyền Organizer đã bị thu hồi"));
+  expect(html.indexOf("Quyền Organizer đã bị thu hồi"))
+    .toBeLessThan(html.indexOf("Chuyển đổi vai trò"));
+});
+it("preserves the pending application action without displaying a revocation warning", () => {
+  f.profile = "organizer"; f.pending = true;
+  const html = render();
+  expect(html).toContain("Đang chờ duyệt");
+  expect(html).toContain("Đăng ký làm Organizer");
+  expect(html).not.toContain("Quyền Organizer đã bị thu hồi");
+  expect(html).not.toContain("Xem chi tiết &amp; Gửi yêu cầu lại");
+});
+it("does not display Organizer revocation details for the Student profile", () => {
+  f.profile = "student"; f.revoked = true;
+  const html = render();
+  expect(html).toContain("Sinh viên");
+  expect(html).not.toContain("Quyền Organizer đã bị thu hồi");
+  expect(html).not.toContain("Xem chi tiết &amp; Gửi yêu cầu lại");
 });

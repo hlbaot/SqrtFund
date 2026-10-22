@@ -1,18 +1,20 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import { Navbar } from "@/components/layout/Navbar";
 
-const f = vi.hoisted(() => ({ platformOwner: false }));
+const f = vi.hoisted(() => ({ platformOwner: false, role: "organizer", connected: true, admin: true }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/admin" }));
 vi.mock("next/image", () => ({ default: () => null }));
-vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ role: "organizer", isReady: true, isConnected: true, isAdmin: true, isPlatformOwner: f.platformOwner }) }));
+vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ role: f.role, isReady: true, isConnected: f.connected, isAdmin: f.admin, isPlatformOwner: f.platformOwner }) }));
 vi.mock("@/hooks/useRound", () => ({ useRound: () => ({}) }));
 vi.mock("@/hooks/useNotificationCounts", () => ({ useNotificationCounts: () => ({ admin: 0, activity: 0 }) }));
 vi.mock("@/lib/context/locale", async () => { const { copy } = await import("@/lib/copy"); return { useLocale: () => ({ t: copy.vi, locale: "vi" }) }; });
 vi.mock("@/components/layout/ConnectWalletButton", () => ({ ConnectWalletButton: () => null }));
 vi.mock("@/components/layout/LanguageToggle", () => ({ LanguageToggle: () => null }));
 vi.mock("@/components/common/NetworkGuard", () => ({ NetworkGuard: () => null }));
+
+beforeEach(() => Object.assign(f, { platformOwner: false, role: "organizer", connected: true, admin: true }));
 
 it("names the Organizer entry Create Round and links to the Organizer tab", () => {
   f.platformOwner = false;
@@ -28,4 +30,16 @@ it("names the platform owner's entry Organizer Access and links to role approval
   expect(html).toContain("Cấp quyền Organizer");
   expect(html).toContain('href="/admin?tab=platform"');
   expect(html).not.toContain('href="/admin?tab=organizer"');
+  expect(html).not.toContain('href="/register"');
+  expect(html).not.toContain('href="/my"');
+});
+
+it.each(["organizer", "student", "admin", "guest"])("preserves project registration and personal activity for %s", role => {
+  f.role = role;
+  f.admin = role === "organizer" || role === "admin";
+  f.connected = role !== "guest";
+  const html = renderToStaticMarkup(createElement(Navbar));
+  expect(html).toContain('href="/register"');
+  expect(html).toContain('href="/my"');
+  expect(html).not.toContain('href="/admin?tab=platform"');
 });
