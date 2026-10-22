@@ -13,6 +13,6 @@ contract DeployStudentRegistry is Script {
         console2.log("StudentRegistry deployed at:", address(registry));
         console2.log("Attester:", registry.attester());
         // The registry can be deployed before any factory; print its public address
-        // for NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS and STUDENT_REGISTRY_ADDRESS.
+        // for NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS.
     }
 }

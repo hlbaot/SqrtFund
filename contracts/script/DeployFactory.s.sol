@@ -15,8 +15,11 @@ contract DeployFactory is Script {
         console2.log("=== SqrtFund RoundFactory Deployment ===");
         console2.log("Reusing existing MockUSDC at:", mockUsdcAddress);
 
+        address registry = vm.envOr("NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS", vm.envOr("STUDENT_REGISTRY_ADDRESS", address(0)));
+        require(registry != address(0), "Missing NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS");
+
         vm.startBroadcast();
-        RoundFactory factory = new RoundFactory(vm.envAddress("STUDENT_REGISTRY_ADDRESS"));
+        RoundFactory factory = new RoundFactory(registry);
         vm.stopBroadcast();
 
         address factoryAddress = address(factory);

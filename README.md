@@ -271,7 +271,6 @@ Sao chép `.env.example` thành `.env.local` và điền cấu hình phù hợp:
 | `NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS` | Công khai | Địa chỉ hợp đồng `StudentRegistry` |
 | `NEXT_PUBLIC_FACTORY_ADDRESS` | Công khai | Địa chỉ hợp đồng `RoundFactory` |
 | `NEXT_PUBLIC_USDC_ADDRESS` | Công khai | Địa chỉ token `MockUSDC` |
-| `STUDENT_REGISTRY_ADDRESS` | Server | Cùng địa chỉ registry, dùng cho backend API và script |
 | `ATTESTER_ADDRESS` | Server | Địa chỉ ví attester ký EIP-712 |
 | `ATTESTER_PRIVATE_KEY` | Bí mật | Khóa bí mật của ví attester (chỉ lưu ở server) |
 | `OTP_SECRET` | Bí mật | Khóa bí mật dùng để băm mã OTP |
@@ -308,7 +307,7 @@ pnpm build
 
 ```bash
 cd contracts
-export STUDENT_REGISTRY_ADDRESS=<địa_chỉ_registry>
+export NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS=<địa_chỉ_registry>
 forge script script/DeployFactory.s.sol:DeployFactory \
   --rpc-url https://api.avax-test.network/ext/bc/C/rpc \
   --account <keystore_của_bạn> --broadcast

@@ -40,6 +40,8 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { GradientBorder } from "@/components/ui/GradientBorder";
 import { WalletRoleStatus } from "@/components/layout/WalletRoleStatus";
+import { WalletProfilePicker } from "@/components/layout/WalletProfilePicker";
+import { defaultWalletProfile, useWalletProfile } from "@/hooks/useWalletProfile";
 import { NotificationBadge } from "@/components/ui/NotificationBadge";
 import { fmt } from "@/lib/copy";
 
@@ -55,7 +57,6 @@ export function ConnectWalletButton() {
   const { t, locale } = useLocale();
   const {
     role,
-    roles,
     isReady,
     isStudent,
     isAdmin,
@@ -69,7 +70,11 @@ export function ConnectWalletButton() {
     canCreateRound,
   } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
-  const myApp = useMyOrganizerApplication(isConnected ? address : undefined);
+  const { profile, selectProfile } = useWalletProfile(address, chainId,
+    defaultWalletProfile(isOrganizer || isRoundAdmin || hasManagedRounds || canCreateRound, isStudent));
+  const choosingProfile = !isPlatformOwner && profile === null;
+  const activeProfile = profile;
+  const myApp = useMyOrganizerApplication(isConnected && activeProfile === "organizer" ? address : undefined);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
@@ -234,9 +239,12 @@ export function ConnectWalletButton() {
                 </div>
                 <ExplorerLink address={address} iconOnly />
               </div>
-              <WalletRoleStatus roles={roles} studentStatus={studentStatus} organizerStatus={organizerStatus} locale={locale} onRetry={refetchWalletRoles} />
+              {isPlatformOwner || activeProfile ? <WalletRoleStatus profile={isPlatformOwner ? "platform" : activeProfile!} studentStatus={studentStatus} organizerStatus={organizerStatus} locale={locale} onRetry={refetchWalletRoles} />
+                : <p className="text-xs text-muted">{locale === "vi" ? "Chọn loại tài khoản để tiếp tục" : "Choose your account type to continue"}</p>}
             </div>
           </div>
+
+          {choosingProfile && <WalletProfilePicker locale={locale} onSelect={selectProfile} />}
 
           {/* Address & Quick Copy Card */}
           <div className="my-3 flex items-center justify-between gap-2 bg-surface-2/40 border border-line rounded-xs px-2.5 py-1.5">
@@ -295,7 +303,7 @@ export function ConnectWalletButton() {
           )}
 
           {/* Student Verification Callout (if not verified) */}
-          {!isStudent && (
+          {activeProfile === "student" && !isPlatformOwner && !isStudent && (
             <div className="mb-3 p-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/25 rounded-xs space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -336,7 +344,7 @@ export function ConnectWalletButton() {
               </Link>
             )}
 
-            {(canCreateRound || isRoundAdmin || hasManagedRounds) && (
+            {activeProfile === "organizer" && !isPlatformOwner && (canCreateRound || isRoundAdmin || hasManagedRounds) && (
               <Link
                 href="/admin?tab=organizer"
                 onClick={() => setDropdownOpen(false)}
@@ -350,21 +358,21 @@ export function ConnectWalletButton() {
               </Link>
             )}
 
-            {!isPlatformOwner && !canCreateRound && !isRoundAdmin && !hasManagedRounds && isAdmin && (
+            {activeProfile === "organizer" && !isPlatformOwner && !canCreateRound && !isRoundAdmin && !hasManagedRounds && isAdmin && (
               <Link
-                href="/admin"
+                href="/admin?tab=organizer"
                 onClick={() => setDropdownOpen(false)}
                 className="flex items-center justify-between p-2 hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-xs group"
               >
                 <span className="flex items-center gap-2 text-xs font-medium">
                   <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                  {t.nav.admin}
+                  {t.nav.organizerDashboard}
                 </span>
                 <NotificationBadge count={counts.admin} />
               </Link>
             )}
 
-            {!isPlatformOwner && !isOrganizer && (
+            {activeProfile === "organizer" && !isPlatformOwner && !isOrganizer && (
               <button
                 type="button"
                 onClick={() => {
@@ -419,7 +427,7 @@ export function ConnectWalletButton() {
       )}
       {avatarPickerOpen && <AvatarPickerDialog key={address.toLowerCase()} address={address} onClose={closeAvatarPicker} />}
     </div>
-    {address && (
+    {address && activeProfile === "organizer" && !isPlatformOwner && (
       <ApplyOrganizerModal
         isOpen={applyModalOpen}
         onClose={closeApplyModal}
