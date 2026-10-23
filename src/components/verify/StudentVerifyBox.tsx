@@ -1,4 +1,5 @@
 "use client";
+import { api, ApiError } from "@/lib/api";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,13 +20,8 @@ const eventTime = () => Date.now();
 
 type CodeRequest = { requestId: string; expiresAt: string; resendAfter: number };
 type Attestation = { registryAddress: Address; chainId: number; emailHash: Hex; expiry: string; signature: Hex };
-class ApiError extends Error {
-  constructor(readonly code: string, readonly retryAfter?: number, readonly attemptsLeft?: number, readonly missing?: string[]) { super(code); }
-}
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`/api/verify/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  const data = await response.json();
-  if (!response.ok) throw new ApiError(data.code ?? "SERVICE_UNAVAILABLE", data.retryAfter, data.attemptsLeft, data.missing);
+  const { data } = await api.post<T>(`/api/verify/${path}`, body);
   return data;
 }
 export function StudentVerifyBox({ showVerified = false }: { showVerified?: boolean }) {
@@ -44,9 +40,10 @@ function VerificationSession({ address, chainId, showVerified }: { address: Addr
   const beginFlow = useTxFlow();
   const { isStudent, isConfigured, isLoading, refetch } = useStudentStatus();
   const { data: config, isError: configError, error: domainConfigError } = useQuery({ queryKey: ["verification-domains"], queryFn: async () => {
-    const response = await fetch("/api/verify/request-otp", { cache: "no-store" });
-    if (!response.ok) { const data = await response.json(); throw new ApiError(data.code, undefined, undefined, data.missing); }
-    return response.json() as Promise<EmailDomainPolicy>;
+    const { data } = await api.get<EmailDomainPolicy>("/api/verify/request-otp", {
+      headers: { "Cache-Control": "no-cache, no-store" },
+    });
+    return data;
   }, staleTime: 60_000 });
   const [email, setEmail] = useState("");
   const [sentEmail, setSentEmail] = useState("");

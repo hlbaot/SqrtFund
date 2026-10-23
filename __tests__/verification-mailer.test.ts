@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-const f = vi.hoisted(() => ({ create: vi.fn(), send: vi.fn() }));
+const f = vi.hoisted(() => ({ create: vi.fn(), send: vi.fn(), post: vi.fn() }));
+vi.mock("axios", () => ({ default: { post: f.post } }));
 vi.mock("server-only", () => ({}));
 vi.mock("nodemailer", () => ({ default: { createTransport: f.create } }));
 import { sendOtp } from "@/lib/verify/mailer";
@@ -31,4 +32,21 @@ it("sends contact-verification instructions without asking Organizer applicants 
   expect(message.text).toContain("không cấp quyền Organizer");
   expect(message.text).not.toContain("confirm the wallet transaction");
   expect(message.html).toContain("123456");
+});
+
+it("sends Resend email through Axios with a bounded request", async () => {
+  vi.stubEnv("EMAIL_PROVIDER", "resend");
+  vi.stubEnv("RESEND_API_KEY", "fixture-key");
+  f.post.mockResolvedValue({ status: 200 });
+  await sendOtp("student@hust.edu.vn", "123456");
+  expect(f.post).toHaveBeenCalledWith("https://api.resend.com/emails",
+    expect.objectContaining({ to: ["student@hust.edu.vn"], text: expect.stringContaining("123456") }),
+    expect.objectContaining({ headers: { Authorization: "Bearer fixture-key" }, signal: expect.any(AbortSignal) }));
+  expect(f.send).not.toHaveBeenCalled();
+});
+it("does not expose Axios request details when Resend fails", async () => {
+  vi.stubEnv("EMAIL_PROVIDER", "resend");
+  vi.stubEnv("RESEND_API_KEY", "fixture-key");
+  f.post.mockRejectedValue(new Error("Request failed with sensitive provider details"));
+  await expect(sendOtp("student@hust.edu.vn", "123456")).rejects.toThrow("Email delivery failed");
 });
