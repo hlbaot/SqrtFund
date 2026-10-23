@@ -69,7 +69,17 @@ export function RoundDetailView() {
         <ExplorerLink address={round.roundAddress} transactions label={t.onChain.allTransactions} />
       </div>
       {!round.isCancelled && <MatchingPoolWarning totalRaw={approved.reduce((sum, p) => sum + computeRawMatching(p.sumSqrtRaw, p.totalDonatedRaw), 0n)} pool={round.pool} />}
-      <Leaderboard cancelled={round.isCancelled} projects={approved} roundId={summary.id} pool={summary.matchingPool} finalized={round.finalized} wallet={address} isAdmin={isReady && role === "admin"} onRetry={() => { round.refetch(); void refetch(); }} />
+      <Leaderboard
+        cancelled={round.isCancelled}
+        canDonate={!round.isCancelled && !round.finalized && round.status === "open"}
+        projects={approved}
+        roundId={summary.id}
+        pool={summary.matchingPool}
+        finalized={round.finalized}
+        wallet={address}
+        isAdmin={isReady && role === "admin"}
+        onRetry={() => { round.refetch(); void refetch(); }}
+      />
     </>}
   </Container>;
 }

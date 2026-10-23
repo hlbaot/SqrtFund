@@ -4,6 +4,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import type { Project } from "@/types";
 
+let mockDonationAmount = 0n;
+
+vi.mock("wagmi", () => ({
+  useAccount: () => ({ address: "0x1111111111111111111111111111111111111111", isConnected: true }),
+  useReadContract: () => ({ data: mockDonationAmount }),
+}));
+
 vi.mock("@/lib/context/locale", async () => {
   const { copy } = await import("@/lib/copy");
   return { useLocale: () => ({ t: copy.vi, locale: "vi" }) };
@@ -64,5 +71,21 @@ describe("ProjectCard", () => {
 
     expect(html).toContain("Chi tiết");
     expect(html).not.toContain("Ủng hộ");
+  });
+
+  it("omits Donate button and displays already supported badge when user has already donated", () => {
+    mockDonationAmount = 1000000n;
+    const html = renderToStaticMarkup(
+      createElement(ProjectCard, {
+        project: sampleProject,
+        roundId: "0x1111111111111111111111111111111111111111",
+        canDonate: true,
+      })
+    );
+
+    expect(html).toContain("Chi tiết");
+    expect(html).not.toContain("Ủng hộ");
+    expect(html).toContain("Đã ủng hộ");
+    mockDonationAmount = 0n;
   });
 });

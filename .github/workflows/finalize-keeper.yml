@@ -1,0 +1,48 @@
+name: Fuji - Finalize expired rounds
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Chỉ kiểm tra, không ký giao dịch'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# Một signer chỉ chạy một keeper; không ngắt lượt đang chờ receipt.
+concurrency:
+  group: fuji-finalize-keeper
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.event_name == 'workflow_dispatch' || vars.KEEPER_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_CHAIN_ID: '43113'
+      NEXT_PUBLIC_FACTORY_ADDRESS: ${{ vars.NEXT_PUBLIC_FACTORY_ADDRESS }}
+      KEEPER_RPC_URL: ${{ secrets.KEEPER_RPC_URL || vars.NEXT_PUBLIC_RPC_URL || 'https://api.avax-test.network/ext/bc/C/rpc' }}
+      KEEPER_MAX_GAS: ${{ vars.KEEPER_MAX_GAS || '2500000' }}
+      KEEPER_MAX_GAS_PRICE_GWEI: ${{ vars.KEEPER_MAX_GAS_PRICE_GWEI || '100' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Inspect eligible rounds
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: pnpm keeper --once
+      - name: Finalize eligible rounds
+        if: github.event_name == 'schedule' || !inputs.dry_run
+        env:
+          KEEPER_PRIVATE_KEY: ${{ secrets.KEEPER_PRIVATE_KEY }}
+        run: pnpm keeper --once --send

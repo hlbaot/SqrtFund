@@ -1,10 +1,12 @@
+import { parseUnits } from "viem";
+import { computeRawMatching } from "@/lib/qf";
 import { isPublicProject } from "@/lib/projectVisibility";
 import type { Project, Round } from "@/types";
 import type { Locale } from "@/lib/copy";
 
 export type RoundPhase = Round["status"] | "upcoming";
 export type RoundSummary = Round & { number: number; phase: RoundPhase; version?: "current" | "legacy"; readError?: "version" | "rpc" };
-export type LeaderboardProject = Project & { supportedByWallet?: boolean };
+export type LeaderboardProject = Project & { supportedByWallet?: boolean; sumSqrtRaw?: bigint; totalDonatedRaw?: bigint };
 export type RankedProject = LeaderboardProject & { supporterRank: number; tied: boolean };
 export type LeaderboardSort = "supporters" | "direct" | "matching";
 
@@ -19,15 +21,32 @@ export function roundDate(value: string, locale: Locale) {
 export function matchingValue(project: LeaderboardProject, finalized: boolean) {
   return finalized ? project.finalMatching : project.estimatedMatching;
 }
-// Competition ranks remain based on supporters, regardless of the display sort.
+// So sánh BigInt để không mất chênh lệch 0.000001 USDC khi tổng tiền lớn.
+const descending = (a: bigint, b: bigint) => a === b ? 0 : a > b ? -1 : 1;
+const directAmount = (project: LeaderboardProject) => project.totalDonatedRaw
+  ?? parseUnits(project.totalDonated.toFixed(6), 6);
+
+/** Người ủng hộ → QF thô → tiền góp trực tiếp. Bằng cả ba thì đồng hạng. */
 export function rankProjects(projects: readonly LeaderboardProject[]): RankedProject[] {
-  const sorted = projects.filter(isPublicProject).sort((a, b) => b.supporterCount - a.supporterCount || a.id.localeCompare(b.id, undefined, { numeric: true }));
+  const eligible = projects.filter(isPublicProject);
+  // Reader blockchain luôn có dữ liệu raw. Preview cũ thiếu raw dùng cùng một
+  // quy tắc cho cả danh sách (bỏ QF), tránh comparator không nhất quán giữa các cặp.
+  const hasQf = eligible.every(project => project.sumSqrtRaw !== undefined && project.totalDonatedRaw !== undefined);
+  const metrics = new Map(eligible.map(project => [project, {
+    qf: hasQf ? computeRawMatching(project.sumSqrtRaw!, project.totalDonatedRaw!) : 0n,
+    direct: directAmount(project),
+  }]));
+  const compare = (a: LeaderboardProject, b: LeaderboardProject) => b.supporterCount - a.supporterCount
+    || descending(metrics.get(a)!.qf, metrics.get(b)!.qf)
+    || descending(metrics.get(a)!.direct, metrics.get(b)!.direct);
+  // ID chỉ giữ thứ tự ổn định khi đồng hạng, không quyết định thắng thua.
+  const sorted = eligible.sort((a, b) => compare(a, b) || a.id.localeCompare(b.id, undefined, { numeric: true }));
   let rank = 0;
-  const counts = new Map<number, number>();
-  for (const project of sorted) counts.set(project.supporterCount, (counts.get(project.supporterCount) ?? 0) + 1);
   return sorted.map((project, index) => {
-    if (index === 0 || project.supporterCount !== sorted[index - 1].supporterCount) rank = index + 1;
-    return { ...project, supporterRank: rank, tied: (counts.get(project.supporterCount) ?? 0) > 1 };
+    const samePrevious = index > 0 && compare(project, sorted[index - 1]) === 0;
+    if (!samePrevious) rank = index + 1;
+    const sameNext = index + 1 < sorted.length && compare(project, sorted[index + 1]) === 0;
+    return { ...project, supporterRank: rank, tied: samePrevious || sameNext };
   });
 }
 export function sortProjects(projects: RankedProject[], sort: LeaderboardSort, finalized: boolean) {

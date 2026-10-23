@@ -32,7 +32,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusAlert } from "@/components/ui/StatusAlert";
 import { AdminSkeleton } from "@/components/common/PageSkeletons";
 import { Container } from "@/components/layout/Container";
-import { Award, ShieldCheck, Layers, Info, Building2, ShieldOff, Send } from "lucide-react";
+import { Award, ShieldCheck, Layers, Info, Building2, ShieldOff, Send, Plus } from "lucide-react";
 import { ApplyOrganizerModal } from "@/components/organizer/ApplyOrganizerModal";
 import { useMyOrganizerApplication } from "@/hooks/useOrganizerApplications";
 import type { Address } from "viem";
@@ -83,6 +83,17 @@ export function AdminView() {
     if (tab === "platform" && !isPlatformOwner) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
+    router.replace(`/admin?${params.toString()}`, { scroll: false });
+  };
+
+  const isCreateAction = searchParams.get("action") === "create";
+  const setCreateAction = (create: boolean) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (create) {
+      params.set("action", "create");
+    } else {
+      params.delete("action");
+    }
     router.replace(`/admin?${params.toString()}`, { scroll: false });
   };
 
@@ -386,6 +397,64 @@ export function AdminView() {
       {/* TAB 2: Organizer Dashboard (Manage Rounds, Funds, Projects, and Allocations) */}
       {activeTab === "organizer" && (
         <div className="space-y-8" data-aos="fade-up" data-aos-duration="600">
+          {/* Sub-navigation for Organizer: Manage rounds vs Create new round */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
+            <div className="flex items-center gap-2">
+              <Button
+                variant={!isCreateAction ? "primary" : "secondary"}
+                size="sm"
+                onClick={() => setCreateAction(false)}
+                className="text-xs font-semibold gap-1.5"
+              >
+                <Layers className="h-3.5 w-3.5" />
+                <span>{locale === "vi" ? "Quản lý vòng gọi vốn" : "Manage rounds"}</span>
+              </Button>
+              <Button
+                variant={isCreateAction ? "primary" : "secondary"}
+                size="sm"
+                onClick={() => setCreateAction(true)}
+                className="text-xs font-bold gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>{t.admin.createRoundTitle ?? (locale === "vi" ? "Tạo vòng mới" : "Create new round")}</span>
+              </Button>
+            </div>
+          </div>
+
+          {isCreateAction ? (
+            <div className="space-y-6" data-aos="fade-up" data-aos-duration="600">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">
+                    {t.admin.createRoundTitle}
+                  </h2>
+                  <p className="text-xs text-muted">
+                    {t.admin.organizerSubtitle ?? (locale === "vi" ? "Thiết lập thông tin và triển khai vòng Quadratic Funding mới trên Avalanche Fuji." : "Set parameters and deploy a new Quadratic Funding round on Avalanche Fuji.")}
+                  </p>
+                </div>
+              </div>
+
+              {canUseCreationForm ? (
+                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] [&>*]:min-w-0">
+                  <CreateRoundForm key={`${address}:${chainId}`} />
+                  <MintTestUsdcForm />
+                </div>
+              ) : (
+                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] [&>*]:min-w-0">
+                  <div className="border border-line bg-surface p-5 rounded-sm space-y-2">
+                    <h3 className="text-sm font-bold text-foreground">
+                      {t.admin.createRoundTitle}
+                    </h3>
+                    <p className="text-xs text-muted">
+                      {t.admin.createRoundDisabledNote ?? "Only authorized Organizers and the Platform Owner can deploy new rounds."}
+                    </p>
+                  </div>
+                  <MintTestUsdcForm />
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
           {/* Read-only notification if current user is not admin of selected round */}
           {roundAddress && !isSelectedRoundAdmin && (
             <div className="border border-line bg-surface-2/40 p-4 rounded-sm flex items-start gap-3 text-xs">
@@ -552,6 +621,8 @@ export function AdminView() {
               </div>
               <MintTestUsdcForm />
             </div>
+          )}
+            </>
           )}
         </div>
       )}

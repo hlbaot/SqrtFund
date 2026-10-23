@@ -114,7 +114,7 @@ export function useNotifications() {
           description: myApp.application.revocationReason
             ? `${locale === "vi" ? "Lý do: " : "Reason: "}${myApp.application.revocationReason}`
             : t.notifications.organizerRevokedDesc,
-          href: "/admin",
+          href: isPlatformOwner ? "/admin?tab=platform" : "/admin",
           isRead: ready && keys.includes(key),
         });
       } else if (myApp.isApproved) {
@@ -125,7 +125,7 @@ export function useNotifications() {
           type: "organizer_approved",
           title: t.notifications.organizerApprovedTitle,
           description: t.notifications.organizerApprovedDesc,
-          href: "/admin?tab=organizer",
+          href: "/admin?tab=platform",
           isRead: ready && keys.includes(key),
         });
       }
