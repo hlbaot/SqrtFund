@@ -18,7 +18,7 @@ import { ProjectCard } from "@/components/project/ProjectCard";
 import type { Project, ProjectCategory } from "@/types";
 import { StudentAccessGate } from "@/components/verify/StudentAccessGate";
 import { useRole } from "@/hooks/useRole";
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 
 export function ProjectForm({ initialRound }: { initialRound?: string }) {
@@ -37,6 +37,55 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
   const [description, setDescription] = useState("");
   const [contactUrl, setContactUrl] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError(t.register.uploadFailed);
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError(t.register.fileTooLarge);
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setUploadError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || t.register.uploadFailed);
+      }
+
+      setImageUrl(data.url);
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.imageUrl;
+        return next;
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t.register.uploadFailed;
+      setUploadError(msg);
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -325,13 +374,76 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
               error={errors.contactUrl}
             />
 
-            <Input
-              label={`${t.register.imageLabel} (max 200 bytes)`}
-              placeholder={t.register.imagePlaceholder}
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              error={errors.imageUrl}
-            />
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-foreground">
+                {t.register.imageLabel} (max 200 bytes)
+              </label>
+
+              {/* Upload button & Preview area */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  id="project-image-file"
+                />
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isUploadingImage}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 border-line-strong hover:border-primary text-xs font-medium cursor-pointer"
+                >
+                  {isUploadingImage ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                      <span>{t.register.uploadingImage}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-3.5 w-3.5 text-primary" />
+                      <span>{t.register.uploadImage}</span>
+                    </>
+                  )}
+                </Button>
+
+                {imageUrl && (
+                  <div className="flex items-center gap-2 bg-surface-2 px-2.5 py-1 rounded-xs border border-line text-xs">
+                    <ImageIcon className="h-3.5 w-3.5 text-muted shrink-0" />
+                    <span className="truncate max-w-[200px] text-muted font-mono">{imageUrl}</span>
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl("")}
+                      className="text-muted hover:text-red-400 transition-colors p-0.5 cursor-pointer ml-1"
+                      title={t.register.removeImage}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {uploadError && (
+                <p className="text-xs text-primary font-medium" role="alert">
+                  {uploadError}
+                </p>
+              )}
+
+              {/* Manual URL Input */}
+              <Input
+                placeholder={t.register.pasteUrlInstead}
+                value={imageUrl}
+                onChange={(e) => {
+                  setImageUrl(e.target.value);
+                  setUploadError(null);
+                }}
+                error={errors.imageUrl}
+              />
+            </div>
 
             <div className="pt-2">
               <Button
