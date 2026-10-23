@@ -1,7 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import { isAddress, type Address } from "viem";
 import type { Project } from "@/types";
 import { formatUsdc, formatUsdcFixed } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
@@ -11,15 +13,42 @@ import { Badge } from "@/components/ui/Badge";
 import { Frame } from "@/components/ui/Frame";
 import { GradientBorder } from "@/components/ui/GradientBorder";
 import { MonoLabel } from "@/components/ui/MonoLabel";
-import { ArrowRight, Sparkles, BookOpen, Cpu, Leaf, Music } from "lucide-react";
+import { Dialog } from "@/components/ui/Dialog";
+import { ArrowRight, Sparkles, BookOpen, Cpu, Leaf, Music, Coins } from "lucide-react";
+
+const DonateBox = dynamic(
+  () => import("@/components/project/DonateBox").then((m) => m.DonateBox),
+  { ssr: false }
+);
 
 export interface ProjectCardProps {
-  project: Project;
+  project: Project & {
+    sumSqrtRaw?: bigint;
+    totalDonatedRaw?: bigint;
+    contractId?: bigint;
+  };
   roundId?: string;
+  roundAddress?: Address;
+  canDonate?: boolean;
 }
 
-export function ProjectCard({ project, roundId = "1" }: ProjectCardProps) {
+export function ProjectCard({
+  project,
+  roundId = "1",
+  roundAddress,
+  canDonate,
+}: ProjectCardProps) {
   const { t, locale } = useLocale();
+  const [isDonateOpen, setIsDonateOpen] = useState(false);
+
+  const targetRoundAddress =
+    roundAddress ||
+    (roundId && isAddress(roundId) ? (roundId as Address) : undefined);
+
+  const isDonatable =
+    canDonate !== undefined
+      ? canDonate && project.status !== "pending" && project.status !== "rejected"
+      : project.status !== "pending" && project.status !== "rejected";
 
   const name = locale === "vi" && project.nameVi ? project.nameVi : project.name;
   const shortDescription =
@@ -108,24 +137,72 @@ export function ProjectCard({ project, roundId = "1" }: ProjectCardProps) {
         />
       </StatGroup>
 
-      {/* Primary Action */}
-      <div className="mt-4 pt-1">
+      {/* Action Buttons */}
+      <div className="mt-4 pt-1 flex items-center gap-2">
         <Link
           href={`/round/${roundId}/project/${project.id}`}
-          className="mono-label flex w-full items-center justify-center gap-1.5 border border-line-strong bg-surface py-2.5 text-muted transition-all hover:border-primary hover:bg-surface-2 hover:text-foreground cursor-pointer active:scale-[0.98] focus:outline-none"
+          className="mono-label flex-1 flex min-h-10 items-center justify-center gap-1.5 border border-line-strong bg-surface py-2 px-3 text-xs text-muted transition-all hover:border-line hover:bg-surface-2 hover:text-foreground cursor-pointer active:scale-[0.98] focus:outline-none rounded-xs"
         >
           <span>{t.projectCard.viewDetails}</span>
-          <ArrowRight className="h-3.5 w-3.5" />
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" />
         </Link>
+
+        {isDonatable && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDonateOpen(true);
+            }}
+            className="mono-label flex-1 flex min-h-10 items-center justify-center gap-1.5 border border-primary bg-primary text-white font-bold py-2 px-3 text-xs transition-all hover:bg-primary-hover cursor-pointer active:scale-[0.98] focus:outline-none rounded-xs shadow-xs"
+          >
+            <Coins className="h-3.5 w-3.5 shrink-0" />
+            <span>{t.projectCard.donate}</span>
+          </button>
+        )}
       </div>
     </Frame>
   );
 
-  return project.rank === 1 ? (
-    <GradientBorder className="h-full p-px">
-      {content}
-    </GradientBorder>
-  ) : (
-    content
+  return (
+    <>
+      {project.rank === 1 ? (
+        <GradientBorder className="h-full p-px">
+          {content}
+        </GradientBorder>
+      ) : (
+        content
+      )}
+
+      {isDonateOpen && (
+        <Dialog
+          isOpen={isDonateOpen}
+          onClose={() => setIsDonateOpen(false)}
+          title={t.projectCard.quickDonateTitle.replace("{name}", name)}
+          className="max-w-xl p-0 overflow-hidden"
+        >
+          <div className="p-4 sm:p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+            <DonateBox
+              project={project}
+              roundAddress={targetRoundAddress}
+            />
+            <div className="border-t border-line pt-3 flex items-center justify-between">
+              <span className="mono-label text-[11px] text-muted">
+                {locale === "vi" ? "Đóng góp trực tiếp qua Smart Contract" : "Direct on-chain quadratic donation"}
+              </span>
+              <Link
+                href={`/round/${roundId}/project/${project.id}`}
+                onClick={() => setIsDonateOpen(false)}
+                className="mono-label text-xs text-primary hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <span>{t.projectCard.viewFullDetails}</span>
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        </Dialog>
+      )}
+    </>
   );
 }

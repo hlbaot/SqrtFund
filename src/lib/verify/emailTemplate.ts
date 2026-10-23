@@ -4,8 +4,8 @@ export function buildVerificationEmail(otp: string, purpose: "student" | "organi
   const organizer = purpose === "organizer";
   const subject = organizer ? "SqrtFund — Xác thực email liên hệ Organizer" : "Mã xác thực SqrtFund / SqrtFund verification code";
   const text = organizer
-    ? `SQRTFUND — XÁC THỰC EMAIL LIÊN HỆ / CONTACT EMAIL VERIFICATION\n\nMã xác thực của bạn / Your verification code: ${otp}\nCó hiệu lực trong 1 phút / Valid for 1 minute.\n\nNhập mã trong đơn đăng ký Nhà tổ chức. Xác thực email không cấp quyền Organizer; đơn vẫn cần Platform Owner duyệt. Không yêu cầu email trường.\nEnter this code in your Organizer application. Email verification does not grant Organizer access; Platform Owner approval is required. No university email required.\n\nKhông chia sẻ mã. Nếu không yêu cầu mã, hãy bỏ qua email này.`
-    : `SQRTFUND — XÁC THỰC EMAIL TRƯỜNG / UNIVERSITY EMAIL VERIFICATION\n\nMã xác thực của bạn / Your verification code: ${otp}\nCó hiệu lực trong 1 phút / Valid for 1 minute.\n\nQuay lại SqrtFund và nhập mã trong cửa sổ xác thực email. Sau khi mã được chấp nhận, xác nhận giao dịch trong ví để hoàn tất xác thực sinh viên.\nReturn to SqrtFund and enter this code in the email verification dialog. Once accepted, confirm the wallet transaction to complete student verification.\n\nKhông chia sẻ mã này. SqrtFund không yêu cầu private key hay seed phrase của ví.\nDo not share this code. SqrtFund will never ask for your wallet private key or seed phrase.\n\nNếu bạn không yêu cầu mã, hãy bỏ qua email này.\nIf you did not request this code, ignore this email.\n\nSqrtFund · Quadratic funding for student communities.`;
+    ? `SQRTFUND — XÁC THỰC EMAIL LIÊN HỆ / CONTACT EMAIL VERIFICATION\n\nMã xác thực của bạn / Your verification code: ${otp}\nCó hiệu lực trong 5 phút / Valid for 5 minutes.\n\nNhập mã trong đơn đăng ký Nhà tổ chức. Xác thực email không cấp quyền Organizer; đơn vẫn cần Platform Owner duyệt. Không yêu cầu email trường.\nEnter this code in your Organizer application. Email verification does not grant Organizer access; Platform Owner approval is required. No university email required.\n\nKhông chia sẻ mã. Nếu không yêu cầu mã, hãy bỏ qua email này.`
+    : `SQRTFUND — XÁC THỰC EMAIL TRƯỜNG / UNIVERSITY EMAIL VERIFICATION\n\nMã xác thực của bạn / Your verification code: ${otp}\nCó hiệu lực trong 5 phút / Valid for 5 minutes.\n\nQuay lại SqrtFund và nhập mã trong cửa sổ xác thực email. Sau khi mã được chấp nhận, xác nhận giao dịch trong ví để hoàn tất xác thực sinh viên.\nReturn to SqrtFund and enter this code in the email verification dialog. Once accepted, confirm the wallet transaction to complete student verification.\n\nKhông chia sẻ mã này. SqrtFund không yêu cầu private key hay seed phrase của ví.\nDo not share this code. SqrtFund will never ask for your wallet private key or seed phrase.\n\nNếu bạn không yêu cầu mã, hãy bỏ qua email này.\nIf you did not request this code, ignore this email.\n\nSqrtFund · Quadratic funding for student communities.`;
   const html = `<!doctype html>
 <html lang="vi">
 <head>
@@ -29,7 +29,7 @@ export function buildVerificationEmail(otp: string, purpose: "student" | "organi
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#0a0a10;color:#f2f1ec;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">Mã xác thực SqrtFund của bạn có hiệu lực 1 phút. / Your SqrtFund verification code is valid for 1 minute.</div>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">Mã xác thực SqrtFund của bạn có hiệu lực 5 phút. / Your SqrtFund verification code is valid for 5 minutes.</div>
   <table role="presentation" width="100%" bgcolor="#0a0a10" style="width:100%;background-color:#0a0a10;">
     <tr><td class="email-wrap" align="center" style="padding:44px 16px;">
       <!--[if mso]><table role="presentation" width="600"><tr><td><![endif]-->
@@ -50,7 +50,7 @@ export function buildVerificationEmail(otp: string, purpose: "student" | "organi
             <tr><td align="center" bgcolor="#12121b" style="padding:24px 12px;background-color:#12121b;border:1px solid #633034;border-top:2px solid #e84142;">
               <p style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:16px;letter-spacing:1.5px;color:#9a9ab0;">MÃ XÁC THỰC / VERIFICATION CODE</p>
               <p class="email-code" dir="ltr" style="margin:15px 0 16px;font-family:'Courier New',Courier,monospace;font-size:46px;line-height:54px;font-weight:700;letter-spacing:10px;color:#f2f1ec;white-space:nowrap;">${otp}</p>
-              <p style="font-family:'Courier New',Courier,monospace;font-size:11px;line-height:18px;color:#ff7778;">HIỆU LỰC 1 PHÚT &nbsp;/&nbsp; VALID FOR 1 MIN</p>
+              <p style="font-family:'Courier New',Courier,monospace;font-size:11px;line-height:18px;color:#ff7778;">HIỆU LỰC 5 PHÚT &nbsp;/&nbsp; VALID FOR 5 MIN</p>
             </td></tr>
           </table>
           <table role="presentation" width="100%" style="width:100%;margin-top:26px;">

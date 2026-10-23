@@ -25,7 +25,7 @@ it("shows a six separate digit inputs after requesting a code", () => {
   f.hasChallenge = true;
   const html = render(); expect(html).toContain("one-time-code"); expect(html).toContain("Xác thực mã");
   expect(html.match(/inputMode="numeric"/g)).toHaveLength(6);
-  expect(html).toContain("Mã có hiệu lực 1 phút");
+  expect(html).toContain("Mã có hiệu lực 5 phút");
 });
 
 it("shows a one-minute countdown and locks all six digits after expiration", () => {

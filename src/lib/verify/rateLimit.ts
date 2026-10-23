@@ -2,6 +2,7 @@ import "server-only";
 import { databaseError } from "./errors";
 import type { AdminDb } from "./supabaseAdmin";
 export type Reservation = { status: "OK" | "RATE_LIMITED" | "EMAIL_ALREADY_USED" | "WALLET_ALREADY_VERIFIED" | "ALREADY_VERIFIED"; expiresAt?: string; retryAfter?: number };
+// Cột email_hash giữ tên cũ nhưng lưu ID ổn định, không còn suy ra từ email mới.
 export async function reserveOtp(db: AdminDb, values: {
   id: string; email_hash: string; email_domain: string; address: string;
   registry_address: string; ip_hash: string; otp_hash: string;

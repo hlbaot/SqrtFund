@@ -7,6 +7,7 @@ import { wagmiConfig } from "@/lib/wagmi";
 import { LocaleProvider } from "@/lib/context/locale";
 import { ToastProvider } from "@/lib/context/toast";
 import { WalletWatcher } from "@/components/common/WalletWatcher";
+import { RealtimeNotifications } from "@/components/common/RealtimeNotifications";
 import { ToastContainer } from "@/components/ui/Toast";
 import { isWalletLoggedOut } from "@/lib/walletSession";
 import type { Locale } from "@/lib/copy";
@@ -45,6 +46,7 @@ export function Providers({
         <LocaleProvider initialLocale={initialLocale}>
           <ToastProvider>
             <WalletWatcher />
+            <RealtimeNotifications />
             {children}
             <ToastContainer />
           </ToastProvider>

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/server/publishNotificationChange", () => ({ publishNotificationChange: vi.fn().mockResolvedValue(undefined) }));
+import { publishNotificationChange } from "@/lib/server/publishNotificationChange";
 vi.mock("@/lib/server/organizerReviewAuthorization", () => ({ authorizeOrganizerReview: vi.fn(async (body: Record<string, unknown>) => ({ reviewedBy: body.reviewedBy, expectedUpdatedAt: body.expectedUpdatedAt })) }));
 vi.mock("@/lib/server/emailWalletIdentity", () => ({ ensureEmailWallet: vi.fn().mockResolvedValue(undefined) }));
 
@@ -9,7 +11,7 @@ import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { VerificationError } from "@/lib/verify/errors";
 import { issueOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
 
-beforeEach(() => vi.stubEnv("OTP_SECRET", "o".repeat(32)));
+beforeEach(() => { vi.stubEnv("OTP_SECRET", "o".repeat(32)); vi.mocked(publishNotificationChange).mockClear(); });
 afterEach(() => vi.unstubAllEnvs());
 
 import { GET, POST, PATCH } from "@/app/api/organizer-applications/route";
@@ -32,6 +34,7 @@ describe("Organizer Applications API", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toBe("INVALID_BODY");
+    expect(publishNotificationChange).not.toHaveBeenCalled();
   });
 
   it("rejects invalid wallet address in POST", async () => {
@@ -175,6 +178,7 @@ describe("Organizer Applications API", () => {
     const patchJson = await patchRes.json();
     expect(patchJson.ok).toBe(true);
     expect(patchJson.application.status).toBe("approved");
+    expect(publishNotificationChange).toHaveBeenCalledTimes(2);
     expect(patchJson.application.txHash).toBe(dummyTx);
     expect(patchJson.application.reviewedBy.toLowerCase()).toBe(reviewer.toLowerCase());
   });

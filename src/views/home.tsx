@@ -45,6 +45,7 @@ export function HomeView() {
     startTime,
     endTime,
     status,
+    isCancelled,
     isLoading: isRoundLoading,
     isError: isRoundError,
     refetch: refetchRound,
@@ -437,6 +438,8 @@ export function HomeView() {
                       rank: index + 1,
                     }}
                     roundId={roundAddress ?? ""}
+                    roundAddress={roundAddress}
+                    canDonate={!isCancelled && status === "open"}
                   />
                 </div>
               ))}

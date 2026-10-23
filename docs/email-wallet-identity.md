@@ -1,36 +1,50 @@
-# Một email chỉ gắn với một tài khoản ví
+# Ràng buộc một email – một ví
 
-## Quy tắc MVP
+## Quy tắc MVP hiện tại
 
-- Một email đã xác thực chỉ thuộc một ví. Ví khác không được dùng email đó để xác minh sinh viên hoặc đăng ký Organizer.
-- Cùng một ví vẫn có thể vừa là sinh viên vừa là Organizer. Gửi lại mã hoặc đăng ký lại bằng đúng ví đó không tạo danh tính email thứ hai.
-- Chuẩn hóa khoảng trắng đầu/cuối, chữ hoa/thường và alias `+tag` theo chính sách email đang có. Cả hai luồng dùng cùng định danh Keccak của email chuẩn hóa; không phụ thuộc `OTP_SECRET` để xác định quyền sở hữu email.
-- Chỉ nhập email hoặc yêu cầu gửi mã chưa chiếm quyền email. Ràng buộc được ghi sau khi OTP đúng, hoặc sau khi backend kiểm tra token xác thực hợp lệ.
-- Từ chối đơn Organizer hoặc thay đổi vai trò không chuyển email sang ví khác.
+- Lưu email trực tiếp ở backend, chuẩn hoá chữ thường, khoảng trắng đầu/cuối và alias `+tag`.
+- Một email đã xác thực chỉ gắn với một ví. Một ví đã liên kết cũng không dùng email khác. Cùng cặp email–ví được dùng cho cả Sinh viên và Organizer.
+- Yêu cầu gửi OTP chưa chiếm email hoặc ví. Chỉ liên kết sau khi xác nhận OTP hoặc kiểm tra token email hợp lệ.
+- Từ chối/thu hồi Organizer không giải phóng email cho một ví khác.
 
-## Thực hiện
+## Cách lưu
 
-Migration `0004_email_wallet_identity.sql` tạo bảng `email_wallet_bindings` với `email_hash` làm khóa chính, chỉ service role truy cập. RPC `enforce_email_wallet` dùng unique key để phân xử hai yêu cầu xác thực đồng thời; chỉ một ví được sở hữu email.
+Migration `0006_plain_email_wallet.sql` tạo bảng riêng tư `email_wallet_links`:
 
-Dữ liệu sinh viên đã xác thực được chuyển vào bảng binding trong migration. Trigger trên `verifications` duy trì ràng buộc ở DB. Backend cũng kiểm tra các đơn Organizer cũ có `email_verified_at`, theo từng trang để không bỏ sót giới hạn 1.000 dòng của Supabase.
+| Cột | Ý nghĩa |
+| --- | --- |
+| `email` | Email chuẩn hoá, khoá chính; không mã hoá |
+| `wallet_address` | Ví duy nhất, để trống trước khi xác minh |
+| `verification_id` | ID ngẫu nhiên 32 byte, duy nhất và ổn định qua các lần gửi lại OTP |
+| `verified_at` | Thời điểm liên kết đã được xác minh |
 
-Backend kiểm tra trước khi gửi OTP và sau khi OTP đúng; kiểm tra lại trước khi tạo đơn để token cũ không bỏ qua ràng buộc mới. Nếu DB hoặc migration lỗi, backend từ chối xác thực/tạo đơn thay vì dùng fallback memory để bỏ qua việc kiểm tra.
+RPC `enforce_plain_email_wallet` kiểm tra và liên kết theo transaction, khoá cả email và ví theo thứ tự cố định. PRIMARY KEY/UNIQUE tại database bảo đảm ràng buộc khi nhiều instance API xử lý cùng lúc. Bảng, RPC chỉ cho service role truy cập; không cung cấp danh sách email cho trình duyệt.
 
-UI hiển thị `EMAIL_ALREADY_USED` khi email đã thuộc ví khác. Mã lỗi này không bị hiểu nhầm thành trạng thái đơn đang chờ duyệt.
+Luồng sinh viên lưu thêm email trực tiếp trong `otp_requests.email` và `verifications.email`. Email liên hệ Organizer vẫn được lưu trực tiếp trong đơn đăng ký.
+
+## Tương thích contract và dữ liệu cũ
+
+Contract StudentRegistry đã deploy vẫn có tham số `emailHash` kiểu `bytes32`. Với email mới, backend dùng ID ngẫu nhiên, không dùng hash email làm định danh mới. Giữ tên trường trong ABI/API để không phải deploy lại Registry, Factory và các Round.
+
+Backend còn tính Keccak **chỉ để tìm bản ghi legacy** đã tồn tại từ phiên bản trước. Nếu có bản ghi cũ, dùng lại đúng ID cũ để giữ trạng thái xác minh trên contract. Không thể khôi phục email trực tiếp từ các bản ghi chỉ có hash: email được ghi khi người dùng quay lại với email hợp lệ, không tự đoán hay giải mã dữ liệu cũ.
+
+OTP vẫn được hash; token email vẫn được ký chống sửa. Đây là cơ chế bảo vệ mã xác thực, không phải mã hoá email.
+
+Các dữ liệu cũ mâu thuẫn (cùng email nhiều ví hoặc cùng ví nhiều email) bị chặn và cần kiểm tra thủ công. Không tự xoá hoặc chọn thay chủ sở hữu.
 
 ## Áp dụng
 
-1. Đảm bảo migration `0001`, `0002`, `0003` đã chạy.
-2. Trong Supabase SQL Editor, chạy toàn bộ `supabase/migrations/0004_email_wallet_identity.sql`.
-3. Đưa code mới lên `main`, chạy workflow CI/CD để build và deploy phiên bản mới.
-4. Thử email với ví A, rồi thử lại email đó với ví B: ví B phải bị từ chối. Thử tiếp vai trò khác bằng ví A: vẫn được phép theo các điều kiện của vai trò đó.
+1. Đảm bảo migrations `0001`–`0005` đã áp dụng.
+2. Chạy toàn bộ `supabase/migrations/0006_plain_email_wallet.sql` trên Supabase đúng môi trường.
+3. Build và deploy code mới qua CI/CD; local khởi động lại dev server.
+4. Gửi lại OTP nếu mã được tạo trước migration. OTP cũ được vô hiệu vì chưa có email trực tiếp/ID mới.
 
-Không tự áp dụng migration lên Supabase thật trong phiên sửa local này. Không tự xóa tài khoản, thu hồi quyền on-chain hoặc chọn thay chủ sở hữu cho dữ liệu cũ đã trùng. Nếu lịch sử có cùng email đã xác thực cho nhiều ví, backend chặn tái sử dụng và quản trị viên cần xác minh để xử lý dữ liệu đó.
+Migration thu hồi quyền gọi RPC legacy của service role để API cũ không tạo binding trái mô hình mới. Vì vậy cần triển khai migration và code mới cùng đợt: từ lúc migration xong đến lúc code mới hoạt động, các API xác minh cũ sẽ báo lỗi thay vì bỏ qua ràng buộc. Không chạy lại migration cũ để khôi phục quyền RPC legacy.
+
+Chưa tự áp dụng migration lên Supabase thật hoặc deploy trong lần sửa local này.
 
 ## Kiểm chứng
 
-Đã chạy migration `0001` đến `0004` bằng PostgreSQL cục bộ (PGlite), kiểm tra giữ binding sinh viên cũ, chặn email giữa hai vai trò, cho phép cùng ví có hai vai trò, claim cạnh tranh, trigger và quyền RPC của role `anon`. Không sử dụng Supabase thật cho phép thử này.
-
-Test API kiểm tra từ chối trước khi gửi email, không cấp token/chữ ký khi email bị ví khác claim, token cũ không tạo được đơn và lỗi database không chuyển sang fallback. Test helper bao gồm alias `+tag`, chữ hoa/thường, dữ liệu cũ và phân trang.
-
-Kết quả local: **534 tests pass**, **13 integration tests skipped**; TypeScript, ESLint và production build đạt.
+- Unit/API: email trực tiếp, ID ngẫu nhiên, alias, chặn cả hai chiều, chỉ ký đúng ID của email, OTP legacy yêu cầu gửi lại và thiếu migration phải báo lỗi.
+- Database: chạy migrations `0001`–`0006` trong PostgreSQL cục bộ PGlite, sau đó chạy `supabase/tests/plain_email_wallet.sql`; kiểm tra ID ổn định, ràng buộc hai chiều, Student/Organizer dùng cùng cặp email–ví, dữ liệu legacy, trigger và quyền truy cập.
+- Không gửi email thật hoặc ký giao dịch bằng ví người dùng để kiểm thử.

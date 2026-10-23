@@ -1,7 +1,7 @@
 import { setOtpExpiry } from "@/lib/verify/expiry";
 import { randomUUID } from "node:crypto";
 import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
-import { isAddress, keccak256, toBytes } from "viem";
+import { isAddress } from "viem";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
 import { emailDomainPolicy, emailDomain, isAllowedEmail, normalizeEmail } from "@/lib/verify/domain";
 import { forwardedIp, generateOtp, hashOtp, hashValue } from "@/lib/verify/otp";
@@ -30,8 +30,8 @@ export async function POST(request: Request) {
     if (!isAllowedEmail(deliveryEmail, process.env.ALLOWED_EMAIL_DOMAINS, process.env.BLOCKED_EMAIL_DOMAINS)) return failure("INVALID_DOMAIN");
     const address = body.address.toLowerCase();
     stage = "registry"; const registry = (await validateRegistry()).toLowerCase();
-    const db = supabaseAdmin(); const emailHash = keccak256(toBytes(email));
-    await ensureEmailWallet(emailHash, address, false, db);
+    const db = supabaseAdmin();
+    const emailHash = await ensureEmailWallet(email, address, false, db);
     stage = "insert";
     const { data: owner, error: ownerError } = await db.from("verifications").select("address").eq("email_hash", emailHash).maybeSingle();
     if (ownerError) throw databaseError(ownerError);
@@ -49,10 +49,14 @@ export async function POST(request: Request) {
       // A signature is useful only to msg.sender = that wallet; no new mail is sent.
       stage = "registry";
       const expiry = BigInt(Math.floor(Date.now() / 1000) + 3600);
+      await ensureEmailWallet(email, address, true, db);
       const signature = await signVerification(body.address, emailHash, expiry);
       return json({ code: "ALREADY_VERIFIED", registryAddress: registry, chainId: 43113, emailHash, expiry: expiry.toString(), signature });
     }
     if (reservation.status !== "OK" || !reservation.expiresAt) throw new Error("Reservation unavailable");
+    const { error: emailError } = await db.from("otp_requests").update({ email }).eq("id", id);
+    if (emailError) throw databaseError(emailError);
+    // Lưu hạn 5 phút trước khi gửi mail; expiresAt cũng là mốc đếm ngược trả về UI.
     const expiresAt = await setOtpExpiry(db, "otp_requests", id);
     stage = "mail";
     try { await sendOtp(deliveryEmail, otp); }
@@ -63,6 +67,7 @@ export async function POST(request: Request) {
       if (error instanceof VerificationError) return failure(error.code, error.status, { missing: error.missing });
       return failure("EMAIL_SEND_FAILED", 502);
     }
+    // resendAfter chỉ là thời gian chờ gửi lại; mã vẫn có hạn dùng 5 phút.
     return json({ requestId: id, expiresAt, resendAfter: 60 });
   } catch (error) {
     logServerError(stage, error);
