@@ -189,9 +189,6 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
           </h2>
           <p className="text-xs text-muted">{t.donateBox.subtitle}</p>
         </div>
-        <span className="mono-label border border-money/30 bg-money/10 px-2.5 py-1 text-money">
-          {minDonationUsdc} - {maxDonationUsdc} USDC
-        </span>
       </div>
 
       {token && !tokenReady && <p role="alert">{t.tokenBalance.tokenMismatch}</p>}
