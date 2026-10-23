@@ -156,15 +156,13 @@ export function NotificationBell() {
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-controls={menuId}
-        className={`relative flex h-10 w-10 items-center justify-center rounded-sm border transition-all cursor-pointer active:scale-95 ${
-          isOpen
-            ? "border-primary bg-surface-2 text-foreground shadow-xs"
-            : "border-line-strong bg-surface text-foreground hover:bg-surface-2 hover:border-line"
+        className={`relative flex items-center justify-center p-2 text-muted transition-colors cursor-pointer active:scale-95 hover:text-foreground focus-visible:outline-none ${
+          isOpen ? "text-foreground" : ""
         }`}
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
             <span className="relative inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 font-mono text-[10px] font-bold leading-none text-white shadow-xs">
               {unreadCount > 9 ? "9+" : unreadCount}
