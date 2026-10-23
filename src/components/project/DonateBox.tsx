@@ -26,7 +26,7 @@ import { Stepper, StepItem } from "@/components/tx/Stepper";
 import { TxStatusDisplay } from "@/components/tx/TxStatusToast";
 import { Button } from "@/components/ui/Button";
 import { Frame } from "@/components/ui/Frame";
-import { AlertCircle, Sparkles, Check } from "lucide-react";
+import { AlertCircle, Sparkles, Check, CheckCircle2, ArrowRight } from "lucide-react";
 
 export interface DonateBoxProps {
   project: Project & {
@@ -175,6 +175,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
 
   const isOwner = Boolean(address && project.ownerAddress && address.toLowerCase() === project.ownerAddress.toLowerCase());
   const isRoundClosed = roundStatus !== "open";
+  const hasAlreadyDonated = Boolean(isConnected && userDonatedBigInt > 0n);
   const isMaxAllowanceReached = remainingAllowanceUsdc <= 0;
 
   if (project.rejected || project.status === "rejected") return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><p role="status">{t.rejection.blocked}</p><Button disabled fullWidth>{t.rejection.status}</Button></Frame>;
@@ -192,7 +193,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
       </div>
 
       {token && !tokenReady && <p role="alert">{t.tokenBalance.tokenMismatch}</p>}
-      {supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
+      {!hasAlreadyDonated && supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
 
       {/* Round Closed Banner */}
       {isRoundClosed && (
@@ -215,22 +216,55 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
         </div>
       )}
 
-      <StudentVerifyBox />
-      {isStudent && <div className="my-4 border border-line bg-bg p-3 text-sm">
+      {!hasAlreadyDonated && <StudentVerifyBox />}
+      {!hasAlreadyDonated && isStudent && <div className="my-4 border border-line bg-bg p-3 text-sm">
         {fmt(t.donateBox.roundBudgetRemaining, { remaining: budgetReady ? formatUsdcFixed(roundRemainingUsdc, { includeSymbol: false }) : "—", max: maxPerRound === undefined ? "—" : formatUsdcFixed(Number(maxPerRound) / 1_000_000, { includeSymbol: false }) })}
       </div>}
 
-      {/* Max allowance reached alert */}
-      {isConnected && isMaxAllowanceReached && !isRoundClosed && (
+      {/* Already donated informational state: Read-only, no donate actions */}
+      {hasAlreadyDonated ? (
+        <div className="mt-4 space-y-4">
+          <div className="border border-money/40 bg-money/10 p-5 rounded-xs space-y-3">
+            <div className="flex items-center gap-2.5 text-money font-bold text-sm">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-money" />
+              <span>{t.donateBox.alreadyDonatedTitle}</span>
+            </div>
+
+            <p className="text-xs text-foreground leading-relaxed">
+              {fmt(t.donateBox.alreadyDonatedDesc, {
+                amount: formatUsdcFixed(userDonatedUsdc, { includeSymbol: false }),
+              })}
+            </p>
+
+            <div className="flex items-center justify-between border-t border-money/20 pt-3 text-xs">
+              <span className="text-muted">{t.donateBox.amountLabel}:</span>
+              <span className="font-mono font-bold text-money text-sm">
+                {formatUsdcFixed(userDonatedUsdc)}
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-1">
+            <Link
+              href="/my"
+              className="mono-label flex min-h-10 items-center justify-center gap-2 border border-line-strong bg-surface py-2.5 px-4 text-xs font-semibold text-foreground hover:border-primary hover:bg-surface-2 transition-colors cursor-pointer rounded-xs"
+            >
+              <span>{t.donateBox.viewMyActivity}</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+      ) : isConnected && isMaxAllowanceReached && !isRoundClosed ? (
+        /* Max allowance reached alert */
         <div className="my-4 border border-money/40 bg-money/10 p-3 text-xs text-money">
           <p className="font-bold">{t.donateBox.maxReachedTitle}</p>
           <p className="mt-1 text-muted">
             {fmt(t.donateBox.maxReachedDesc, { max: maxDonationUsdc })}
           </p>
         </div>
-      )}
+      ) : null}
 
-      {donationStep !== "success" ? (
+      {!hasAlreadyDonated && donationStep !== "success" ? (
         <div className="mt-4 space-y-4">
           {/* Amount input & Quick buttons */}
           <div className="space-y-2">

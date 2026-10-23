@@ -13,9 +13,11 @@ import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
+import { useWalletProfile, defaultWalletProfile } from "@/hooks/useWalletProfile";
+import { useAdminRounds } from "@/hooks/useAdminRounds";
 import { useClaim } from "@/hooks/useClaim";
 import { useNotificationCounts } from "@/hooks/useNotificationCounts";
-import { formatUsdcFixed, formatCooldown } from "@/lib/format";
+import { formatUsdcFixed, formatCooldown, shortAddress } from "@/lib/format";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
@@ -26,6 +28,7 @@ import { useAvatar } from "@/hooks/useAvatar";
 import { EmptyState } from "@/components/common/EmptyState";
 import { MyActivitySkeleton } from "@/components/common/PageSkeletons";
 import { Container } from "@/components/layout/Container";
+import { ExplorerLink } from "@/components/tx/ExplorerLink";
 const AvatarPickerDialog = dynamic(() => import("@/components/layout/AvatarPickerDialog").then(module => module.AvatarPickerDialog), { ssr: false });
 import {
   Check,
@@ -37,6 +40,9 @@ import {
   ExternalLink,
   Droplets,
   Clock,
+  Layers,
+  Settings,
+  Plus,
 } from "lucide-react";
 
 export function MyView() {
@@ -46,8 +52,27 @@ export function MyView() {
 
   const { roundAddress, finalized, isCancelled, isLoading: isRoundLoading } = useRound();
   const { projects, isLoading: isProjectsLoading, refetch: refetchProjects } = useProjects();
-  const { isStudent, role, isReady } = useRole();
+  const {
+    isStudent,
+    isOrganizer,
+    isPlatformOwner,
+    canCreateRound,
+    isRoundAdmin,
+    role,
+    isReady,
+  } = useRole();
   useNotificationCounts(isReady ? role : "guest", { markViewed: true });
+
+  const { chainId } = useAccount();
+  const isOrgRole = isOrganizer || isPlatformOwner || isRoundAdmin || canCreateRound;
+  const { profile } = useWalletProfile(
+    address,
+    chainId,
+    defaultWalletProfile(isOrgRole, isStudent)
+  );
+  const isOrgMode = profile === "organizer" || (!isStudent && isOrgRole) || (!profile && isOrgRole);
+
+  const managedRounds = useAdminRounds(isOrgMode && address ? address : undefined);
   const {
     canClaim,
     nextClaimAt,
@@ -252,15 +277,17 @@ export function MyView() {
               <span>AVAX Faucet</span>
               <ExternalLink className="h-3 w-3" />
             </a>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleOpenAvatarDialog}
-              className="text-xs font-semibold gap-1.5"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              <span>{t.avatar.change}</span>
-            </Button>
+            {isOrgMode && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => router.push("/admin?tab=organizer&action=create")}
+                className="text-xs font-bold gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>{t.myActivity.createRound}</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -272,7 +299,9 @@ export function MyView() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="donations">{t.myActivity.tabDonations}</TabsTrigger>
-            <TabsTrigger value="projects">{t.myActivity.tabProjects}</TabsTrigger>
+            <TabsTrigger value="projects">
+              {isOrgMode ? t.myActivity.tabRounds : t.myActivity.tabProjects}
+            </TabsTrigger>
           </TabsList>
 
           {/* Tab 1: My Donations */}
@@ -337,9 +366,88 @@ export function MyView() {
             )}
           </TabsContent>
 
-          {/* Tab 2: My Projects */}
+          {/* Tab 2: My Projects (Student) or My Rounds (Organizer) */}
           <TabsContent value="projects">
-            {myProjects.length === 0 ? (
+            {isOrgMode ? (
+              managedRounds.isLoading ? (
+                <div className="py-8 text-center text-xs text-muted">
+                  {t.common.loading}
+                </div>
+              ) : managedRounds.rounds.length === 0 ? (
+                <EmptyState
+                  title={t.myActivity.roundsEmptyTitle}
+                  description={t.myActivity.roundsEmptyDesc}
+                  actionLabel={t.myActivity.roundsEmptyCta}
+                  onAction={() => router.push("/admin?tab=organizer&action=create")}
+                  icon={<Layers className="h-6 w-6 text-muted" />}
+                />
+              ) : (
+                <div className="border border-line bg-surface p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-bold text-foreground">
+                        {t.myActivity.tabRounds}
+                      </h2>
+                      <span className="font-mono text-xs text-muted">
+                        {t.common.registered.replace("{count}", String(managedRounds.rounds.length))}
+                      </span>
+                    </div>
+
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => router.push("/admin?tab=organizer&action=create")}
+                      className="text-xs font-bold gap-1.5 self-start sm:self-auto"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>{t.myActivity.createRound}</span>
+                    </Button>
+                  </div>
+
+                  <div className="divide-y divide-line">
+                    {managedRounds.rounds.map((rnd) => (
+                      <div
+                        key={rnd.address}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5"
+                      >
+                        <div className="space-y-1.5 max-w-md">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-foreground text-base">
+                              {rnd.name || shortAddress(rnd.address)}
+                            </h3>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs font-mono text-muted">
+                            <span>{rnd.address}</span>
+                            <ExplorerLink address={rnd.address} iconOnly />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => router.push(`/round/${rnd.address}`)}
+                            className="text-xs font-semibold gap-1.5"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span>{t.myActivity.viewRound}</span>
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => router.push(`/admin?tab=organizer&round=${rnd.address}`)}
+                            className="text-xs font-bold gap-1.5"
+                          >
+                            <Settings className="h-3.5 w-3.5" />
+                            <span>{t.myActivity.manageRound}</span>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            ) : myProjects.length === 0 ? (
               <EmptyState
                 title={t.myActivity.projectsEmptyTitle}
                 description={t.myActivity.projectsEmptyDesc}

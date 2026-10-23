@@ -86,3 +86,5 @@ Build/deploy website mới sau khi đặt URL public. Chỉ thêm biến môi tr
 - Test API: request sai không publish, cập nhật thành công mới publish.
 
 Kiểm tra thủ công sau cấu hình: mở hai trình duyệt với hai ví, gửi đơn ở ví A và giữ trang Platform Owner ở ví B; sau đó duyệt/thu hồi, đăng ký dự án và duyệt dự án mà không reload trang.
+
+Kết quả kiểm tra local khi triển khai: toàn bộ suite 681 test đạt, 13 integration test không bật; TypeScript và production build đạt. ESLint không còn lỗi ở phần thông báo; các warning unused biến ở PlatformDashboard, ConnectWalletButton và AdminView đã có sẵn. Test Socket.IO dùng client/server thật trên cổng loopback tạm thời. Chưa kiểm tra với hai ví thật trên production, chưa deploy service hoặc thay cấu hình Vercel.
