@@ -52,6 +52,12 @@ export function AdminView() {
   const managed = useAdminRounds(isConnected && chainId === TARGET_CHAIN_ID ? address : undefined);
   const selectedRound = managed.roundAddress;
   const searchParams = useSearchParams();
+  const notificationRound = searchParams.get("round");
+  const selectManagedRound = managed.selectRound;
+  useEffect(() => {
+    // Link thông báo chỉ chọn trong các Round thuộc ví, không mở quyền cho ví khác.
+    if (notificationRound) selectManagedRound(notificationRound);
+  }, [notificationRound, selectManagedRound]);
   const {
     role,
     roles,

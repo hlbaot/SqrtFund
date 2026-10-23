@@ -118,9 +118,9 @@ function OrganizerApplicationForm({
         if (err.code === "EMAIL_NOT_VERIFIED") {
           emailOtp.reset(); setFieldErrors({ email: otpRequired }); return;
         }
-        if (err.code === "EMAIL_ALREADY_USED") {
+        if (err.code === "EMAIL_ALREADY_USED" || err.code === "WALLET_ALREADY_VERIFIED") {
           emailOtp.reset();
-          setFieldErrors({ email: t.verification.emailErrors.EMAIL_ALREADY_USED });
+          setFieldErrors({ email: t.verification.emailErrors[err.code] });
           return;
         }
         if (err.code === "APPLICATION_ALREADY_PENDING") {
@@ -366,7 +366,7 @@ function OrganizerApplicationForm({
                 {emailOtp.error && <p role="alert" className="text-xs text-primary">{emailOtp.error in t.verification.emailErrors
                   ? t.verification.emailErrors[emailOtp.error as keyof typeof t.verification.emailErrors]
                   : (vi ? "Không thể xác thực email. Vui lòng thử lại." : "Email verification failed. Please retry.")}</p>}
-                <p className="text-xs text-muted">{vi ? "Mã có hiệu lực 1 phút. Xác thực email không cấp quyền Organizer và không yêu cầu email trường." : "Codes expire after 1 minute. Email verification does not grant Organizer access; a university email is not required."}</p>
+                <p className="text-xs text-muted">{vi ? "Mã có hiệu lực 5 phút. Xác thực email không cấp quyền Organizer và không yêu cầu email trường." : "Codes expire after 5 minutes. Email verification does not grant Organizer access; a university email is not required."}</p>
               </div>
             </div>
 

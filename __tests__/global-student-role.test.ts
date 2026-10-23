@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 vi.mock("@/hooks/useNotificationCounts", () => ({ useNotificationCounts: () => ({ admin: 0, student: 0, owner: 0 }) }));
 vi.mock("@/components/layout/ConnectWalletButton", () => ({ ConnectWalletButton: () => null }));
 vi.mock("@/components/layout/LanguageToggle", () => ({ LanguageToggle: () => null }));
+vi.mock("@/components/layout/NotificationBell", () => ({ NotificationBell: () => null }));
 vi.mock("@/components/common/NetworkGuard", () => ({ NetworkGuard: () => null }));
 vi.mock("@/lib/context/locale", async () => { const { copy } = await import("@/lib/copy"); return { useLocale: () => ({ t: copy.vi, locale: "vi" }) }; });
 vi.mock("@/hooks/useAdminRounds", () => ({ useAdminRounds: () => ({ rounds: f.managed ? [{address:"0x4444444444444444444444444444444444444444"}] : [], isLoading: f.managedLoading, isError: false, refetch: vi.fn() }) }));

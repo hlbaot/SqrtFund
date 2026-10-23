@@ -11,6 +11,7 @@ import { NavLink } from "./NavLink";
 import { useRound } from "@/hooks/useRound";
 import { ConnectWalletButton } from "./ConnectWalletButton";
 import { LanguageToggle } from "./LanguageToggle";
+import { NotificationBell } from "./NotificationBell";
 import { NetworkGuard } from "@/components/common/NetworkGuard";
 import { ArrowRight, Menu, X } from "lucide-react";
 
@@ -97,11 +98,13 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-3 xl:flex">
+          <NotificationBell />
           <LanguageToggle />
           <ConnectWalletButton />
         </div>
 
         <div className="flex items-center gap-2 xl:hidden">
+          <NotificationBell />
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

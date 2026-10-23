@@ -6,8 +6,8 @@ describe("branded verification email", () => {
     expect(email.subject).toBe("Mã xác thực SqrtFund / SqrtFund verification code");
     expect(email.html).toContain(">012345</p>");
     expect(email.text).toContain("012345");
-    expect(email.text).toContain("Valid for 1 minute");
-    expect(email.html).toContain("VALID FOR 1 MIN");
+    expect(email.text).toContain("Valid for 5 minutes");
+    expect(email.html).toContain("VALID FOR 5 MIN");
     expect(email.html).toContain("confirm the wallet transaction");
     expect(email.html).toContain("bỏ qua email này");
   });
@@ -30,5 +30,5 @@ it("gives Organizer email the same branded card layout without Student wallet in
   expect(html).toContain("email liên hệ");
   expect(html).toContain("Platform Owner approval");
   expect(html).not.toContain("confirm the wallet transaction");
-  expect(text).toContain("Valid for 1 minute");
+  expect(text).toContain("Valid for 5 minutes");
 });

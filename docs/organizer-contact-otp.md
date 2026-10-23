@@ -19,7 +19,7 @@ Xác thực email chỉ chứng minh quyền truy cập hộp thư. Không xác 
 
 ## Thời hạn và hạn mức
 
-- OTP hết hạn sau **10 phút**, tối đa **5 lần thử** cho mỗi mã.
+- OTP hết hạn sau **5 phút**, tối đa **5 lần thử** cho mỗi mã.
 - Gửi lại sau ít nhất **60 giây**, vô hiệu mã cũ của cùng ví/email.
 - Mỗi email và mỗi ví được yêu cầu tối đa **5 mã/giờ**; mỗi IP tối đa **20 mã/giờ**.
 - Bằng chứng sau khi xác thực hết hạn sau **15 phút** và chỉ dùng cho đúng email/ví đó.
@@ -43,3 +43,11 @@ Sau khi cấu hình hoặc đổi biến môi trường, khởi động lại de
 Test bao gồm mã đúng/sai/hết hạn/bị khóa, giới hạn gửi, lỗi SMTP/database, token sai email/ví/bị sửa/hết hạn, gọi API trực tiếp không qua OTP, trạng thái nút gửi đơn và nội dung email riêng cho Organizer. Test gửi email dùng mock, không gửi email thực ra ngoài.
 
 Kết quả cuối: **515 tests pass**, **13 integration tests skipped**; ESLint, kiểm tra TypeScript và production build đạt. Bộ test tổng thể được chạy với `--maxWorkers=2` sau khi build kết thúc để tránh thiếu tài nguyên. Chưa kiểm tra RPC SQL mới trên Supabase thật hoặc gửi thư thật vì migration chưa được áp dụng trong phạm vi sửa local.
+
+## Cập nhật ràng buộc email–ví
+
+Từ migration `0006_plain_email_wallet.sql`, backend dùng email trực tiếp làm khoá và ID ngẫu nhiên ổn định cho OTP/contract. Mỗi email và mỗi ví chỉ có một liên kết đã xác minh. Xem [thiết kế và hướng dẫn nâng cấp](email-wallet-identity.md). Các phiên bản API trước migration không được tiếp tục gọi RPC legacy.
+
+## OTP 5 phút, dùng một lần
+
+Áp dụng migration `0007_otp_five_minutes.sql` sau các migration trước đó. API, email và database cùng dùng hạn 5 phút. Gửi lại vẫn chờ 60 giây và làm mất hiệu lực mã cũ. Khi nhập đúng, hàm consume khoá dòng và đánh dấu đã dùng trong cùng transaction trước khi trả kết quả; không cần đợi hết 5 phút. Không gia hạn OTP đang tồn tại khi nâng cấp.

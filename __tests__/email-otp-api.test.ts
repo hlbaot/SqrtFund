@@ -5,7 +5,7 @@ const f = vi.hoisted(() => ({
   operations: [] as { table: string; method: string; value: unknown }[],
 }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/server/emailWalletIdentity", () => ({ ensureEmailWallet: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/server/emailWalletIdentity", () => ({ ensureEmailWallet: vi.fn().mockResolvedValue(`0x${"a".repeat(64)}`) }));
 vi.mock("@/lib/verify/supabaseAdmin", () => ({ supabaseAdmin: () => ({ from: f.from, rpc: f.rpc }) }));
 vi.mock("@/lib/verify/rateLimit", () => ({ reserveOtp: f.reserve }));
 vi.mock("@/lib/verify/mailer", () => ({ sendOtp: f.send }));
@@ -17,13 +17,13 @@ import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { hashOtp } from "@/lib/verify/otp";
 const address = "0x1111111111111111111111111111111111111111";
 const registry = "0x2222222222222222222222222222222222222222";
-const emailHash = `0x${"a".repeat(64)}`;
+const emailHash = `0x${"a".repeat(64)}` as const;
 const id = "12345678-1234-1234-1234-123456789abc";
-const row = { address, registry_address: registry, email_hash: emailHash, email_domain: "hust.edu.vn" };
+const row = { email: "a@hust.edu.vn", address, registry_address: registry, email_hash: emailHash, email_domain: "hust.edu.vn" };
 function req(body: unknown) { return new Request("https://sqrt.test/api/verify", { method: "POST", headers: { "Content-Type": "application/json", "x-forwarded-for": "203.0.113.1, 127.0.0.1" }, body: JSON.stringify(body) }); }
 function result(data: unknown = null, error: null | { code: string } = null) { f.results.push({ data, error }); }
 beforeEach(() => {
-  vi.clearAllMocks(); vi.spyOn(console, "error").mockImplementation(() => {}); f.results.length = 0; f.operations.length = 0;
+  vi.clearAllMocks(); vi.mocked(ensureEmailWallet).mockResolvedValue(emailHash); vi.spyOn(console, "error").mockImplementation(() => {}); f.results.length = 0; f.operations.length = 0;
   vi.stubEnv("OTP_SECRET", "unit-tests-only-secret-at-least-32-chars"); vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "hust.edu.vn");
 
   vi.stubEnv("ATTESTER_PRIVATE_KEY", `0x${"11".repeat(32)}`);
@@ -54,8 +54,8 @@ describe("request OTP boundary", () => {
     expect(response.status).toBe(200); expect(f.validate).toHaveBeenCalledWith();
     const stored = f.reserve.mock.calls[0][1]; expect(stored.registry_address).toBe(registry);
     const data = await response.json();
-    expect(Date.parse(data.expiresAt) - Date.now()).toBeGreaterThan(59_000);
-    expect(Date.parse(data.expiresAt) - Date.now()).toBeLessThanOrEqual(60_000);
+    expect(Date.parse(data.expiresAt) - Date.now()).toBeGreaterThan(299_000);
+    expect(Date.parse(data.expiresAt) - Date.now()).toBeLessThanOrEqual(300_000);
     expect(f.operations).toContainEqual({ table: "otp_requests", method: "update", value: { expires_at: data.expiresAt } });
   });
   it.each([undefined, "", "   "])("allows open-edu requests when allowlist is %s", async domains => {
@@ -204,4 +204,24 @@ it("never releases a Student signature if a competing wallet claimed the email",
   vi.mocked(ensureEmailWallet).mockRejectedValueOnce(new VerificationError("EMAIL_ALREADY_USED",409));
   const response=await confirm(req({requestId:id,otp:"123456"}));
   expect(response.status).toBe(409); expect(await response.json()).not.toHaveProperty("signature");
+});
+
+it("persists the canonical plain email before delivering the OTP", async () => {
+  result(); result();
+  await requestOtp(req({ email: " A+TAG@HUST.EDU.VN ", address }));
+  expect(ensureEmailWallet).toHaveBeenCalledWith("a@hust.edu.vn", address, false, expect.anything());
+  expect(f.operations).toContainEqual({ table: "otp_requests", method: "update", value: { email: "a@hust.edu.vn" } });
+  expect(f.reserve.mock.calls[0][1].email_hash).toBe(emailHash);
+});
+it("requires a fresh OTP for legacy challenges without a stored email", async () => {
+  result({ ...row, email: null });
+  const response = await confirm(req({ requestId: id, otp: "123456" }));
+  expect(await response.json()).toMatchObject({ code: "OTP_EXPIRED" });
+  expect(f.sign).not.toHaveBeenCalled();
+});
+it("does not sign a challenge whose ID differs from its email binding", async () => {
+  result(row); f.rpc.mockResolvedValue({ data: { status: "OK" }, error: null });
+  vi.mocked(ensureEmailWallet).mockResolvedValueOnce(`0x${"b".repeat(64)}`);
+  const response = await confirm(req({ requestId: id, otp: "123456" }));
+  expect(response.status).toBe(503); expect(f.sign).not.toHaveBeenCalled();
 });
