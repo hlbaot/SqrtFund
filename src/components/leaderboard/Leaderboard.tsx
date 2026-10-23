@@ -127,7 +127,7 @@ export function Leaderboard(props: LeaderboardProps) {
   const columns = [{ key: "rank", label: c.rank }, { key: "project", label: c.project }, { key: "supporters", label: c.supporters }, { key: "direct", label: `${c.direct} · ${c.currency}` }, { key: "matching", label: `${c.matching} · ${c.currency}` }, { key: "total", label: `${c.total} · ${c.currency}` }];
   if (state === "error") return <PresentationState state="error" onRetry={onRetry} />;
   if (state === "loading") return <LeaderboardSkeleton />;
-  if (!ranked.length) return <PresentationState state="empty"><h2 className="font-semibold">{c.noProjects}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted">{isAdmin ? c.adminHint : c.noProjectsHint}</p>{!cancelled && <Link href={isAdmin ? "/admin" : "/register"} className="competition-action mt-6 inline-flex">{isAdmin ? c.admin : c.register}</Link>}</PresentationState>;
+  if (!ranked.length) return <PresentationState state="empty"><h2 className="font-semibold">{c.noProjects}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted">{isAdmin ? c.adminHint : c.noProjectsHint}</p>{!cancelled && <Link href={isAdmin ? "/admin" : `/register?round=${encodeURIComponent(roundId)}`} className="competition-action mt-6 inline-flex">{isAdmin ? c.admin : c.register}</Link>}</PresentationState>;
   return <div className="min-w-0 space-y-8">
     <Podium projects={ranked} roundId={roundId} pool={pool} finalized={finalized} />
     <section aria-label={c.leaderboard} className="min-w-0 space-y-5">

@@ -112,7 +112,9 @@ export function ConnectWalletButton() {
   }, []);
   useEffect(() => {
     if (!dropdownOpen) return;
-    const outside = (event: PointerEvent) => {
+    // Clicking non-focusable panel content can blur a button with relatedTarget=null.
+    // Close only when the pointer or actual new focus is outside both portal and trigger.
+    const outside = (event: PointerEvent | FocusEvent) => {
       if (!root.current?.contains(event.target as Node) && !panel.current?.contains(event.target as Node)) setDropdownOpen(false);
     };
     const escape = (event: KeyboardEvent) => {
@@ -127,8 +129,9 @@ export function ConnectWalletButton() {
     window.addEventListener("resize", reposition);
     window.addEventListener("scroll", reposition, true);
     document.addEventListener("pointerdown", outside);
+    document.addEventListener("focusin", outside);
     document.addEventListener("keydown", escape);
-    return () => { window.removeEventListener("resize", reposition); window.removeEventListener("scroll", reposition, true); document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+    return () => { window.removeEventListener("resize", reposition); window.removeEventListener("scroll", reposition, true); document.removeEventListener("pointerdown", outside); document.removeEventListener("focusin", outside); document.removeEventListener("keydown", escape); };
   }, [dropdownOpen]);
 
   const isReadyRef = useRef(isReady);
@@ -217,13 +220,7 @@ export function ConnectWalletButton() {
 
   return (
     <>
-      <div ref={root} className="relative flex min-h-10 min-w-[170px] items-center justify-end transition-opacity duration-200 ease-in-out" onBlur={event => {
-      console.log("[LOGOUT_DEBUG] root onBlur! relatedTarget:", event.relatedTarget);
-      if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !panel.current?.contains(event.relatedTarget as Node | null)) {
-        console.log("[LOGOUT_DEBUG] root onBlur closing dropdown!");
-        setDropdownOpen(false);
-      }
-    }}>
+      <div ref={root} className="relative flex min-h-10 min-w-[170px] items-center justify-end transition-opacity duration-200 ease-in-out">
       <button ref={trigger} type="button" onClick={() => { const rect = trigger.current?.getBoundingClientRect(); if (rect) setPosition({ top: rect.bottom + 8, right: Math.max(16, window.innerWidth - rect.right) }); setDropdownOpen(open => !open); }} aria-label={t.wallet.profile}
         aria-expanded={dropdownOpen} aria-haspopup="dialog" aria-controls={menuId}
         className="mono-label relative flex max-w-full min-h-10 items-center gap-2 rounded-sm border border-line-strong bg-surface px-3 text-foreground hover:bg-surface-2 hover:border-line cursor-pointer transition-colors active:scale-[0.99]">
@@ -242,7 +239,6 @@ export function ConnectWalletButton() {
       {dropdownOpen && createPortal(
         <div ref={panel} style={{ "--profile-top": `${position.top}px`, "--profile-right": `${position.right}px` } as React.CSSProperties}
           onKeyDown={event => { if (event.key === "Escape") { setDropdownOpen(false); trigger.current?.focus(); } }}
-          onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !root.current?.contains(event.relatedTarget as Node | null)) setDropdownOpen(false); }}
           id={menuId} role="dialog" aria-label={t.wallet.profile} className="fixed right-[var(--profile-right)] top-[var(--profile-top)] z-50 w-[352px] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-var(--profile-top)-1rem)] overflow-y-auto rounded-lg border border-line bg-bg p-4 font-mono text-xs text-foreground shadow-2xl">
 
           {/* Header: Avatar + Network + Role Status */}

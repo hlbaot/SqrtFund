@@ -1,4 +1,5 @@
 import "server-only";
+import axios from "axios";
 import { mailConfig } from "./config.ts";
 import nodemailer from "nodemailer";
 import { buildVerificationEmail } from "./emailTemplate.ts";
@@ -10,11 +11,15 @@ export async function sendOtp(email: string, otp: string, purpose: "student" | "
   const provider = process.env.EMAIL_PROVIDER ?? "smtp";
   if (provider === "resend") {
     if (!process.env.RESEND_API_KEY) throw new Error("Mailer unavailable");
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST", headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [email], subject, text, html }), signal: AbortSignal.timeout(15_000),
-    });
-    if (!response.ok) throw new Error("Email delivery failed");
+    try {
+      await axios.post("https://api.resend.com/emails", { from, to: [email], subject, text, html }, {
+        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch {
+      // Avoid passing Axios request config (including credentials) to server logs.
+      throw new Error("Email delivery failed");
+    }
   } else if (provider === "smtp") {
     const { SMTP_HOST: host, SMTP_USER: user, SMTP_PASS: pass } = process.env;
     const port = Number(process.env.SMTP_PORT ?? 587);

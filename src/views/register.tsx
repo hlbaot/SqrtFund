@@ -9,7 +9,7 @@ import { ProjectForm } from "@/components/project/ProjectForm";
 import { useLocale } from "@/lib/context/locale";
 import { Container } from "@/components/layout/Container";
 
-export function RegisterView() {
+export function RegisterView({ initialRound }: { initialRound?: string } = {}) {
   const { t } = useLocale();
   const { isStudent, isLoading } = useStudentStatus();
 
@@ -25,7 +25,7 @@ export function RegisterView() {
         </p>
       </div>
 
-      {isLoading ? <p role="status">{t.common.loading}</p> : isStudent ? <ProjectForm /> : <StudentAccessGate />}
+      {isLoading ? <p role="status">{t.common.loading}</p> : isStudent ? <ProjectForm key={initialRound ?? "default"} initialRound={initialRound} /> : <StudentAccessGate />}
     </Container>
   );
 }
