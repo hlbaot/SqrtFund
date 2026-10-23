@@ -1,5 +1,9 @@
 "use client";
 
+import { useRegistrationRounds } from "@/hooks/useRegistrationRounds";
+import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { shortAddress } from "@/lib/format";
+import { txToast } from "@/lib/txToast";
 import { useTxFlow } from "@/hooks/useTxFlow";
 
 import React, { useState } from "react";
@@ -17,14 +21,16 @@ import { useRole } from "@/hooks/useRole";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
-export function ProjectForm() {
+export function ProjectForm({ initialRound }: { initialRound?: string }) {
   const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
-  const { address, isConnected } = useAccount();
-  const publicClient = usePublicClient();
+  const { address, isConnected, chainId } = useAccount();
+  const publicClient = usePublicClient({ chainId: TARGET_CHAIN_ID });
   const { writeContractAsync } = useWriteContract();
-  const { roundAddress, status: roundStatus, isCancelled } = useRound();
-  const { isStudent, canParticipate } = useRole();
+  const selection = useRegistrationRounds(initialRound);
+  const selectedAddress = selection.roundAddress;
+  const { roundAddress, endTime, status: roundStatus, isCancelled, isLoading: isRoundLoading, isError: isRoundError, refetch: refetchRound } = useRound(selectedAddress);
+  const { isStudent, canParticipate } = useRole(selectedAddress);
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState<ProjectCategory>("technology");
@@ -64,30 +70,29 @@ export function ProjectForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    const flow = beginFlow();
     e.preventDefault();
-    if (!isStudent || !canParticipate) { flow.toast.error("register-project", t.verification.title, t.verification.roundNotEligible); flow.finish(); return; }
-    if (!validate()) return;
-
     const toastId = "register-project";
-
     if (!isConnected || !address) {
-      flow.toast.error(
-        toastId,
-        t.toasts.walletNotConnected,
-        t.toasts.walletNotConnectedDesc
-      );
+      txToast.error(toastId, t.toasts.walletNotConnected, t.toasts.walletNotConnectedDesc);
       return;
     }
-
-    if (!roundAddress || !publicClient) {
-      flow.toast.error(
-        toastId,
-        t.toasts.roundNotActive,
-        t.toasts.roundNotActiveDesc
-      );
+    if (chainId !== TARGET_CHAIN_ID) {
+      txToast.error(toastId, t.wallet.switchNetwork);
       return;
     }
+    if (!selectedAddress || roundAddress?.toLowerCase() !== selectedAddress.toLowerCase()
+      || selection.isLoading || isRoundLoading || isRoundError || !publicClient
+      || isCancelled || roundStatus !== "open" || endTime === undefined
+      || BigInt(Math.floor(Date.now() / 1000)) >= endTime) {
+      txToast.error(toastId, t.register.roundNotReady);
+      return;
+    }
+    if (!isStudent || !canParticipate) {
+      txToast.error(toastId, t.verification.title, t.verification.roundNotEligible);
+      return;
+    }
+    if (!validate()) return;
+    const flow = beginFlow();
 
     setIsSubmitting(true);
     try {
@@ -98,7 +103,8 @@ export function ProjectForm() {
       );
 
       const hash = await flow.wait(() => writeContractAsync({
-        address: roundAddress,
+        address: selectedAddress,
+        chainId: TARGET_CHAIN_ID,
         abi: qfRoundAbi,
         functionName: "registerProject",
         args: [name.trim(), description.trim(), imageUrl.trim(), contactUrl.trim()],
@@ -156,8 +162,6 @@ export function ProjectForm() {
     status: "pending",
   };
 
-  if (isCancelled) return <p role="status" className="border border-primary/40 bg-surface p-4 text-sm text-primary">{t.cancellation.banner}</p>;
-
   if (isSubmitted) {
     return (
       <div
@@ -198,139 +202,170 @@ export function ProjectForm() {
 
   if (!isStudent) return <StudentAccessGate />;
 
+  const roundPicker = (
+    <div className="space-y-2 rounded-sm border border-line bg-surface p-4">
+      <label htmlFor="registration-round" className="block text-sm font-semibold text-foreground">{t.register.fundingRound}</label>
+      <select
+        id="registration-round"
+        value={selectedAddress ?? ""}
+        disabled={isSubmitting || selection.isLoading || selection.rounds.length === 0}
+        onChange={event => { selection.selectRound(event.target.value); setErrors({}); }}
+        className="min-h-11 w-full rounded-sm border border-line-strong bg-bg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+      >
+        {!selectedAddress && <option value="">{t.register.selectRound}</option>}
+        {selection.rounds.map(round => (
+          <option key={round.address} value={round.address}>
+            {fmt(t.register.roundOption, { number: round.number })}{round.name ? ` · ${round.name}` : ""} · {shortAddress(round.address)}
+          </option>
+        ))}
+      </select>
+      {selection.selectionUnavailable && <p role="status" className="text-sm text-muted">{t.register.roundUnavailable}</p>}
+    </div>
+  );
+  const retryRounds = () => { selection.refetch(); refetchRound(); };
+  if (selection.isLoading) return <div className="space-y-4">{roundPicker}<p role="status" className="text-sm text-muted">{t.register.loadingRounds}</p></div>;
+  if ((selection.isError && selection.rounds.length === 0) || selection.selectedReadError || (selectedAddress && isRoundError)) {
+    return <div className="space-y-4">{roundPicker}<div role="alert" className="space-y-3 rounded-sm border border-line bg-surface p-6 text-sm">
+      <p>{t.register.roundsReadError}</p><Button type="button" variant="secondary" onClick={retryRounds}>{t.register.retryRounds}</Button>
+    </div></div>;
+  }
+  if (!selectedAddress) return <div className="space-y-4">{roundPicker}{selection.rounds.length === 0 && <div role="status" className="space-y-3 rounded-sm border border-line bg-surface p-6 text-sm">
+    <h2 className="font-semibold">{t.register.noOpenRounds}</h2>
+    <p className="text-muted">{t.register.noOpenRoundsHint}</p>
+    <Link href="/round" className="inline-flex min-h-10 items-center text-money hover:underline">{t.register.viewRounds}</Link>
+  </div>}</div>;
+  if (isRoundLoading) return <div className="space-y-4">{roundPicker}<p role="status" className="text-sm text-muted">{t.register.loadingRounds}</p></div>;
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      {/* Form area */}
-      <div
-        className="lg:col-span-7 border border-line bg-surface p-6"
-        data-aos="fade-right"
-        data-aos-duration="600"
-      >
-        <h2 className="text-lg font-bold text-foreground mb-4">
-          {t.register.formTitle}
-        </h2>
+    <div className="space-y-6">
+      {roundPicker}
+      {selection.isError && <div role="alert" className="flex items-center gap-3 text-sm text-muted"><p>{t.register.roundsReadError}</p><Button type="button" variant="ghost" onClick={retryRounds}>{t.register.retryRounds}</Button></div>}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Form area */}
+        <div
+          className="lg:col-span-7 border border-line bg-surface p-6"
+          data-aos="fade-right"
+          data-aos-duration="600"
+        >
+          <h2 className="text-lg font-bold text-foreground mb-4">
+            {t.register.formTitle}
+          </h2>
 
-        {!canParticipate && (
-          <div className="mb-4 border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200 flex items-start gap-2.5">
-            <AlertCircle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
-            <div>
-              <span className="font-bold block text-amber-300 mb-0.5">
-                {isStudent ? t.verification.roundNotEligible : t.register.verificationRequired}
-              </span>
-              <span>
-                {isStudent ? t.verification.roundNotEligible : t.register.verificationNotRequestedMsg}
-              </span>
+          {!canParticipate && (
+            <div className="mb-4 border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200 flex items-start gap-2.5">
+              <AlertCircle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+              <p>{chainId !== TARGET_CHAIN_ID ? t.wallet.switchNetwork : t.verification.roundNotEligible}</p>
             </div>
-          </div>
-        )}
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-[720px]">
-          <p className="text-sm text-muted">{t.phase2.ownerProjectLimit}</p>
-          <Input
-            label={`${t.register.nameLabel} (max 60 bytes)`}
-            placeholder={t.register.namePlaceholder}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            error={errors.name}
-          />
-
-          <div className="space-y-1.5">
-            <label
-              htmlFor="project-category"
-              className="block text-xs font-semibold uppercase tracking-wider text-foreground"
-            >
-              {t.register.categoryLabel}
-            </label>
-            <select
-              id="project-category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ProjectCategory)}
-              className="w-full border border-line-strong bg-bg px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="technology">{t.categories.technology}</option>
-              <option value="education">{t.categories.education}</option>
-              <option value="environment">{t.categories.environment}</option>
-              <option value="arts">{t.categories.arts}</option>
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label
-              htmlFor="full-description"
-              className="block text-xs font-semibold uppercase tracking-wider text-foreground"
-            >
-              {t.register.fullDescLabel} (max 280 bytes)
-            </label>
-            <textarea
-              id="full-description"
-              rows={4}
-              maxLength={280}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t.register.fullDescPlaceholder}
-              className={`w-full border bg-bg p-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 transition-colors ${errors.description
-                ? "border-primary focus:border-primary focus:ring-primary"
-                : "border-line-strong focus:border-primary focus:ring-primary"
-                }`}
+          <form onSubmit={handleSubmit} className="space-y-4 max-w-[720px]">
+            <p className="text-sm text-muted">{t.phase2.ownerProjectLimit}</p>
+            <Input
+              label={`${t.register.nameLabel} (max 60 bytes)`}
+              placeholder={t.register.namePlaceholder}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              error={errors.name}
             />
-            {errors.description && (
-              <p className="text-xs font-medium text-primary" role="alert">
-                {errors.description}
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="project-category"
+                className="block text-xs font-semibold uppercase tracking-wider text-foreground"
+              >
+                {t.register.categoryLabel}
+              </label>
+              <select
+                id="project-category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value as ProjectCategory)}
+                className="w-full border border-line-strong bg-bg px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="technology">{t.categories.technology}</option>
+                <option value="education">{t.categories.education}</option>
+                <option value="environment">{t.categories.environment}</option>
+                <option value="arts">{t.categories.arts}</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="full-description"
+                className="block text-xs font-semibold uppercase tracking-wider text-foreground"
+              >
+                {t.register.fullDescLabel} (max 280 bytes)
+              </label>
+              <textarea
+                id="full-description"
+                rows={4}
+                maxLength={280}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t.register.fullDescPlaceholder}
+                className={`w-full border bg-bg p-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 transition-colors ${errors.description
+                  ? "border-primary focus:border-primary focus:ring-primary"
+                  : "border-line-strong focus:border-primary focus:ring-primary"
+                  }`}
+              />
+              {errors.description && (
+                <p className="text-xs font-medium text-primary" role="alert">
+                  {errors.description}
+                </p>
+              )}
+              <p className="text-xs text-muted text-right">
+                {fmt(t.register.charsCount, { count: description.length })}
               </p>
-            )}
-            <p className="text-xs text-muted text-right">
-              {fmt(t.register.charsCount, { count: description.length })}
-            </p>
-          </div>
+            </div>
 
-          <Input
-            label={`${t.register.contactLabel} (max 200 bytes)`}
-            placeholder={t.register.contactPlaceholder}
-            value={contactUrl}
-            onChange={(e) => setContactUrl(e.target.value)}
-            error={errors.contactUrl}
-          />
+            <Input
+              label={`${t.register.contactLabel} (max 200 bytes)`}
+              placeholder={t.register.contactPlaceholder}
+              value={contactUrl}
+              onChange={(e) => setContactUrl(e.target.value)}
+              error={errors.contactUrl}
+            />
 
-          <Input
-            label={`${t.register.imageLabel} (max 200 bytes)`}
-            placeholder={t.register.imagePlaceholder}
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            error={errors.imageUrl}
-          />
+            <Input
+              label={`${t.register.imageLabel} (max 200 bytes)`}
+              placeholder={t.register.imagePlaceholder}
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              error={errors.imageUrl}
+            />
 
-          <div className="pt-2">
-            <Button
-              type="submit"
-              variant="primary"
-              fullWidth
-              disabled={isSubmitting || roundStatus === "closed" || roundStatus === "finalized" || !canParticipate}
-              isLoading={isSubmitting}
-              className="py-3 font-bold"
-            >
-              {!canParticipate
-                ? t.register.studentVerificationRequired
-                : isSubmitting
-                  ? t.register.registeringOnFuji
-                  : t.register.submitButton}
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      {/* Live Voter Card Preview */}
-      <div
-        className="lg:col-span-5 space-y-3"
-        data-aos="fade-left"
-        data-aos-duration="600"
-      >
-        <div className="flex items-center justify-between">
-          <h3 className="role-label text-muted">
-            {t.register.previewTitle}
-          </h3>
-          <span className="text-xs text-money font-medium">{t.common.realTimeUpdate}</span>
+            <div className="pt-2">
+              <Button
+                type="submit"
+                variant="primary"
+                fullWidth
+                disabled={isSubmitting || roundStatus !== "open" || isCancelled || !canParticipate || chainId !== TARGET_CHAIN_ID}
+                isLoading={isSubmitting}
+                className="py-3 font-bold"
+              >
+                {!canParticipate
+                  ? (chainId !== TARGET_CHAIN_ID ? t.wallet.switchNetwork : t.register.roundNotReady)
+                  : isSubmitting
+                    ? t.register.registeringOnFuji
+                    : t.register.submitButton}
+              </Button>
+            </div>
+          </form>
         </div>
-        <ProjectCard project={previewProject} />
+
+        {/* Live Voter Card Preview */}
+        <div
+          className="lg:col-span-5 space-y-3"
+          data-aos="fade-left"
+          data-aos-duration="600"
+        >
+          <div className="flex items-center justify-between">
+            <h3 className="role-label text-muted">
+              {t.register.previewTitle}
+            </h3>
+            <span className="text-xs text-money font-medium">{t.common.realTimeUpdate}</span>
+          </div>
+          <ProjectCard project={previewProject} />
+        </div>
       </div>
     </div>
   );

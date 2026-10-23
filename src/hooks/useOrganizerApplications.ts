@@ -1,5 +1,6 @@
 "use client";
 
+import { api, ApiError } from "@/lib/api";
 import { useAccount, useSignMessage } from "wagmi";
 import { organizerReviewMessage } from "@/lib/organizerReview";
 import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
@@ -13,9 +14,7 @@ export function useMyOrganizerApplication(walletAddress?: string) {
     queryKey: ["organizer-application", walletAddress?.toLowerCase()],
     queryFn: async (): Promise<OrganizerApplication | null> => {
       if (!walletAddress) return null;
-      const res = await fetch(`/api/organizer-applications?walletAddress=${encodeURIComponent(walletAddress)}`);
-      if (!res.ok) throw new Error("Failed to fetch application");
-      const json = await res.json();
+      const { data: json } = await api.get("/api/organizer-applications", { params: { walletAddress } });
       if (!json.ok || !Array.isArray(json.applications) || json.applications.length === 0) {
         return null;
       }
@@ -51,12 +50,9 @@ export function useOrganizerApplicationsAdmin(statusFilter?: string, enabled = t
   const query = useQuery({
     queryKey: ["admin-organizer-applications", statusFilter || "all"],
     queryFn: async (): Promise<OrganizerApplication[]> => {
-      const url = statusFilter && statusFilter !== "all"
-        ? `/api/organizer-applications?status=${encodeURIComponent(statusFilter)}`
-        : `/api/organizer-applications`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch applications");
-      const json = await res.json();
+      const { data: json } = await api.get("/api/organizer-applications", {
+        params: statusFilter && statusFilter !== "all" ? { status: statusFilter } : undefined,
+      });
       if (!json.ok || !Array.isArray(json.applications)) {
         return [];
       }
@@ -92,15 +88,8 @@ export function useOrganizerApplicationsAdmin(statusFilter?: string, enabled = t
         issuedAt: Date.now(),
       };
       const signature = await signMessageAsync({ account: address, message: organizerReviewMessage(review, factoryAddress, TARGET_CHAIN_ID) });
-      const res = await fetch("/api/organizer-applications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...review, signature }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Failed to update application");
-      }
+      const { data } = await api.patch("/api/organizer-applications", { ...review, signature });
+      if (!data.ok) throw new ApiError(data.error || "Failed to update application");
       return data.application as OrganizerApplication;
     },
     onSuccess: () => {

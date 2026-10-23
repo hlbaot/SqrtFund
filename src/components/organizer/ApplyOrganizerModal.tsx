@@ -1,5 +1,7 @@
 "use client";
 
+import { api, ApiError } from "@/lib/api";
+
 import React, { useState } from "react";
 import { isAddress } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
@@ -97,35 +99,14 @@ function OrganizerApplicationForm({
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/organizer-applications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          walletAddress: walletAddress.trim(),
-          organizationName: orgName.trim(),
-          contactEmail: email.trim(),
-          reason: reason.trim(),
-          emailVerificationToken: emailOtp.token,
-        }),
+      const { data } = await api.post("/api/organizer-applications", {
+        walletAddress: walletAddress.trim(),
+        organizationName: orgName.trim(),
+        contactEmail: email.trim(),
+        reason: reason.trim(),
+        emailVerificationToken: emailOtp.token,
       });
-
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        if (data.error === "EMAIL_NOT_VERIFIED") {
-          emailOtp.reset(); setFieldErrors({ email: otpRequired }); return;
-        }
-        if (data.error === "EMAIL_ALREADY_USED") {
-          emailOtp.reset();
-          setFieldErrors({ email: t.verification.emailErrors.EMAIL_ALREADY_USED });
-          return;
-        }
-        if (data.error === "APPLICATION_ALREADY_PENDING") {
-          txToast.info("apply-org-pending", c.alreadyPendingTitle, c.alreadyPendingDesc);
-          void refetch();
-          return;
-        }
-        throw new Error(data.error || "Submission failed");
-      }
+      if (!data.ok) throw new ApiError(data.error || "Submission failed");
 
       setSubmitSuccess(true);
       txToast.success("apply-org-success", c.successTitle, c.successDesc, undefined, 4000);
@@ -133,6 +114,21 @@ function OrganizerApplicationForm({
       void queryClient.invalidateQueries({ queryKey: ["admin-organizer-applications"] });
       void refetch();
     } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.code === "EMAIL_NOT_VERIFIED") {
+          emailOtp.reset(); setFieldErrors({ email: otpRequired }); return;
+        }
+        if (err.code === "EMAIL_ALREADY_USED") {
+          emailOtp.reset();
+          setFieldErrors({ email: t.verification.emailErrors.EMAIL_ALREADY_USED });
+          return;
+        }
+        if (err.code === "APPLICATION_ALREADY_PENDING") {
+          txToast.info("apply-org-pending", c.alreadyPendingTitle, c.alreadyPendingDesc);
+          void refetch();
+          return;
+        }
+      }
       const msg = err instanceof Error ? err.message : "Failed to submit application";
       txToast.error("apply-org-error", msg);
     } finally {
