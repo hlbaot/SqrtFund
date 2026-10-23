@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "realtime": "node --env-file-if-exists=.env --env-file-if-exists=.env.local realtime/index.mjs",
+    "keeper": "node scripts/finalize-keeper.mjs",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",

@@ -376,10 +376,9 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
 
             <div className="space-y-2">
               <label className="block text-xs font-semibold uppercase tracking-wider text-foreground">
-                {t.register.imageLabel} (max 200 bytes)
+                {t.register.imageLabel}
               </label>
 
-              {/* Upload button & Preview area */}
               <div className="flex flex-wrap items-center gap-2.5">
                 <input
                   type="file"
@@ -406,20 +405,26 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
                   ) : (
                     <>
                       <Upload className="h-3.5 w-3.5 text-primary" />
-                      <span>{t.register.uploadImage}</span>
+                      <span>{imageUrl ? (locale === "vi" ? "Đổi ảnh khác" : "Change image") : t.register.uploadImage}</span>
                     </>
                   )}
                 </Button>
 
                 {imageUrl && (
-                  <div className="flex items-center gap-2 bg-surface-2 px-2.5 py-1 rounded-xs border border-line text-xs">
-                    <ImageIcon className="h-3.5 w-3.5 text-muted shrink-0" />
-                    <span className="truncate max-w-[200px] text-muted font-mono">{imageUrl}</span>
+                  <div className="flex items-center gap-2 bg-surface-2 px-3 py-1.5 rounded-xs border border-line text-xs">
+                    <CheckCircle2 className="h-4 w-4 text-money shrink-0" />
+                    <span className="text-foreground font-medium">
+                      {locale === "vi" ? "Đã tải ảnh thành công" : "Image uploaded successfully"}
+                    </span>
                     <button
                       type="button"
-                      onClick={() => setImageUrl("")}
-                      className="text-muted hover:text-red-400 transition-colors p-0.5 cursor-pointer ml-1"
+                      onClick={() => {
+                        setImageUrl("");
+                        setUploadError(null);
+                      }}
+                      className="text-muted hover:text-red-400 transition-colors p-0.5 cursor-pointer ml-1.5"
                       title={t.register.removeImage}
+                      aria-label={t.register.removeImage}
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -433,16 +438,11 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
                 </p>
               )}
 
-              {/* Manual URL Input */}
-              <Input
-                placeholder={t.register.pasteUrlInstead}
-                value={imageUrl}
-                onChange={(e) => {
-                  setImageUrl(e.target.value);
-                  setUploadError(null);
-                }}
-                error={errors.imageUrl}
-              />
+              {errors.imageUrl && (
+                <p className="text-xs text-primary font-medium" role="alert">
+                  {errors.imageUrl}
+                </p>
+              )}
             </div>
 
             <div className="pt-2">

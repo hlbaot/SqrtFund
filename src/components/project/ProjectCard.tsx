@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { isAddress, type Address } from "viem";
+import { useAccount, useReadContract } from "wagmi";
+import { qfRoundAbi } from "@/lib/contracts/abis";
 import type { Project } from "@/types";
 import { formatUsdc, formatUsdcFixed } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
@@ -39,16 +41,37 @@ export function ProjectCard({
   canDonate,
 }: ProjectCardProps) {
   const { t, locale } = useLocale();
+  const { address } = useAccount();
   const [isDonateOpen, setIsDonateOpen] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [prevImg, setPrevImg] = useState(project.imageUrl);
+  if (prevImg !== project.imageUrl) {
+    setPrevImg(project.imageUrl);
+    setImageFailed(false);
+  }
 
   const targetRoundAddress =
     roundAddress ||
     (roundId && isAddress(roundId) ? (roundId as Address) : undefined);
 
+  // Read how much current user has already donated to this project
+  const projectIdBigInt = BigInt(project.id || project.contractId?.toString() || "1");
+  const { data: userDonatedData } = useReadContract({
+    address: targetRoundAddress,
+    abi: qfRoundAbi,
+    functionName: "donationOf",
+    args: address && targetRoundAddress ? [address, projectIdBigInt] : undefined,
+    query: {
+      enabled: Boolean(targetRoundAddress && address),
+      refetchInterval: 5000,
+    },
+  });
+  const hasAlreadyDonated = Boolean(userDonatedData && (userDonatedData as bigint) > 0n);
+
   const isDonatable =
-    canDonate !== undefined
+    (canDonate !== undefined
       ? canDonate && project.status !== "pending" && project.status !== "rejected"
-      : project.status !== "pending" && project.status !== "rejected";
+      : project.status !== "pending" && project.status !== "rejected") && !hasAlreadyDonated;
 
   const name = locale === "vi" && project.nameVi ? project.nameVi : project.name;
   const shortDescription =
@@ -90,20 +113,38 @@ export function ProjectCard({
           </span>
         </div>
 
-        {(project.status === "pending" || project.status === "rejected") && (
-          <Badge variant={project.status === "rejected" ? "primary" : "warning"}>{project.status === "rejected" ? t.rejection.status : t.myActivity.statusPending}</Badge>
-        )}
+        <div className="flex items-center gap-1.5">
+          {hasAlreadyDonated && (
+            <Badge variant="accent" className="text-[10px] bg-money/15 text-money border-money/30">
+              ✓ {t.donateBox.alreadyDonatedBadge}
+            </Badge>
+          )}
+          {(project.status === "pending" || project.status === "rejected") && (
+            <Badge variant={project.status === "rejected" ? "primary" : "warning"}>{project.status === "rejected" ? t.rejection.status : t.myActivity.statusPending}</Badge>
+          )}
+        </div>
       </div>
 
       {/* 1. Image placeholder area, name, short description */}
       <div>
-        <div className="relative mb-4 flex h-32 w-full items-center justify-center overflow-hidden border border-line bg-bg p-4">
-          <div className="flex flex-col items-center justify-center text-center">
-            <CategoryIcon className="mb-1 h-8 w-8 text-primary" />
-            <MonoLabel>
-              {categoryLabels[project.category]}
-            </MonoLabel>
-          </div>
+        <div className="relative mb-4 flex h-32 w-full items-center justify-center overflow-hidden border border-line bg-bg">
+          {project.imageUrl && !imageFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={project.imageUrl}
+              src={project.imageUrl}
+              alt={name}
+              onError={() => setImageFailed(true)}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center text-center p-4">
+              <CategoryIcon className="mb-1 h-8 w-8 text-primary" />
+              <MonoLabel>
+                {categoryLabels[project.category]}
+              </MonoLabel>
+            </div>
+          )}
         </div>
 
         <h3 className="line-clamp-1 text-lg font-bold tracking-tight text-foreground">
@@ -141,7 +182,7 @@ export function ProjectCard({
       <div className="mt-4 pt-1 flex items-center gap-2">
         <Link
           href={`/round/${roundId}/project/${project.id}`}
-          className="mono-label flex-1 flex min-h-10 items-center justify-center gap-1.5 border border-line-strong bg-surface py-2 px-3 text-xs text-muted transition-all hover:border-line hover:bg-surface-2 hover:text-foreground cursor-pointer active:scale-[0.98] focus:outline-none rounded-xs"
+          className={`mono-label ${isDonatable ? "flex-1" : "w-full"} flex min-h-10 items-center justify-center gap-1.5 border border-line-strong bg-surface py-2 px-3 text-xs text-muted transition-all hover:border-line hover:bg-surface-2 hover:text-foreground cursor-pointer active:scale-[0.98] focus:outline-none rounded-xs`}
         >
           <span>{t.projectCard.viewDetails}</span>
           <ArrowRight className="h-3.5 w-3.5 shrink-0" />

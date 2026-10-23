@@ -121,6 +121,17 @@ export function ProjectDetailView() {
               )}
             </div>
 
+            {project.imageUrl && (
+              <div className="relative w-full h-48 sm:h-64 overflow-hidden rounded-xs border border-line bg-bg">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={project.imageUrl}
+                  alt={project.name}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
+
             {/* Project Name & Summary */}
             <div className="space-y-2">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
@@ -176,10 +187,14 @@ export function ProjectDetailView() {
                 title={`${project.supporterCount} ${t.common.supporters}`}
               />
               <Stat
-                label={t.projectDetail.ownerShort}
-                value={shortAddress(project.ownerAddress, 5)}
+                label={t.competition.project}
+                value={
+                  <span className="truncate max-w-[160px] block" title={project.name}>
+                    {project.name}
+                  </span>
+                }
                 tone="default"
-                title={project.ownerAddress}
+                title={project.name}
               />
             </StatGroup>
 

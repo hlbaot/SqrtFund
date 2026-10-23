@@ -21,6 +21,7 @@ export interface LeaderboardProps {
   wallet?: string;
   onRetry?: () => void;
   cancelled?: boolean;
+  canDonate?: boolean;
 }
 
 function useValueFlash<T extends HTMLElement>(project: RankedProject) {
@@ -129,7 +130,13 @@ export function Leaderboard(props: LeaderboardProps) {
   if (state === "loading") return <LeaderboardSkeleton />;
   if (!ranked.length) return <PresentationState state="empty"><h2 className="font-semibold">{c.noProjects}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted">{isAdmin ? c.adminHint : c.noProjectsHint}</p>{!cancelled && <Link href={isAdmin ? "/admin" : `/register?round=${encodeURIComponent(roundId)}`} className="competition-action mt-6 inline-flex">{isAdmin ? c.admin : c.register}</Link>}</PresentationState>;
   return <div className="min-w-0 space-y-8">
-    <Podium projects={ranked} roundId={roundId} pool={pool} finalized={finalized} />
+    <Podium
+      projects={ranked}
+      roundId={roundId}
+      pool={pool}
+      finalized={finalized}
+      canDonate={props.canDonate !== undefined ? props.canDonate : (!cancelled && !finalized)}
+    />
     <section aria-label={c.leaderboard} className="min-w-0 space-y-5">
       <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center"><h2 className="text-xl font-bold">{c.leaderboard} <span className="tabular-mono text-sm font-normal text-muted">/ {displayNumber(ranked.length, locale, 0)}</span></h2><div role="group" aria-label={c.leaderboard} className="competition-segment flex max-w-full flex-wrap self-start border border-line bg-bg">{(["supporters", "direct", "matching"] as const).map(key => <button type="button" key={key} aria-pressed={sort === key} onClick={() => setSort(key)} className="competition-focus min-h-11 px-3 py-2 text-xs">{key === "supporters" ? c.sortSupporters : key === "direct" ? c.sortDirect : c.sortMatching}</button>)}</div></div>
       <div className="flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><span className="sr-only">{c.search}</span><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted" /><input className="competition-focus min-h-11 w-full border border-line bg-bg py-2 pl-10 pr-3 text-sm" value={search} onChange={event => setSearch(event.target.value)} placeholder={c.search} /></label><select value={category} aria-label={c.categories} onChange={event => setCategory(event.target.value)} className="competition-focus min-h-11 max-w-full border border-line bg-bg px-3 text-xs"><option value="all">{c.categories}</option>{(["technology", "education", "environment", "arts"] as const).map(key => <option key={key} value={key}>{c[key]}</option>)}</select></div>

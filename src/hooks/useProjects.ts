@@ -7,6 +7,7 @@ import { logContractReadFailure, isVersionReadError, roundReadRetry } from "@/li
 import { legacyProjectAbi } from "@/lib/contracts/legacyProjectAbi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
+import { rankProjects } from "@/components/leaderboard/model";
 import { canViewProject } from "@/lib/projectVisibility";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import type { Project, ProjectCategory } from "@/types";
@@ -138,7 +139,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     if (!projectsData || !projectsData[0]) return [];
 
     const rawList = projectsData[0];
-    return rawList.map((p, index): EnrichedProject => {
+    const mapped = rawList.map((p): EnrichedProject => {
       const pIdStr = p.id.toString();
       const matchingBigInt = estimatedMap.get(pIdStr) ?? 0n;
       const totalDonatedNum = Number(p.totalDonated) / 1_000_000;
@@ -162,7 +163,6 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
         finalMatchingRaw,
         status: p.rejected ? "rejected" : p.approved ? "approved" : "pending",
         rejected: p.rejected === true,
-        rank: index + 1,
         // Raw values for precision
         contractId: p.id,
         sumSqrtRaw: p.sumSqrt,
@@ -172,6 +172,9 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
         approved: p.approved,
       };
     });
+    // Trang chi tiết và bảng xếp hạng dùng chung quy tắc, không lấy ID làm hạng.
+    const ranks = new Map(rankProjects(mapped).map(project => [project.id, project.supporterRank]));
+    return mapped.map(project => ({ ...project, rank: ranks.get(project.id) }));
   }, [projectsData, estimatedMap, roundAddress, finalMap]);
 
   const visibleProjects = useMemo(() => projects.filter(project => canViewProject(project, viewer, admin)), [projects, viewer, admin]);
