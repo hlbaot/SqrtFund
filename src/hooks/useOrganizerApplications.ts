@@ -22,6 +22,7 @@ export function useMyOrganizerApplication(walletAddress?: string) {
     },
     enabled: Boolean(walletAddress),
     staleTime: 15_000,
+    refetchInterval: 15_000,
   });
 
   const app = query.data ?? null;
@@ -60,6 +61,7 @@ export function useOrganizerApplicationsAdmin(statusFilter?: string, enabled = t
     },
     enabled,
     staleTime: 10_000,
+    refetchInterval: 15_000,
   });
 
   const updateMutation = useMutation({

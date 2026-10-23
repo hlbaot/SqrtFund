@@ -12,6 +12,7 @@ vi.mock("@/hooks/useNotificationCounts", () => ({ useNotificationCounts: () => (
 vi.mock("@/lib/context/locale", async () => { const { copy } = await import("@/lib/copy"); return { useLocale: () => ({ t: copy.vi, locale: "vi" }) }; });
 vi.mock("@/components/layout/ConnectWalletButton", () => ({ ConnectWalletButton: () => null }));
 vi.mock("@/components/layout/LanguageToggle", () => ({ LanguageToggle: () => null }));
+vi.mock("@/components/layout/NotificationBell", () => ({ NotificationBell: () => null }));
 vi.mock("@/components/common/NetworkGuard", () => ({ NetworkGuard: () => null }));
 
 beforeEach(() => Object.assign(f, { platformOwner: false, role: "organizer", connected: true, admin: true }));

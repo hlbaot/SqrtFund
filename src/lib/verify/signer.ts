@@ -4,6 +4,7 @@ import { avalancheFuji } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import { VerificationError } from "./errors";
 import { studentRegistryAbi } from "@/lib/contracts/abis";
+// emailHash là tên ABI legacy: giá trị mới là verification_id ngẫu nhiên từ backend.
 export const verificationTypes = { StudentVerification: [
   { name: "student", type: "address" }, { name: "emailHash", type: "bytes32" }, { name: "expiry", type: "uint256" },
 ] } as const;

@@ -1,4 +1,5 @@
 import { authorizeOrganizerReview } from "@/lib/server/organizerReviewAuthorization";
+import { publishNotificationChange } from "@/lib/server/publishNotificationChange";
 import { NextResponse } from "next/server";
 import { isAddress } from "viem";
 import { verifyOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
@@ -79,6 +80,7 @@ export async function POST(request: Request) {
       reason: reason.trim(),
     });
 
+    await publishNotificationChange();
     return NextResponse.json({ ok: true, application }, { status: 201 });
   } catch (error) {
     if (error instanceof VerificationError) return NextResponse.json({ ok: false, error: error.code }, { status: error.status });
@@ -126,6 +128,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ ok: false, error: "APPLICATION_CHANGED" }, { status: 409 });
     }
 
+    await publishNotificationChange();
     return NextResponse.json({ ok: true, application });
   } catch (error) {
     if (error instanceof VerificationError) return NextResponse.json({ ok: false, error: error.code }, { status: error.status });
