@@ -165,8 +165,12 @@ flowchart TD
 | :--- | :--- |
 | **Avalanche Fuji — smart contract** | `RoundFactory` lưu danh sách round, quyền tạo round và số dư nạp trước; mỗi `QFRound` lưu project, trạng thái duyệt/từ chối, khoản góp, matching, payout và hoàn tiền; `StudentRegistry` lưu trạng thái ví Student và ràng buộc hash email. |
 | **Next.js API + Supabase** | OTP, dữ liệu xác minh email, định danh email–ví, hồ sơ/đơn Organizer, quyết định xét đơn, hash giao dịch và lý do thu hồi. Hồ sơ trên DB không thay thế quyền trên contract. |
-| **Axios + TanStack Query** | Axios gọi API của ứng dụng; TanStack Query quản lý cache, loading/error và tải lại dữ liệu. Axios client chung ở `src/lib/api.ts`. |
+| **Zustand** | Đẩy dữ liệu giao diện tức thì qua store round, project theo round và quyền/đơn Organizer theo ví; component danh sách đọc từ store. |
+| **Axios + TanStack Query** | Axios gọi API của ứng dụng; TanStack Query lấy và xác nhận dữ liệu, quản lý cache, loading/error và tải lại. Axios client chung ở `src/lib/api.ts`. |
+| **Polling / realtime** | Đồng bộ giữa hai máy: polling mỗi 5 giây khi tab hiển thị; tín hiệu realtime yêu cầu đọc lại dữ liệu, polling là phương án dự phòng. |
 | **wagmi + viem** | Đọc dữ liệu contract qua RPC Fuji; gửi giao dịch có chữ ký ví khi tạo vòng, đăng ký/duyệt project, donate hoặc nhận tiền. Các thao tác này không phải API REST ghi round/project vào Supabase. |
+
+Khi tải trang, dữ liệu từ TanStack Query/API được nạp vào Zustand; sau receipt thành công, giao diện cập nhật lạc quan bằng dữ liệu đã biết rồi đọc lại chain tại block xác nhận để ghi đè. Nếu bước xác nhận lỗi, patch được hoàn tác và polling thử đồng bộ lại; quyền thực tế vẫn do contract quyết định, store chỉ phản ánh dữ liệu. Xem [hướng dẫn thử bằng hai trình duyệt và kết quả kiểm tra](docs/UI-SYNC-TESTING.md).
 
 Luồng API chính: `POST /api/verify/request-otp` → `POST /api/verify/confirm` cho Student; `POST /api/organizer-applications/email` cho OTP liên hệ; `GET`/`POST`/`PATCH /api/organizer-applications` để đọc/nộp/xét đơn Organizer. API trả dữ liệu xác minh/quyết định; quyền on-chain chỉ thay đổi sau giao dịch tương ứng.
 
@@ -242,6 +246,7 @@ QF chỉ công bằng khi mỗi ví đại diện cho một con người thực.
 6. **Danh tính qua email:** Hộp thư dùng chung hoặc địa chỉ email cựu sinh viên được trường cấp lại có thể tạo thêm danh tính.
 7. **Thông đồng (Collusion):** QF thuần túy dễ bị mua chuộc (trả tiền để người khác góp hộ). Cơ chế Pairwise matching nằm trong lộ trình phát triển.
 8. **Chưa kiểm toán:** Hợp đồng thông minh chưa qua kiểm toán an mật độc lập từ bên thứ ba.
+9. **Store giao diện:** Zustand là bản phản chiếu tạm thời trong bộ nhớ; giữa hai thiết bị, đồng bộ dựa vào polling/realtime nên có thể trễ vài giây và phụ thuộc RPC/API.
 
 ---
 
@@ -445,6 +450,7 @@ SqrtFund/
 │   ├── components/               # Giao diện: admin, layout, project, round, verify...
 │   ├── hooks/                    # Hook contract (wagmi/viem), API (TanStack Query), chọn round
 │   ├── lib/                      # Axios client, toán QF, EIP-712, server và định dạng
+│   │   └── store/                # Zustand: rounds, projects theo round, quyền/đơn Organizer
 │   └── views/                    # Các view màn hình chính
 ├── supabase/migrations/          # Xác minh email, định danh ví, đơn Organizer và lý do thu hồi
 ├── __tests__/                    # Kiểm thử giao diện và API với Vitest

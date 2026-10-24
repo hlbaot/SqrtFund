@@ -1,4 +1,7 @@
 "use client";
+import { parseEventLogs } from "viem";
+import { roundsStore } from "@/lib/store/roundsStore";
+import { studentRegistryAddress } from "@/lib/contracts/addresses";
 
 import { useTxFlow } from "@/hooks/useTxFlow";
 
@@ -120,7 +123,18 @@ export function CreateRoundForm() {
     if (busy.current || !address || !publicClient || !isConnected || chainId !== TARGET_CHAIN_ID || !deposit.supported) return;
     if (action !== "withdraw" && !ready) return;
     busy.current = true;
-    const flow = beginFlow("create-round-funding");
+    const flow = beginFlow("create-round-funding", { patch: receipt => {
+      const event = parseEventLogs({ abi: roundFactoryAbi, eventName: "RoundCreated", logs: receipt.logs.filter(log => log.address.toLowerCase() === factoryAddress.toLowerCase()) })[0];
+      if (!event || action !== "create") return [];
+      const start = BigInt(Math.floor(new Date(startDateTime).getTime() / 1000));
+      const end = BigInt(Math.floor(new Date(endDateTime).getTime() / 1000));
+      const values = [address, usdcAddress, start, end, OPEN_DONATION_POLICY.minDonation, OPEN_DONATION_POLICY.maxDonation,
+        BigInt(Math.round(Number(maxMatchPercent) * 100)), initialAmount, false, 0n, false, 0n,
+        roundName.trim(), organizer.trim(), OPEN_DONATION_POLICY.maxPerRound, false, false];
+      return [roundsStore.getState().patch(event.args.roundAddress, {
+        fields: { version: "current", supportsPhase2: true, registry: studentRegistryAddress, results: values.map(result => ({ status: "success", result })) },
+      }, true)];
+    } });
     const toastId = `initial-pool-${action}`;
     const title = action === "deposit" ? t.admin.initialPoolDeposit : action === "withdraw" ? t.admin.initialPoolWithdraw : t.admin.createRoundBtn;
     try {

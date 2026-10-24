@@ -1,4 +1,7 @@
 "use client";
+import { roundsStore } from "@/lib/store/roundsStore";
+import { useShallow } from "zustand/react/shallow";
+import { useVisiblePolling } from "./useVisiblePolling";
 
 import { useEffect, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
@@ -7,15 +10,17 @@ import { usePublicClient } from "wagmi";
 import { useFactoryRounds } from "@/hooks/useRound";
 import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
 import { factoryAddress, studentRegistryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
-import { loadRoundFields, roundReadRetry, type RoundCapability } from "@/lib/contracts/roundReads";
+import { readMirrorRound } from "@/lib/store/chainSync";
+import { roundReadRetry } from "@/lib/contracts/roundReads";
 import { QUERY_GC_MS, QUERY_STALE_MS } from "@/lib/queryPolicy";
 import { isPublicRound } from "@/lib/roundVisibility";
 import { registrationRoundState, selectRegistrationRound } from "@/lib/projectRegistration";
 
-const capabilities = new Map<string, RoundCapability>();
 
 export function useRegistrationRounds(initialRound?: string) {
   const { factoryData, isFactoryLoading, isFactoryError, refetchFactory } = useFactoryRounds();
+  const snapshots = roundsStore(useShallow(state => state.entities));
+  const polling = useVisiblePolling();
   const client = usePublicClient({ chainId: TARGET_CHAIN_ID });
   const now = useCurrentTimestamp();
   const [selection, selectRound] = useState(initialRound);
@@ -24,17 +29,32 @@ export function useRegistrationRounds(initialRound?: string) {
     .filter(round => isPublicRound(round.address, TARGET_CHAIN_ID)).reverse();
   const queries = useQueries({ queries: addresses.map(({ address }) => ({
     queryKey: ["round-fields", TARGET_CHAIN_ID, address.toLowerCase()],
-    queryFn: () => loadRoundFields(contracts => client!.multicall({ contracts, allowFailure: true }), address, capabilities),
+    queryFn: async () => {
+      const head = await client!.getBlockNumber({ cacheTime: 0 });
+      const floor = roundsStore.getState().entities[address.toLowerCase()]?.confirmedBlock ?? 0n;
+      const confirmedBlock = head < floor ? floor : head;
+      return { ...await readMirrorRound(client!, address, confirmedBlock), confirmedBlock };
+    },
     enabled: Boolean(client),
-    staleTime: QUERY_STALE_MS, gcTime: QUERY_GC_MS, refetchInterval: 15_000,
+    staleTime: QUERY_STALE_MS, gcTime: QUERY_GC_MS, refetchInterval: polling, refetchIntervalInBackground: false,
     ...roundReadRetry,
   })) });
+  const signature = queries.map(query => query.dataUpdatedAt).join(":");
+  const addressSignature = addresses.map(round => round.address).join(":");
+  useEffect(() => {
+    queries.forEach((query, i) => {
+      if (query.data && query.data.confirmedBlock >= (roundsStore.getState().entities[addresses[i].address.toLowerCase()]?.confirmedBlock ?? 0n)) roundsStore.getState().hydrate([{ id: addresses[i].address, address: addresses[i].address, fields: query.data, confirmedBlock: query.data.confirmedBlock,
+        name: query.data.results[12]?.result as string | undefined }], query.dataUpdatedAt);
+    });
+    // Query objects are recreated on every render; their timestamps identify new snapshots.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, addressSignature]);
   const rounds = addresses.map((round, index) => {
     const query = queries[index];
     return {
       ...round,
-      name: query.data?.results[12]?.result as string | undefined,
-      state: query.isError ? "error" as const : registrationRoundState(query.data, now, studentRegistryAddress),
+      name: (snapshots[round.address.toLowerCase()]?.name ?? query.data?.results[12]?.result) as string | undefined,
+      state: query.isError ? "error" as const : registrationRoundState(snapshots[round.address.toLowerCase()]?.fields ?? query.data, now, studentRegistryAddress),
     };
   });
   const factoryError = !isAddress(factoryAddress) || isFactoryError || factoryData?.[0]?.status === "failure";

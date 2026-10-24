@@ -1,4 +1,8 @@
 "use client";
+import type { Address } from "viem";
+import { projectsStore } from "@/lib/store/projectsStore";
+import { roundsStore } from "@/lib/store/roundsStore";
+import { useShallow } from "zustand/react/shallow";
 import { isPublicProject } from "@/lib/projectVisibility";
 import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
 import { StudentVerifyBox } from "@/components/verify/DeferredStudentVerifyBox";
@@ -47,7 +51,7 @@ import {
 
 export function MyView() {
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { address, isConnected } = useAccount();
 
   const { roundAddress, finalized, isCancelled, isLoading: isRoundLoading } = useRound();
@@ -127,17 +131,19 @@ export function MyView() {
     return list;
   }, [donationsData, approvedProjects]);
 
+  const allProjects = projectsStore(useShallow(state => state.projectsByRound));
+  const roundSnapshots = roundsStore(useShallow(state => state.entities));
   // Filter projects owned by the user
   const myProjects = useMemo(() => {
     if (!address) return [];
     const addr = address.toLowerCase();
-    return projects.filter((p) => p.ownerAddress.toLowerCase() === addr);
-  }, [projects, address]);
+    return Object.values(allProjects).flat().filter((p) => p.ownerAddress.toLowerCase() === addr);
+  }, [allProjects, address]);
 
   const remainingMinutes = Math.floor(remainingSeconds / 60);
 
-  const handleClaim = async (projectId: bigint) => {
-    const ok = await claim(projectId);
+  const handleClaim = async (projectId: bigint, targetRound: Address) => {
+    const ok = await claim(projectId, targetRound);
     if (ok) {
       refetchProjects();
     }
@@ -468,11 +474,14 @@ export function MyView() {
 
                 <div className="divide-y divide-line">
                   {myProjects.map((proj) => {
-                    const totalPayout = proj.totalDonated + proj.estimatedMatching;
+                    const projectRound = roundSnapshots[proj.roundId.toLowerCase()]?.fields;
+                    const projectFinalized = projectRound?.results[8]?.result === true;
+                    const projectCancelled = projectRound?.results[15]?.result === true;
+                    const totalPayout = proj.totalDonated + (projectFinalized ? proj.finalMatching ?? 0 : proj.estimatedMatching);
 
                     return (
                       <div
-                        key={proj.id}
+                        key={`${proj.roundId}:${proj.id}`}
                         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5"
                       >
                         <div className="space-y-1.5 max-w-md">
@@ -502,10 +511,10 @@ export function MyView() {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <span className="block role-label text-muted">
-                              {t.myActivity.estimatedPayout}
+                              {projectFinalized ? (locale === "vi" ? "Khoản nhận đã chốt" : "Final payout") : t.myActivity.estimatedPayout}
                             </span>
                             <span className="role-value-md text-money block">
-                              {formatUsdcFixed(totalPayout)}
+                              {projectFinalized && proj.finalMatching === undefined ? "—" : formatUsdcFixed(totalPayout)}
                             </span>
                           </div>
 
@@ -521,15 +530,15 @@ export function MyView() {
                                 <Button
                                   variant="primary"
                                   size="sm"
-                                  disabled={isCancelled || proj.rejected || !finalized || !proj.approved || isClaimPending}
+                                  disabled={projectCancelled || proj.rejected || !projectFinalized || !proj.approved || isClaimPending}
                                   isLoading={isClaimPending}
-                                  onClick={() => handleClaim(proj.contractId)}
+                                  onClick={() => handleClaim(proj.contractId, proj.roundId as Address)}
                                   className="font-bold text-xs"
                                 >
                                   {t.myActivity.claimButton}
                                 </Button>
 
-                                {!finalized && (
+                                {!projectFinalized && (
                                   <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block z-20 w-52 border border-line-strong bg-bg p-2 text-center text-xs text-muted">
                                     {t.myActivity.claimDisabledTooltip}
                                   </div>

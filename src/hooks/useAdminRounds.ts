@@ -1,5 +1,7 @@
 "use client";
-import { useMemo, useState } from "react";
+import { roundsStore } from "@/lib/store/roundsStore";
+import { useShallow } from "zustand/react/shallow";
+import { useMemo, useState, useEffect } from "react";
 import { isAddress, type Address } from "viem";
 import { useReadContracts } from "wagmi";
 import { useFactoryRounds } from "@/hooks/useRound";
@@ -10,6 +12,7 @@ import { IMMUTABLE_STALE_MS, QUERY_GC_MS } from "@/lib/queryPolicy";
 /** Factory order is creation order; only this wallet's rounds are deposit targets. */
 export function useAdminRounds(admin?: Address) {
   const { factoryData, isFactoryLoading, isFactoryError, refetchFactory } = useFactoryRounds();
+  const storedRounds = roundsStore(useShallow(state => state.entities));
   const [selection, selectRound] = useState<string | undefined>();
   const addresses = useMemo(() => (factoryData?.[0]?.result as Address[] | undefined) ?? [], [factoryData]);
   const metadata = useReadContracts({
@@ -20,12 +23,17 @@ export function useAdminRounds(admin?: Address) {
     ]),
     query: { enabled: Boolean(admin && addresses.length), staleTime: IMMUTABLE_STALE_MS, gcTime: QUERY_GC_MS },
   });
+  useEffect(() => {
+    if (metadata.data) roundsStore.getState().hydrate(addresses.flatMap((address, i) => metadata.data?.[i * 2]?.status === "success" ? [{ id: address, address,
+      admin: metadata.data[i * 2].result as Address, name: metadata.data[i * 2 + 1]?.result as string | undefined }] : []), metadata.dataUpdatedAt);
+  }, [metadata.data, metadata.dataUpdatedAt, addresses]);
   const isError = !isAddress(factoryAddress) || isFactoryError || factoryData?.[0]?.status === "failure" || metadata.isError || Boolean(addresses.length && metadata.data?.some((result, i) => i % 2 === 0 && result.status === "failure"));
-  const isLoading = Boolean(admin) && !isError && (isFactoryLoading || !factoryData || Boolean(addresses.length && (!metadata.data || metadata.isPending)));
+  const haveStoredMetadata = addresses.every(a => Boolean(storedRounds[a.toLowerCase()]?.admin));
+  const isLoading = Boolean(admin) && !isError && (isFactoryLoading || !factoryData || Boolean(addresses.length && !haveStoredMetadata && (!metadata.data || metadata.isPending)));
   const rounds = addresses.map((address, i) => ({
     address,
-    admin: metadata.data?.[i * 2]?.result as Address | undefined,
-    name: metadata.data?.[i * 2 + 1]?.result as string | undefined,
+    admin: (storedRounds[address.toLowerCase()]?.admin ?? metadata.data?.[i * 2]?.result) as Address | undefined,
+    name: (storedRounds[address.toLowerCase()]?.name ?? metadata.data?.[i * 2 + 1]?.result) as string | undefined,
   })).filter(round => admin && round.admin?.toLowerCase() === admin.toLowerCase()).reverse();
   // New rounds become the default until the user explicitly chooses an existing target.
   const roundAddress = rounds.find(round => round.address.toLowerCase() === selection?.toLowerCase())?.address ?? rounds[0]?.address;

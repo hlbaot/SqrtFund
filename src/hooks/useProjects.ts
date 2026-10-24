@@ -1,4 +1,8 @@
 "use client";
+import { useShallow } from "zustand/react/shallow";
+import { roundsStore } from "@/lib/store/roundsStore";
+import { projectsStore, storedProject } from "@/lib/store/projectsStore";
+import { useVisiblePolling } from "./useVisiblePolling";
 
 import { useMemo, useEffect } from "react";
 import type { Address } from "viem";
@@ -41,7 +45,8 @@ export type EnrichedProject = Project & {
 
 export function useProjects(customRoundAddress?: Address, options: { enabled?: boolean } = {}) {
   const enabled = options.enabled !== false;
-  const { roundAddress: defaultRoundAddress, admin, finalized } = useRound(customRoundAddress);
+  const polling = useVisiblePolling();
+  const { roundAddress: defaultRoundAddress, admin, finalized, confirmedBlock } = useRound(customRoundAddress);
   const { address, isConnected, chainId } = useAccount();
   const viewer = isConnected && chainId === TARGET_CHAIN_ID ? address : undefined;
   const roundAddress = customRoundAddress || defaultRoundAddress;
@@ -55,11 +60,13 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
 
   const {
     data: contractData,
+    dataUpdatedAt: projectsUpdatedAt,
     isLoading,
     isError,
     error,
     refetch,
   } = useReadContracts({
+    blockNumber: confirmedBlock,
     allowFailure: true,
     contracts: [
       {
@@ -78,7 +85,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     ],
     query: {
       enabled: enabled && Boolean(roundAddress) && probeResolved,
-      refetchInterval: 15000,
+      refetchInterval: polling, refetchIntervalInBackground: false,
       staleTime: QUERY_STALE_MS,
       gcTime: QUERY_GC_MS,
       ...roundReadRetry,
@@ -104,6 +111,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
   // Read the recorded settlement, rather than presenting a preview as a finalized payout.
   const payoutProjects = useMemo(() => projectsData?.[0]?.filter(project => project.approved) ?? [], [projectsData]);
   const finalPayouts = useReadContracts({
+    blockNumber: confirmedBlock,
     allowFailure: true,
     contracts: payoutProjects.map(project => ({
       address: roundAddress, abi: qfRoundAbi, functionName: "payoutOf" as const,
@@ -111,7 +119,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     })),
     query: {
       enabled: enabled && Boolean(roundAddress) && finalized === true && payoutProjects.length > 0,
-      staleTime: QUERY_STALE_MS, gcTime: QUERY_GC_MS, refetchInterval: 15000, ...roundReadRetry,
+      staleTime: QUERY_STALE_MS, gcTime: QUERY_GC_MS, refetchInterval: polling, refetchIntervalInBackground: false, ...roundReadRetry,
     },
   });
   const finalMap = useMemo(() => {
@@ -135,7 +143,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     return map;
   }, [previewData]);
 
-  const projects: EnrichedProject[] = useMemo(() => {
+  const queriedProjects: EnrichedProject[] = useMemo(() => {
     if (!projectsData || !projectsData[0]) return [];
 
     const rawList = projectsData[0];
@@ -177,13 +185,24 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     return mapped.map(project => ({ ...project, rank: ranks.get(project.id) }));
   }, [projectsData, estimatedMap, roundAddress, finalMap]);
 
+  const knownEmptyRound = roundsStore(useShallow(state => Boolean(roundAddress && state.entities[roundAddress.toLowerCase()]?.fields?.results[11]?.result === 0n)));
+  const mirroredProjects = projectsStore(useShallow(state => roundAddress ? state.projectsByRound[roundAddress.toLowerCase()] : undefined));
+  useEffect(() => {
+    if (contractData?.[0]?.status === "success") projectsStore.getState().hydrate(queriedProjects.map(storedProject), projectsUpdatedAt);
+  }, [queriedProjects, projectsUpdatedAt, contractData]);
+  const projects: EnrichedProject[] = useMemo(() => {
+    const source = mirroredProjects ?? queriedProjects;
+    const ranks = new Map(rankProjects(source).map(p => [p.id, p.supporterRank]));
+    return source.map(p => ({ ...p, rank: ranks.get(p.id) }));
+  }, [mirroredProjects, queriedProjects]);
+
   const visibleProjects = useMemo(() => projects.filter(project => canViewProject(project, viewer, admin)), [projects, viewer, admin]);
 
   return {
     projects: visibleProjects,
     supportsRejection,
     readFailureKind: contractData?.some(result => result.status === "failure" && isVersionReadError(result.error)) ? "version" as const : "rpc" as const,
-    isLoading: enabled && Boolean(roundAddress) && ((!probeResolved && !rejectionProbe.isError) || (probeResolved && isLoading)),
+    isLoading: enabled && mirroredProjects === undefined && !knownEmptyRound && Boolean(roundAddress) && ((!probeResolved && !rejectionProbe.isError) || (probeResolved && isLoading)),
     isError: (!probeResolved && rejectionProbe.isError) || isError || contractData?.[0]?.status === "failure",
     // A failed capability probe must be retried before choosing a tuple ABI.
     refetch: () => {

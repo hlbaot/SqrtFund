@@ -1,4 +1,6 @@
 "use client";
+import { roundsStore } from "@/lib/store/roundsStore";
+import { useShallow } from "zustand/react/shallow";
 import { isPublicProject } from "@/lib/projectVisibility";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -49,10 +51,13 @@ export function RoundsView() {
     .filter(round => isPublicRound(round.address, TARGET_CHAIN_ID)), [factoryData]);
   const discoveryError = isFactoryError || factoryData?.[0]?.status === "failure";
   const { role, isReady } = useRole();
-  const [loaded, setLoaded] = useState<Record<string, LoadedRound>>({});
+  const stored = roundsStore(useShallow(state => state.entities));
   const [retry, setRetry] = useState(0);
-  const onData = useCallback((address: string, data: LoadedRound) => { setLoaded(current => ({ ...current, [address]: data })); }, []);
-  const entries = allRounds.map(({ address }) => loaded[address]);
+  const onData = useCallback((address: string, data: LoadedRound) => {
+    // Summary snapshots have the same receipt fence as the raw fields.
+    roundsStore.getState().hydrate([{ id: address, address: address as Address, summary: data }]);
+  }, []);
+  const entries = allRounds.map(({ address }) => stored[address.toLowerCase()]?.summary);
   const loading = isLoading || (entries.length > 0 && entries.every(entry => !entry || entry.loading));
   const error = discoveryError && allRounds.length === 0;
   return <Container className="competition-page min-w-0 py-8 sm:py-10">
