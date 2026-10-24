@@ -122,6 +122,7 @@ export function useRole(customRound?: Address) {
   return {
     isConnected,
     address,
+    chainId,
     isPlatformOwner,
     isOrganizer,
     isRoundAdmin,

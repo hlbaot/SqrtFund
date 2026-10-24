@@ -37,6 +37,12 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
     <ExplorerLink address={round.id} label={t.onChain.roundContract} />
     <button type="button" onClick={onRetry} className="competition-action mt-auto">{c.retry}</button>
   </article>;
+
+  const roundNumberLabel = fmt(c.round, { n: displayNumber(round.number, locale, 0) });
+  const hasName = Boolean(round.name && round.name.trim().length > 0);
+  const displayTitle = hasName ? round.name!.trim() : roundNumberLabel;
+  const organizer = round.organizer && round.organizer.trim().length > 0 ? round.organizer.trim() : null;
+
   return (
     <article
       className={`relative flex h-full min-w-0 flex-col bg-surface p-5 sm:p-6 ${
@@ -46,10 +52,17 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="tabular-mono text-lg font-bold">
-            {fmt(c.round, { n: displayNumber(round.number, locale, 0) })}
-          </h2>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <h2 className="text-lg font-bold text-foreground break-words line-clamp-2" title={displayTitle}>
+              {displayTitle}
+            </h2>
+            {hasName && (
+              <span className="mono-label text-xs text-muted shrink-0">
+                ({roundNumberLabel})
+              </span>
+            )}
+          </div>
           <div className="mt-1 inline-flex items-center text-muted">
             <span className="tabular-mono text-xs" title={round.id}>
               {shortAddress(round.id)}
@@ -63,12 +76,12 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
 
       {round.version === "legacy" && <p className="mt-3 text-xs font-semibold text-primary">{c.legacyRound}</p>}
 
-      {round.name && (
+      {organizer && (
         <p
-          className="mt-2 line-clamp-2 text-sm font-medium text-foreground"
-          title={round.name}
+          className="mt-2 line-clamp-1 text-xs text-muted"
+          title={organizer}
         >
-          {round.name}
+          {organizer}
         </p>
       )}
 

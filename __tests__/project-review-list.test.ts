@@ -108,3 +108,13 @@ it.each(["info", "warning", "error", "success"] as const)("renders reusable %s s
   const html = render(createElement(StatusAlert, { tone, title: "Status" }, "Details"));
   expect(html).toContain('role="status"'); expect(html).toContain("Status"); expect(html).toContain("Details");
 });
+
+it("renders ownerName when present and falls back cleanly to shortened address", () => {
+  const htmlWithName = render(createElement(PendingProjectCard, { ...card, project: { ...project, ownerName: "Nguyen Van A" }, expanded: true }));
+  expect(htmlWithName).toContain("Nguyen Van A");
+  expect(htmlWithName).toContain("0x1CcbD6...388b");
+
+  const htmlWithoutName = render(createElement(PendingProjectCard, { ...card, project: { ...project, ownerName: undefined }, expanded: true }));
+  expect(htmlWithoutName).not.toContain("undefined");
+  expect(htmlWithoutName).toContain("0x1CcbD6...388b");
+});
