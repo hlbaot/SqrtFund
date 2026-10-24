@@ -5,6 +5,7 @@ import { ConnectWalletButton } from "@/components/layout/ConnectWalletButton";
 
 const f = vi.hoisted(() => ({
   profile: null as "student" | "organizer" | null,
+  ready: true, roundAdmin: false, managed: false, changing: false,
   authorized: false,
   student: false,
   revoked: false,
@@ -16,7 +17,7 @@ const f = vi.hoisted(() => ({
 vi.mock("react", async importOriginal => {
   const actual = await importOriginal<typeof import("react")>();
   return { ...actual, useState: (initial: unknown) => actual.useState(
-    initial === false && ++f.booleanStates === 2 ? true : initial,
+    initial === false && (++f.booleanStates === 2 || (f.booleanStates === 5 && f.changing)) ? true : initial,
   ) };
 });
 vi.mock("react-dom", () => ({ createPortal: (children: ReactNode) => children }));
@@ -26,14 +27,14 @@ vi.mock("wagmi", () => ({
 }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}) }));
 vi.mock("@/hooks/useRole", () => ({ useRole: () => ({
-  role: f.authorized ? "organizer" : "guest", isReady: true, isStudent: f.student,
+  role: f.authorized ? "organizer" : "guest", isReady: f.ready, isStudent: f.student, isRoundAdmin: f.roundAdmin, hasManagedRounds: f.managed,
   isOrganizer: f.authorized, canCreateRound: f.authorized,
   isPlatformOwner: f.platformOwner,
   studentStatus: f.student ? "confirmed" : "absent", organizerStatus: f.authorized ? "confirmed" : "absent",
 }) }));
 vi.mock("@/hooks/useWalletProfile", () => ({
-  defaultWalletProfile: () => null,
-  useWalletProfile: () => ({ profile: f.profile, selectProfile: vi.fn() }),
+  defaultWalletProfile: (organizer: boolean, student: boolean) => organizer ? "organizer" : student ? "student" : null,
+  useWalletProfile: () => ({ profile: f.profile, switchProfile: vi.fn() }),
 }));
 vi.mock("@/lib/walletSession", () => ({}));
 vi.mock("@/hooks/useAvatar", () => ({ useAvatar: () => ({ avatar: "auto" }) }));
@@ -51,6 +52,7 @@ vi.mock("@/lib/context/locale", async () => {
   return { useLocale: () => ({ t: copy.vi, locale: "vi" }) };
 });
 beforeEach(() => {
+  f.ready = true; f.roundAdmin = false; f.managed = false; f.changing = false;
   f.profile = null; f.authorized = false; f.student = false; f.revoked = false; f.pending = false; f.platformOwner = false; f.booleanStates = 0;
   vi.stubGlobal("document", { body: {} });
 });
@@ -143,4 +145,26 @@ it("does not display Organizer revocation details for the Student profile", () =
   expect(html).toContain("Sinh viên");
   expect(html).not.toContain("Quyền Organizer đã bị thu hồi");
   expect(html).not.toContain("Xem chi tiết &amp; Gửi yêu cầu lại");
+});
+
+it.each(["student", "organizer", "round-admin", "managed-round", "platform"])("hides role switching once %s is confirmed, even if the selector was already open", role => {
+  f.profile = "student"; f.changing = true;
+  f.student = role === "student";
+  f.authorized = role === "organizer";
+  f.roundAdmin = role === "round-admin";
+  f.managed = role === "managed-round";
+  f.platformOwner = role === "platform";
+  const html = render();
+  expect(html).not.toContain("Chuyển đổi vai trò");
+  expect(html).not.toContain("Bạn sử dụng ví với vai trò nào?");
+});
+it("lets an unverified wallet correct its choice before role confirmation", () => {
+  f.profile = "student";
+  expect(render()).toContain("Chuyển đổi vai trò");
+});
+it("does not expose role switching while role reads are loading or unavailable", () => {
+  f.profile = "organizer"; f.ready = false; f.changing = true;
+  const html = render();
+  expect(html).not.toContain("Chuyển đổi vai trò");
+  expect(html).not.toContain("Bạn sử dụng ví với vai trò nào?");
 });

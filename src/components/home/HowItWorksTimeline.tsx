@@ -35,8 +35,8 @@ const STEPS: StepData[] = [
     hash: "0x8b14…3d52",
     titleEn: "Donate",
     titleVi: "Quyên góp",
-    descEn: "Students give 1–5 USDC.",
-    descVi: "Sinh viên góp 1–5 USDC.",
+    descEn: "Students choose how much to contribute.",
+    descVi: "Sinh viên tự chọn số tiền đóng góp.",
     icon: HandCoins,
   },
   {
