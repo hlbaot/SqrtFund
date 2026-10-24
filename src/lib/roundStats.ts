@@ -1,6 +1,6 @@
 import { isPublicProject } from "@/lib/projectVisibility";
 import type { ProjectStatus } from "@/types";
-import { computeMatchingBigInt, computeRawMatching, matchingCoverage } from "@/lib/qf";
+import { computeRoundAllocation, computeRawMatching, matchingCoverage } from "@/lib/qf";
 
 export type ProjectStatItem = {
   status?: ProjectStatus;
@@ -80,15 +80,16 @@ export function calculateRoundFundingStats(
 export function calculateRoundSettlement(projects: readonly (FundingProject & { claimed?: boolean })[] | undefined, pool?: bigint, maxMatchBps?: bigint, finalizedLeftover?: bigint) {
   const funding = calculateRoundFundingStats(projects, pool);
   const approved = projects?.filter(isPublicProject);
-  const results = approved && funding.totalRaw !== undefined && pool !== undefined && pool >= 0n
+  const allocation = approved && funding.totalRaw !== undefined && pool !== undefined && pool >= 0n
     && maxMatchBps !== undefined && maxMatchBps >= 0n && maxMatchBps <= 10000n
-    ? computeMatchingBigInt(approved.map((p, id) => ({ id, sumSqrt: p.sumSqrtRaw!, totalDonated: p.totalDonatedRaw! })), pool, maxMatchBps) : undefined;
-  const estimated = results?.reduce((sum, result) => sum + result.payout, 0n);
+    ? computeRoundAllocation(approved.map((p, id) => ({ id, sumSqrt: p.sumSqrtRaw!, totalDonated: p.totalDonatedRaw! })), pool, maxMatchBps) : undefined;
+  const results = allocation?.allocations;
+  const estimated = allocation?.matching;
   const knownFinal = pool !== undefined && finalizedLeftover !== undefined && finalizedLeftover >= 0n && finalizedLeftover <= pool;
   return {
     ...funding,
     matching: knownFinal ? pool - finalizedLeftover : estimated,
-    leftover: knownFinal ? finalizedLeftover : estimated !== undefined && pool !== undefined ? pool - estimated : undefined,
+    leftover: knownFinal ? finalizedLeftover : allocation?.leftover,
     matchingCount: results?.filter(result => result.payout > 0n).length,
     allClaimed: approved !== undefined && results !== undefined && approved.every((project, index) =>
       project.totalDonatedRaw! + results[index].payout === 0n || project.claimed === true),
