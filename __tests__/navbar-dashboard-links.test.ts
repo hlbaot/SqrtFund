@@ -17,11 +17,11 @@ vi.mock("@/components/common/NetworkGuard", () => ({ NetworkGuard: () => null })
 
 beforeEach(() => Object.assign(f, { platformOwner: false, role: "organizer", connected: true, admin: true }));
 
-it("names the Organizer entry Create Round and links to the Organizer tab", () => {
+it("keeps Organizer round creation in the wallet menu instead of duplicating it in the Navbar", () => {
   f.platformOwner = false;
   const html = renderToStaticMarkup(createElement(Navbar));
-  expect(html).toContain("Tạo round");
-  expect(html).toContain('href="/admin?tab=organizer"');
+  expect(html).not.toContain("Tạo round");
+  expect(html).not.toContain('href="/admin?tab=organizer"');
   expect(html).not.toContain("Quản trị");
   expect(html).not.toContain('href="/admin?tab=platform"');
 });
