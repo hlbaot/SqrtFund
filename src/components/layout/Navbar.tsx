@@ -19,7 +19,7 @@ import { Container } from "./Container";
 
 export function Navbar() {
   const pathname = usePathname();
-  const { role, isReady, isConnected, isAdmin, isPlatformOwner } = useRole();
+  const { role, isReady, isConnected, isPlatformOwner } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
   const { t } = useLocale();
   const { roundAddress, status, isLoading: isRoundLoading, isError: isRoundError } = useRound();
