@@ -1,4 +1,5 @@
 "use client";
+import { organizerStore } from "@/lib/store/organizerStore";
 
 import { api, ApiError } from "@/lib/api";
 
@@ -108,6 +109,7 @@ function OrganizerApplicationForm({
       });
       if (!data.ok) throw new ApiError(data.error || "Submission failed");
 
+      if (data.application) organizerStore.getState().upsert({ id: data.application.walletAddress, application: data.application });
       setSubmitSuccess(true);
       txToast.success("apply-org-success", c.successTitle, c.successDesc, undefined, 4000);
       void queryClient.invalidateQueries({ queryKey: ["organizer-application"] });

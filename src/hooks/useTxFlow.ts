@@ -1,28 +1,4 @@
 "use client";
-
-import { useCallback, useEffect, useRef } from "react";
-import { useAccount, useChainId } from "wagmi";
-import { useQueryClient } from "@tanstack/react-query";
-import { invalidateTokenBalances } from "@/lib/tokenBalance";
-import { TransactionFlow } from "@/lib/txToast";
-
-export function useTxFlow() {
-  const queryClient = useQueryClient();
-  const { address, status, chainId: accountChainId } = useAccount();
-  const configChainId = useChainId();
-  const chainId = accountChainId ?? configChainId;
-  const scopes = useRef(new Map<string, TransactionFlow>());
-  useEffect(() => {
-    const flows = scopes.current;
-    return () => {
-      for (const flow of flows.values()) flow.cancel();
-      flows.clear();
-    };
-  }, [address, chainId, status]);
-  return useCallback((scope = "default") => {
-    scopes.current.get(scope)?.cancel();
-    const flow = new TransactionFlow(() => invalidateTokenBalances(queryClient));
-    scopes.current.set(scope, flow);
-    return flow;
-  }, [queryClient]);
-}
+import { useTxAction } from "./useTxAction";
+/** Compatibility for existing cancellation, wallet and multi-step approval UX. */
+export function useTxFlow() { return useTxAction(); }

@@ -15,7 +15,6 @@ import { RoundCard } from "@/components/round/RoundCard";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
-import { GradientBorder } from "@/components/ui/GradientBorder";
 import { MonoLabel } from "@/components/ui/MonoLabel";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Container } from "@/components/layout/Container";
@@ -300,10 +299,7 @@ export function HomeView() {
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-16">
             <div className="space-y-6" data-aos="fade-right" data-aos-duration="800">
               <h1 className="hero-headline font-bold text-foreground max-w-2xl">
-                {t.homeIntro.headlineStart}{" "}
-                <GradientBorder className="inline-block bg-transparent px-3 py-1 align-baseline">
-                  {t.homeIntro.headlineAccent}
-                </GradientBorder>
+                {t.homeIntro.headlineStart} {t.homeIntro.headlineAccent}
               </h1>
 
               <p className="max-w-xl text-base leading-relaxed text-muted sm:text-lg">

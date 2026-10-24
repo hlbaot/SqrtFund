@@ -1,4 +1,6 @@
 "use client";
+import { parseEventLogs } from "viem";
+import { projectsStore, projectKey } from "@/lib/store/projectsStore";
 
 import { useRegistrationRounds } from "@/hooks/useRegistrationRounds";
 import { useFormDraft } from "@/hooks/useFormDraft";
@@ -171,7 +173,12 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
       return;
     }
     if (!draft.ready || !validate()) return;
-    const flow = beginFlow();
+    const flow = beginFlow("register-project", { patch: receipt => {
+      const event = parseEventLogs({ abi: qfRoundAbi, eventName: "ProjectRegistered", logs: receipt.logs.filter(log => log.address.toLowerCase() === selectedAddress.toLowerCase()) })[0];
+      return event ? [projectsStore.getState().patch(projectKey(selectedAddress, event.args.id), {
+        description: description.trim(), shortDescription: description.trim().slice(0, 100), imageUrl: imageUrl.trim() || "/images/placeholder.svg", contactUrl: contactUrl.trim(), category,
+      }, true)] : [];
+    } });
 
     setIsSubmitting(true);
     try {
