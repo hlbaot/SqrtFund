@@ -10,13 +10,16 @@ import { AnimatedNumber, CopyAddress, InfoTooltip, StatusChip } from "./Primitiv
 import { displayNumber, type RoundPhase, type RoundSummary } from "./model";
 import { Stat, StatGroup } from "@/components/common/Stat";
 
-export interface RoundChoice { id: string; number: number; phase?: RoundPhase }
+export interface RoundChoice { id: string; number: number; phase?: RoundPhase; name?: string }
 export function RoundHeader({ round, choices, onRoundChange, finalPayoutsAvailable = true }: { round: RoundSummary; choices: RoundChoice[]; onRoundChange: (id: string) => void; finalPayoutsAvailable?: boolean }) {
   const { t, locale } = useLocale();
   const c = t.competition;
   const index = choices.findIndex(choice => choice.id.toLowerCase() === round.id.toLowerCase());
   const finalized = round.phase === "finalized";
-  const title = fmt(c.round, { n: displayNumber(round.number, locale, 0) });
+  const roundNumberLabel = fmt(c.round, { n: displayNumber(round.number, locale, 0) });
+  const hasName = Boolean(round.name && round.name.trim().length > 0);
+  const displayTitle = hasName ? round.name!.trim() : roundNumberLabel;
+  const organizer = round.organizer && round.organizer.trim().length > 0 ? round.organizer.trim() : null;
 
   return (
     <header className="min-w-0 space-y-5">
@@ -26,7 +29,7 @@ export function RoundHeader({ round, choices, onRoundChange, finalPayoutsAvailab
             {c.rounds}
           </Link>
           <span aria-hidden="true" className="text-line-strong">/</span>
-          <span className="tabular-mono" aria-current="page">{title}</span>
+          <span className="tabular-mono" aria-current="page">{displayTitle}</span>
         </nav>
         <div className="flex min-w-0 max-w-full items-stretch self-start border border-line bg-bg lg:self-auto">
           <button
@@ -44,11 +47,15 @@ export function RoundHeader({ round, choices, onRoundChange, finalPayoutsAvailab
             onChange={event => onRoundChange(event.target.value)}
             className="competition-focus min-h-11 min-w-0 max-w-[min(65vw,22rem)] flex-1 truncate bg-bg px-3 text-xs cursor-pointer hover:bg-surface-2/60 transition-colors"
           >
-            {choices.map(choice => (
-              <option key={choice.id} value={choice.id}>
-                {fmt(c.round, { n: displayNumber(choice.number, locale, 0) })} · {choice.phase ? c[choice.phase] : c.unavailable}
-              </option>
-            ))}
+            {choices.map(choice => {
+              const choiceNum = fmt(c.round, { n: displayNumber(choice.number, locale, 0) });
+              const choiceLabel = choice.name && choice.name.trim() ? `${choice.name.trim()} (${choiceNum})` : choiceNum;
+              return (
+                <option key={choice.id} value={choice.id}>
+                  {choiceLabel} · {choice.phase ? c[choice.phase] : c.unavailable}
+                </option>
+              );
+            })}
           </select>
           <button
             type="button"
@@ -65,12 +72,17 @@ export function RoundHeader({ round, choices, onRoundChange, finalPayoutsAvailab
       <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl break-words">{displayTitle}</h1>
+            {hasName && (
+              <span className="mono-label text-xs text-muted border border-line px-2 py-0.5 rounded-xs">
+                {roundNumberLabel}
+              </span>
+            )}
             <StatusChip phase={round.phase} />
           </div>
-          {round.name && (
-            <p className="mt-2 line-clamp-2 text-sm text-muted" title={round.name}>
-              {round.name}
+          {organizer && (
+            <p className="mt-2 line-clamp-1 text-sm text-muted" title={organizer}>
+              {organizer}
             </p>
           )}
           <div className="mt-1 flex items-center gap-1 text-muted">

@@ -39,7 +39,7 @@ export function ProjectDetailView() {
   const projectId = (params?.projectId as string) || "1";
   const customRoundAddress = rawRoundId.startsWith("0x") ? (rawRoundId as Address) : undefined;
 
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { roundAddress, isCancelled, isLoading: isRoundLoading, isError: isRoundError } = useRound(customRoundAddress);
   const { projects, isLoading: isProjectsLoading, isError: isProjectsError, refetch } = useProjects(roundAddress);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -47,6 +47,13 @@ export function ProjectDetailView() {
   const project = useMemo(() => {
     return projects.find((p) => p.id === projectId || p.contractId?.toString() === projectId);
   }, [projects, projectId]);
+
+  const [imageFailed, setImageFailed] = useState(false);
+  const [prevImg, setPrevImg] = useState(project?.imageUrl);
+  if (prevImg !== project?.imageUrl) {
+    setPrevImg(project?.imageUrl);
+    setImageFailed(false);
+  }
 
   if (isRoundLoading || isProjectsLoading) {
     return (
@@ -121,14 +128,26 @@ export function ProjectDetailView() {
               )}
             </div>
 
-            {project.imageUrl && (
+            {project.imageUrl && !imageFailed ? (
               <div className="relative w-full h-48 sm:h-64 overflow-hidden rounded-xs border border-line bg-bg">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
+                  key={project.imageUrl}
                   src={project.imageUrl}
                   alt={project.name}
+                  onError={() => setImageFailed(true)}
                   className="h-full w-full object-cover"
                 />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-40 sm:h-52 w-full rounded-xs border border-line bg-surface-2/50 p-6 text-center">
+                <CategoryIcon className="h-10 w-10 text-primary mb-2 opacity-80" />
+                <span className="mono-label text-xs text-muted tracking-wider uppercase">
+                  {categoryLabel}
+                </span>
+                <span className="text-sm font-bold text-foreground mt-1 truncate max-w-sm">
+                  {project.name}
+                </span>
               </div>
             )}
 
@@ -211,15 +230,18 @@ export function ProjectDetailView() {
               </p>
 
               {project.contactUrl && (
-                <div className="pt-2">
+                <div className="space-y-1.5 pt-2">
+                  <span className="mono-label text-muted text-xs block">
+                    {locale === "vi" ? "Kênh liên hệ / Website:" : "Contact channel / Website:"}
+                  </span>
                   <a
                     href={project.contactUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mono-label inline-flex items-center gap-1.5 border border-line bg-surface-2 px-3 py-2 text-xs text-muted hover:border-primary hover:text-foreground transition-colors"
+                    className="mono-label inline-flex items-center gap-2 border border-line bg-surface-2 px-3.5 py-2 text-xs text-foreground hover:border-primary hover:text-primary transition-colors max-w-full"
                   >
-                    <span>{t.projectDetail.visitWebsite}</span>
-                    <ExternalLink className="h-3 w-3" />
+                    <span className="truncate max-w-[min(70vw,420px)]">{project.contactUrl}</span>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" />
                   </a>
                 </div>
               )}

@@ -3,7 +3,6 @@
 import { useRegistrationRounds } from "@/hooks/useRegistrationRounds";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { formDraftKey } from "@/lib/formDrafts";
-import { FormDraftStatus } from "@/components/common/FormDraftStatus";
 import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { shortAddress } from "@/lib/format";
 import { txToast } from "@/lib/txToast";
@@ -229,7 +228,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
   // Live preview project object
   const previewProject: Project = {
     id: "0",
-    roundId: roundAddress ?? "1",
+    roundId: roundAddress ?? selectedAddress ?? "1",
     name: name || (locale === "vi" ? "Tên câu lạc bộ sinh viên" : "Student Club Name"),
     shortDescription: description ? description.slice(0, 100) : "Project summary...",
     description: description || "Full project proposal description...",
@@ -338,8 +337,6 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
             </div>
           )}
 
-          <FormDraftStatus {...draft} disabled={isSubmitting || isUploadingImage}
-            onDiscard={() => { draft.clear(); setErrors({}); setUploadError(null); }} />
           <form onSubmit={handleSubmit} className="mt-4 max-w-[720px]">
             <fieldset disabled={!draft.ready || isSubmitting} className="space-y-4">
             <p className="text-sm text-muted">{t.phase2.ownerProjectLimit}</p>
@@ -511,7 +508,11 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
             </h3>
             <span className="text-xs text-money font-medium">{t.common.realTimeUpdate}</span>
           </div>
-          <ProjectCard project={previewProject} />
+          <ProjectCard
+            project={previewProject}
+            roundId={roundAddress ?? selectedAddress}
+            roundAddress={roundAddress ?? selectedAddress}
+          />
         </div>
       </div>
     </div>

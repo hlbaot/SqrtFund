@@ -13,13 +13,29 @@ import { ConnectWalletButton } from "./ConnectWalletButton";
 import { LanguageToggle } from "./LanguageToggle";
 import { NotificationBell } from "./NotificationBell";
 import { NetworkGuard } from "@/components/common/NetworkGuard";
+import { defaultWalletProfile, useWalletProfile } from "@/hooks/useWalletProfile";
 import { ArrowRight, Menu, X } from "lucide-react";
 
 import { Container } from "./Container";
 
 export function Navbar() {
   const pathname = usePathname();
-  const { role, isReady, isConnected, isPlatformOwner } = useRole();
+  const {
+    role,
+    isReady,
+    isConnected,
+    isPlatformOwner,
+    isOrganizer,
+    isRoundAdmin,
+    canCreateRound,
+    isAdmin,
+    isStudent,
+    address,
+    chainId,
+  } = useRole();
+  const isOrgRole = Boolean(isOrganizer || isPlatformOwner || isRoundAdmin || canCreateRound || isAdmin || (role as string) === "organizer" || role === "admin");
+  const { profile } = useWalletProfile(address, chainId, defaultWalletProfile(isOrgRole, Boolean(isStudent)));
+  const isOrganizerUser = isConnected && (isPlatformOwner || profile === "organizer" || (!isStudent && isOrgRole) || (profile !== "student" && isOrgRole));
   const counts = useNotificationCounts(isReady ? role : "guest");
   const { t } = useLocale();
   const { roundAddress, status, isLoading: isRoundLoading, isError: isRoundError } = useRound();
@@ -36,8 +52,10 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: t.nav.home },
     { href: "/round", label: t.nav.round },
-    ...(!isPlatformOwner ? [
+    ...(!isPlatformOwner && !isOrganizerUser ? [
       { href: "/register", label: t.nav.register },
+    ] : []),
+    ...(!isPlatformOwner ? [
       { href: "/my", label: t.nav.my },
     ] : []),
     ...(isConnected && isPlatformOwner ? [{ href: dashboardHref, label: t.nav.platformDashboard }] : []),

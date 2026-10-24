@@ -38,6 +38,7 @@ export type Project = {
   roundId: string;
   name: string;
   nameVi?: string;
+  ownerName?: string;
   shortDescription: string;
   shortDescriptionVi?: string;
   description: string;
