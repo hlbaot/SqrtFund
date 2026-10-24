@@ -40,7 +40,7 @@ export function Navbar() {
       { href: "/register", label: t.nav.register },
       { href: "/my", label: t.nav.my },
     ] : []),
-    ...(isConnected && isPlatformOwner ? [{ href: dashboardHref, label: t.nav.platformDashboard }] : []),
+    ...(isConnected && isAdmin ? [{ href: dashboardHref, label: isPlatformOwner ? t.nav.platformDashboard : t.nav.organizerDashboard }] : []),
   ];
 
   return (
