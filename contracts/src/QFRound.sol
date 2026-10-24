@@ -413,6 +413,7 @@ contract QFRound is ReentrancyGuard {
             }
         }
 
+        // Trần chỉ áp dụng tiền matching; không giới hạn tiền góp trực tiếp.
         uint256 cap = (pool * maxMatchBps) / 10000;
         totalPayout = 0;
 
@@ -434,6 +435,8 @@ contract QFRound is ReentrancyGuard {
             totalPayout += p;
         }
 
+        // Không phân phối lại phần bị cắt bởi trần hoặc phần dư do làm tròn.
+        // Pool không bao gồm tiền donor góp trực tiếp cho từng dự án.
         remainingLeftover = pool - totalPayout;
     }
 
@@ -482,6 +485,7 @@ contract QFRound is ReentrancyGuard {
 
         proj.claimed = true;
 
+        // Mỗi chủ dự án nhận tiền góp trực tiếp + matching đã cố định khi chốt.
         uint256 totalPayout = proj.totalDonated + payoutOf[projectId];
         emit Claimed(projectId, msg.sender, totalPayout);
 

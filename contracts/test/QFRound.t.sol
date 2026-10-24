@@ -1065,4 +1065,44 @@ contract QFRoundTest is Test {
         // Contract balance must be drained to dust (<= 3 wei for 3 projects)
         assertLe(usdc.balanceOf(address(round)), 3, "Round contract balance must drain to dust");
     }
+
+    /// @dev Ví dụ đã thống nhất: pool 100, ba dự án direct 50/QF 50 mỗi dự án.
+    function _checkEqualProjectSettlement(uint256 capBps, uint256 expectedMatching, uint256 expectedLeftover) internal {
+        vm.prank(admin);
+        round = QFRound(factory.createRound("Equal projects", "Org", address(usdc), startTime, endTime,
+            1, type(uint256).max, capBps, type(uint256).max));
+        address[3] memory owners = [projectOwner1, projectOwner2, address(0x33)];
+        uint256[3] memory ids;
+        for (uint256 i; i < 3; i++) ids[i] = _registerAndApproveProject(owners[i], "Project");
+        _verifyUser(donor1); _verifyUser(donor2);
+        _fundAndApprove(donor1, 75e6); _fundAndApprove(donor2, 75e6);
+        _fundAndApprove(admin, 100e6);
+        vm.prank(admin); round.depositPool(100e6);
+        vm.warp(startTime);
+        for (uint256 i; i < 3; i++) {
+            vm.prank(donor1); round.donate(ids[i], 25e6);
+            vm.prank(donor2); round.donate(ids[i], 25e6);
+        }
+        vm.warp(endTime);
+        vm.prank(admin); round.finalize();
+        assertEq(round.leftover(), expectedLeftover);
+        for (uint256 i; i < 3; i++) {
+            assertEq(round.payoutOf(ids[i]), expectedMatching);
+            vm.prank(owners[i]); round.claim(ids[i]);
+            assertEq(usdc.balanceOf(owners[i]), 50e6 + expectedMatching);
+            vm.prank(owners[i]); vm.expectRevert(QFRound.AlreadyClaimed.selector); round.claim(ids[i]);
+        }
+        vm.prank(admin); round.withdrawLeftover();
+        assertEq(usdc.balanceOf(admin), expectedLeftover);
+        assertEq(usdc.balanceOf(address(round)), 0);
+        assertEq(3 * (50e6 + expectedMatching) + expectedLeftover, 250e6);
+    }
+
+    function test_AgreedEqualProjectsThirtyPercentCap() public {
+        _checkEqualProjectSettlement(3000, 30e6, 10e6);
+    }
+
+    function test_AgreedEqualProjectsFullCapRounding() public {
+        _checkEqualProjectSettlement(10000, 33_333_333, 1);
+    }
 }

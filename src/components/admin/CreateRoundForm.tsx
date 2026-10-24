@@ -304,12 +304,22 @@ export function CreateRoundForm() {
                 <p>{deposit.isUnsupported ? t.admin.initialPoolUpgradeRequired : t.admin.initialPoolUnavailable}</p>
                 {!deposit.isUnsupported && <button type="button" onClick={() => void deposit.refetch()} className="underline underline-offset-4">{t.tokenBalance.retry}</button>}
               </div> : !canDeposit && <p role="status" className="text-xs text-muted">{t.admin.initialPoolOwnerOnly}</p>}
-            {deposit.credit !== undefined && credit > 0n && <div role="status" className="flex flex-wrap items-center justify-between gap-3 border border-money/30 bg-money/5 p-3">
-              <p className="text-xs text-money">{fmt(t.admin.initialPoolCredit, { amount: formatUsdc(credit, { includeSymbol: false }) })}</p>
-              <Button type="button" size="sm" variant="ghost" isLoading={pending === "withdraw"}
-                disabled={isSubmitting || !isConnected || chainId !== TARGET_CHAIN_ID || !deposit.supported}
-                onClick={() => void act("withdraw")}>{t.admin.initialPoolWithdraw}</Button>
-            </div>}
+            {deposit.credit !== undefined && credit > 0n && (
+              <div role="status" className="flex flex-wrap items-center justify-between gap-3 border border-money/30 bg-money/5 p-3">
+                <p className="text-xs text-money font-medium">{fmt(t.admin.initialPoolCredit, { amount: formatUsdc(credit, { includeSymbol: false }) })}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  isLoading={pending === "withdraw"}
+                  disabled={isSubmitting || !isConnected || chainId !== TARGET_CHAIN_ID || !deposit.supported}
+                  onClick={() => void act("withdraw")}
+                  className="text-xs font-semibold"
+                >
+                  {t.admin.initialPoolWithdraw}
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="pt-2">

@@ -32,7 +32,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusAlert } from "@/components/ui/StatusAlert";
 import { AdminSkeleton } from "@/components/common/PageSkeletons";
 import { Container } from "@/components/layout/Container";
-import { Award, ShieldCheck, Layers, Info, Building2, ShieldOff, Send, Plus } from "lucide-react";
+import { Award, ShieldCheck, Layers, Info, Building2, ShieldOff, Send, Plus, ArrowLeft } from "lucide-react";
 import { ApplyOrganizerModal } from "@/components/organizer/ApplyOrganizerModal";
 import { useMyOrganizerApplication } from "@/hooks/useOrganizerApplications";
 import type { Address } from "viem";
@@ -397,29 +397,20 @@ export function AdminView() {
       {/* TAB 2: Organizer Dashboard (Manage Rounds, Funds, Projects, and Allocations) */}
       {activeTab === "organizer" && (
         <div className="space-y-8" data-aos="fade-up" data-aos-duration="600">
-          {/* Sub-navigation for Organizer: Manage rounds vs Create new round */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
-            <div className="flex items-center gap-2">
+          {/* Back button when in create round view */}
+          {isCreateAction && (
+            <div className="flex items-center justify-between border-b border-line pb-4">
               <Button
-                variant={!isCreateAction ? "primary" : "secondary"}
+                variant="secondary"
                 size="sm"
                 onClick={() => setCreateAction(false)}
                 className="text-xs font-semibold gap-1.5"
               >
-                <Layers className="h-3.5 w-3.5" />
-                <span>{locale === "vi" ? "Quản lý vòng gọi vốn" : "Manage rounds"}</span>
-              </Button>
-              <Button
-                variant={isCreateAction ? "primary" : "secondary"}
-                size="sm"
-                onClick={() => setCreateAction(true)}
-                className="text-xs font-bold gap-1.5"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>{t.admin.createRoundTitle ?? (locale === "vi" ? "Tạo vòng mới" : "Create new round")}</span>
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>{locale === "vi" ? "Quay lại quản lý vòng gọi vốn" : "Back to manage rounds"}</span>
               </Button>
             </div>
-          </div>
+          )}
 
           {isCreateAction ? (
             <div className="space-y-6" data-aos="fade-up" data-aos-duration="600">
