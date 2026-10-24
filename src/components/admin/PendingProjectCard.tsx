@@ -11,25 +11,61 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ProjectModerationActions } from "./ProjectModerationActions";
 
 type ActionsProps = Parameters<typeof ProjectModerationActions>[0];
-export type ReviewProject = ActionsProps["project"] & Pick<Project, "id" | "name" | "description" | "ownerAddress" | "contactUrl"> & { registeredAt?: string };
+export type ReviewProject = ActionsProps["project"] & Pick<Project, "id" | "name" | "ownerName" | "description" | "ownerAddress" | "contactUrl"> & { registeredAt?: string };
 export type PendingProjectCardProps = Omit<ActionsProps, "project" | "compact"> & { project: ReviewProject; expanded: boolean; onToggle: () => void };
+
+export function WalletAddressCopy({ address }: { address: string }) {
+  const { t, locale } = useLocale();
+  const c = projectReviewCopy[locale];
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const focus = "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface";
+
+  async function copyOwner(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+  }
+
+  const CopyIcon = copyState === "copied" ? Check : Copy;
+  const short = address ? `${address.slice(0, 8)}...${address.slice(-4)}` : "";
+
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <span
+        title={address}
+        className="truncate font-mono text-[11px] text-muted cursor-help"
+      >
+        {short}
+      </span>
+      <button
+        type="button"
+        onClick={copyOwner}
+        title={t.common.copyAddress}
+        aria-label={`${t.common.copyAddress}: ${address}`}
+        className={`shrink-0 p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground cursor-pointer active:scale-95 ${focus}`}
+      >
+        <CopyIcon className="h-3 w-3" aria-hidden="true" />
+      </button>
+      <span className="sr-only" role="status">
+        {copyState === "copied" ? c.copied : copyState === "failed" ? c.copyFailed : ""}
+      </span>
+    </div>
+  );
+}
 
 export function PendingProjectCard({ project, expanded, onToggle, ...actions }: PendingProjectCardProps) {
   const { t, locale } = useLocale();
   const c = projectReviewCopy[locale];
   const detailsId = useId();
   const titleId = useId();
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const link = safeProjectLink(project.contactUrl);
   const status = projectReviewStatus(project, actions.round, actions.now);
   const state = projectModerationState(project, actions.round, actions.viewer, actions.now);
   const focus = "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface";
-  async function copyOwner() {
-    try { await navigator.clipboard.writeText(project.ownerAddress); setCopyState("copied"); }
-    catch { setCopyState("failed"); }
-  }
-  const CopyIcon = copyState === "copied" ? Check : Copy;
-  const copyButton = <button type="button" onClick={() => void copyOwner()} title={t.common.copyAddress} aria-label={`${t.common.copyAddress}: ${project.ownerAddress}`} className={`shrink-0 p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground cursor-pointer active:scale-95 ${focus}`}><CopyIcon className="h-3 w-3" aria-hidden="true" /></button>;
 
   return <article aria-labelledby={titleId} className="min-w-0 self-start rounded-sm border border-line bg-surface-2/30 text-xs leading-relaxed text-foreground transition-colors hover:border-line-strong">
     <div className="cursor-pointer space-y-3 rounded-sm p-3.5 transition-colors hover:bg-surface-2/60" onClick={event => { if (!(event.target as Element).closest("button, a")) onToggle(); }}>
@@ -41,10 +77,7 @@ export function PendingProjectCard({ project, expanded, onToggle, ...actions }: 
         <button type="button" onClick={onToggle} aria-expanded={expanded} aria-controls={detailsId} aria-label={`${expanded ? c.collapse : c.expand}: ${project.name}`} className={`shrink-0 p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground cursor-pointer active:scale-95 ${focus}`}><ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" /></button>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <div className="flex min-w-0 items-center gap-1">
-          <span title={project.ownerAddress} className="truncate font-mono text-[11px] text-muted">{project.ownerAddress.slice(0, 8)}...{project.ownerAddress.slice(-4)}</span>
-          {copyButton}
-        </div>
+        <WalletAddressCopy address={project.ownerAddress} />
         <ProjectModerationActions project={project} {...actions} compact />
       </div>
     </div>
@@ -55,11 +88,24 @@ export function PendingProjectCard({ project, expanded, onToggle, ...actions }: 
       {state.reason && ["finalized", "cancelled", "loading"].includes(state.reason) && <StatusAlert tone="info" title={t.moderation[state.reason]} />}
       <dl className="space-y-4">
         <div><dt className="mb-1 text-[10px] font-medium text-muted">{t.moderation.description}</dt><dd className="whitespace-pre-wrap break-words text-foreground">{project.description || "—"}</dd></div>
-        <div><dt className="mb-1 text-[10px] font-medium text-muted">{t.admin.ownerLabel}</dt><dd className="flex items-start gap-1"><span className="min-w-0 flex-1 break-all font-mono text-foreground">{project.ownerAddress}</span>{copyButton}</dd></div>
+        <div>
+          <dt className="mb-1 text-[10px] font-medium text-muted">{t.admin.ownerLabel}</dt>
+          <dd className="space-y-0.5">
+            {project.ownerName ? (
+              <>
+                <span className="block truncate text-xs font-medium text-foreground" title={project.ownerName}>
+                  {project.ownerName}
+                </span>
+                <WalletAddressCopy address={project.ownerAddress} />
+              </>
+            ) : (
+              <WalletAddressCopy address={project.ownerAddress} />
+            )}
+          </dd>
+        </div>
         <div><dt className="mb-1 text-[10px] font-medium text-muted">{t.admin.linkLabel}</dt><dd className="break-all">{link ? <a href={link} target="_blank" rel="noopener noreferrer" className={`inline-flex items-start gap-2 text-foreground underline decoration-line-strong underline-offset-4 hover:text-primary ${focus}`}><span className="min-w-0 break-all">{project.contactUrl}</span><ExternalLink className="mt-1 h-4 w-4 shrink-0" aria-hidden="true" /></a> : <span className="text-muted">{project.contactUrl || "—"}</span>}</dd></div>
         {project.registeredAt && <div><dt className="mb-1 text-[10px] font-medium text-muted">{c.registered}</dt><dd className="text-foreground">{project.registeredAt}</dd></div>}
       </dl>
     </div>
-    <p className="sr-only" role="status">{copyState === "copied" ? c.copied : copyState === "failed" ? c.copyFailed : ""}</p>
   </article>;
 }

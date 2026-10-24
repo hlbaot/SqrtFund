@@ -2,7 +2,26 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { createFormDraftStore, type DraftFields, type DraftSnapshot } from "@/lib/formDrafts";
 
-const store = createFormDraftStore(() => window.localStorage);
+function getStorage(): Pick<Storage, "getItem" | "setItem" | "removeItem"> {
+  if (typeof window === "undefined") {
+    return {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    };
+  }
+  try {
+    return window.localStorage;
+  } catch {
+    return {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    };
+  }
+}
+
+const store = createFormDraftStore(getStorage);
 
 export function useFormDraft<T extends DraftFields>(key: string | undefined, defaults: T, initial?: () => T) {
   const initialRef = useRef(initial);
@@ -17,12 +36,17 @@ export function useFormDraft<T extends DraftFields>(key: string | undefined, def
     const createInitial = () => initialRef.current?.() ?? defaults;
     store.hydrate(key, defaults, createInitial);
     const changed = (event: StorageEvent) => {
-      try { if (event.storageArea && event.storageArea !== window.localStorage) return; } catch { return; }
+      try {
+        if (typeof window === "undefined") return;
+        if (event.storageArea && event.storageArea !== window.localStorage) return;
+      } catch { return; }
       if (event.key === key) store.stored(key, event.newValue, createInitial);
       else if (event.key === null) store.stored(key, null, createInitial);
     };
-    window.addEventListener("storage", changed);
-    return () => window.removeEventListener("storage", changed);
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", changed);
+      return () => window.removeEventListener("storage", changed);
+    }
   }, [key, defaults]);
   const setField = useCallback((field: keyof T & string, value: string) => { if (key) store.setField(key, field, value); }, [key]);
   // Callback giữ key của lần render đã gửi giao dịch; kết quả trễ không xóa nháp ví/Round mới.
