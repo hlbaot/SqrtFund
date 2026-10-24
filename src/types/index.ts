@@ -63,7 +63,7 @@ export type Donation = {
   projectId: string;
   projectName: string;
   donorAddress: string;
-  amount: number; // in USDC (1 to 5)
+  amount: number; // in USDC
   txHash: string;
   timestamp: string; // ISO date
 };

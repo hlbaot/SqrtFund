@@ -5,6 +5,8 @@ import { BatchDonationForm } from "@/components/project/BatchDonationForm";
 import { StudentVerifyBox } from "@/components/verify/DeferredStudentVerifyBox";
 
 import type { Address } from "viem";
+import { isUncappedDonation } from "@/lib/donationPolicy";
+import { maxUint256 } from "viem";
 import { donationLimit } from "@/lib/studentAccess";
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
@@ -67,6 +69,9 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
 
   const userDonatedBigInt = (userDonatedData as bigint | undefined) ?? 0n;
   const userDonatedUsdc = Number(userDonatedBigInt) / 1_000_000;
+  const noProjectLimit = isUncappedDonation(maxDonation);
+  const noRoundLimit = isUncappedDonation(maxPerRound);
+  const openDonations = minDonation === 1n && noProjectLimit && noRoundLimit;
   const maxDonationUsdc = Number(maxDonation) / 1_000_000;
   const remainingAllowanceUsdc = Math.max(0, maxDonationUsdc - userDonatedUsdc);
 
@@ -74,19 +79,22 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   const usdcBalanceBigInt = balance.balance;
   const usdcBalanceUsdc = Number(usdcBalanceBigInt ?? 0n) / 1_000_000;
   const tokenReady = tokenMatchesConfigured(token);
-  const hasInsufficientBalance = balance.isReady && isConnected && isStudent && usdcBalanceUsdc < amount;
 
-  const { data: roundRemaining, refetch: refetchBudget } = useReadContract({ address: roundAddress, abi: qfRoundAbi,
+  const { data: roundRemainingData, refetch: refetchBudget } = useReadContract({ address: roundAddress, abi: qfRoundAbi,
     functionName: "remainingBudget", args: address ? [address] : undefined,
-    query: { enabled: Boolean(roundAddress && address), refetchInterval: 5000 },
+    query: { enabled: Boolean(roundAddress && address && !noRoundLimit), refetchInterval: 5000 },
   });
+  const roundRemaining = noRoundLimit ? maxUint256 : roundRemainingData;
   const budgetReady = typeof roundRemaining === "bigint" && typeof maxPerRound === "bigint";
   const roundRemainingUsdc = Number(roundRemaining ?? 0n) / 1_000_000;
   const minDonationUsdc = Number(minDonation) / 1_000_000;
   const roundBudgetExhausted = budgetReady && roundRemaining < minDonation;
   const parsedInput = parseUsdc(inputValue);
+  const hasInsufficientBalance = balance.isReady && isConnected && isStudent && parsedInput.success
+    && usdcBalanceBigInt !== undefined && parsedInput.amount > usdcBalanceBigInt;
   const limit = parsedInput.success && budgetReady ? donationLimit(parsedInput.amount, minDonation, maxDonation, userDonatedBigInt, roundRemaining) : null;
-  const error = !parsedInput.success || limit === "minimum" ? fmt(t.donateBox.minMaxBounds, { min: minDonationUsdc, max: maxDonationUsdc })
+  const error = !parsedInput.success ? t.donateBox.minMaxError
+    : limit === "minimum" ? fmt(t.donateBox.minMaxBounds, { min: minDonationUsdc, max: maxDonationUsdc })
     : limit === "project" ? fmt(t.donateBox.exceedsLimit, { remaining: remainingAllowanceUsdc })
     : limit === "round" ? fmt(t.donateBox.exceedsRoundBudget, { remaining: formatUsdcFixed(roundRemainingUsdc, { includeSymbol: false }) }) : "";
   const handleAmountChange = (value: string) => {
@@ -175,8 +183,8 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
 
   const isOwner = Boolean(address && project.ownerAddress && address.toLowerCase() === project.ownerAddress.toLowerCase());
   const isRoundClosed = roundStatus !== "open";
-  const hasAlreadyDonated = Boolean(isConnected && userDonatedBigInt > 0n);
-  const isMaxAllowanceReached = remainingAllowanceUsdc <= 0;
+  const hasAlreadyDonated = Boolean(isConnected && userDonatedBigInt > 0n && !openDonations);
+  const isMaxAllowanceReached = !noProjectLimit && remainingAllowanceUsdc <= 0;
 
   if (project.rejected || project.status === "rejected") return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><p role="status">{t.rejection.blocked}</p><Button disabled fullWidth>{t.rejection.status}</Button></Frame>;
   if (isCancelled) return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><h2 className="font-bold text-primary">{t.phase2.cancelled}</h2><p className="text-sm">{t.phase2.cancelledHint}</p><Link className="underline" href={`/round/${roundAddress}`}>{t.phase2.refund}</Link></Frame>;
@@ -217,11 +225,15 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
       )}
 
       {!hasAlreadyDonated && <StudentVerifyBox />}
-      {!hasAlreadyDonated && isStudent && <div className="my-4 border border-line bg-bg p-3 text-sm">
+      {!hasAlreadyDonated && isStudent && !noRoundLimit && <div className="my-4 border border-line bg-bg p-3 text-sm">
         {fmt(t.donateBox.roundBudgetRemaining, { remaining: budgetReady ? formatUsdcFixed(roundRemainingUsdc, { includeSymbol: false }) : "—", max: maxPerRound === undefined ? "—" : formatUsdcFixed(Number(maxPerRound) / 1_000_000, { includeSymbol: false }) })}
       </div>}
 
-      {/* Already donated informational state: Read-only, no donate actions */}
+      {openDonations && userDonatedBigInt > 0n && <p className="mt-3 text-xs text-muted">
+        {fmt(t.donateBox.previousContribution, { amount: formatUsdcFixed(userDonatedUsdc) })}
+      </p>}
+
+      {/* Round cũ giữ trạng thái và giới hạn đã deploy. */}
       {hasAlreadyDonated ? (
         <div className="mt-4 space-y-4">
           <div className="border border-money/40 bg-money/10 p-5 rounded-xs space-y-3">
@@ -274,12 +286,12 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
                 {isConnected && (
                   <span>
                     {t.donateBox.balance}:{" "}
-                    <strong className={usdcBalanceUsdc < 1 ? "text-primary" : "text-money"}>
+                    <strong className={usdcBalanceBigInt === 0n ? "text-primary" : "text-money"}>
                       {balance.isReady ? formatUsdcFixed(usdcBalanceUsdc) : balance.isError ? t.tokenBalance.error : balance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}
                     </strong>
                   </span>
                 )}
-                <span>{t.donateBox.remaining}: {formatUsdcFixed(remainingAllowanceUsdc)}</span>
+                {!noProjectLimit && <span>{t.donateBox.remaining}: {formatUsdcFixed(remainingAllowanceUsdc)}</span>}
               </div>
             </div>
 
@@ -289,7 +301,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
                   id="donation-amount"
                   type="number"
                   min={minDonationUsdc}
-                  max={remainingAllowanceUsdc}
+                  max={noProjectLimit ? undefined : remainingAllowanceUsdc}
                   step="0.000001"
                   value={inputValue}
                   disabled={isDonatePending || isRoundClosed || isOwner || isMaxAllowanceReached || !canParticipate || !budgetReady || roundBudgetExhausted}
@@ -303,7 +315,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
 
               {/* Quick Buttons capped at remaining allowance */}
               <div className="flex gap-1.5">
-                {[1, 2, 5].map((val) => {
+                {[1, 5, 10].map((val) => {
                   const isDisabled = val < minDonationUsdc || val > Math.min(remainingAllowanceUsdc, roundRemainingUsdc) || isDonatePending || isRoundClosed || isOwner || !canParticipate || !budgetReady || roundBudgetExhausted;
                   return (
                     <button

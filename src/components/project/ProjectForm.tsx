@@ -1,12 +1,15 @@
 "use client";
 
 import { useRegistrationRounds } from "@/hooks/useRegistrationRounds";
-import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKey } from "@/lib/formDrafts";
+import { FormDraftStatus } from "@/components/common/FormDraftStatus";
+import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { shortAddress } from "@/lib/format";
 import { txToast } from "@/lib/txToast";
 import { useTxFlow } from "@/hooks/useTxFlow";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
@@ -21,22 +24,44 @@ import { useRole } from "@/hooks/useRole";
 import { CheckCircle2, AlertCircle, Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 
+const PROJECT_DEFAULTS = { name: "", category: "technology", description: "", contactUrl: "", imageUrl: "" };
+const SELECTION_DEFAULTS = { roundAddress: "" };
+
 export function ProjectForm({ initialRound }: { initialRound?: string }) {
   const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
   const { address, isConnected, chainId } = useAccount();
   const publicClient = usePublicClient({ chainId: TARGET_CHAIN_ID });
   const { writeContractAsync } = useWriteContract();
+  const selectionKey = formDraftKey("project-selection", TARGET_CHAIN_ID, factoryAddress, address);
+  const rememberedRound = useFormDraft(selectionKey, SELECTION_DEFAULTS);
   const selection = useRegistrationRounds(initialRound);
+  const restoredSelection = useRef<string | undefined>(undefined);
+  const selectRound = selection.selectRound;
+  const selectionScope = `${selectionKey}:${initialRound ?? ""}`;
+  useEffect(() => {
+    if (!rememberedRound.ready || restoredSelection.current === selectionScope) return;
+    restoredSelection.current = selectionScope;
+    selectRound(initialRound || rememberedRound.values.roundAddress || undefined);
+  }, [rememberedRound.ready, rememberedRound.values.roundAddress, selectionScope, initialRound, selectRound]);
   const selectedAddress = selection.roundAddress;
   const { roundAddress, endTime, status: roundStatus, isCancelled, isLoading: isRoundLoading, isError: isRoundError, refetch: refetchRound } = useRound(selectedAddress);
   const { isStudent, canParticipate } = useRole(selectedAddress);
 
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState<ProjectCategory>("technology");
-  const [description, setDescription] = useState("");
-  const [contactUrl, setContactUrl] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const draftKey = formDraftKey("project", TARGET_CHAIN_ID, factoryAddress, address, selectedAddress);
+  const draft = useFormDraft(draftKey, PROJECT_DEFAULTS);
+  const { name, description, contactUrl, imageUrl } = draft.values;
+  const category = (["technology", "education", "environment", "arts"].includes(draft.values.category)
+    ? draft.values.category : "technology") as ProjectCategory;
+  const setField = (field: keyof typeof PROJECT_DEFAULTS, value: string) => {
+    if (selectedAddress) rememberedRound.setField("roundAddress", selectedAddress);
+    draft.setField(field, value);
+  };
+  const setName = (value: string) => setField("name", value);
+  const setCategory = (value: ProjectCategory) => setField("category", value);
+  const setDescription = (value: string) => setField("description", value);
+  const setContactUrl = (value: string) => setField("contactUrl", value);
+  const setImageUrl = (value: string) => setField("imageUrl", value);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -55,6 +80,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
       return;
     }
 
+    if (selectedAddress) rememberedRound.setField("roundAddress", selectedAddress);
     setIsUploadingImage(true);
     setUploadError(null);
 
@@ -72,7 +98,8 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
         throw new Error(data.error || t.register.uploadFailed);
       }
 
-      setImageUrl(data.url);
+      // Upload hoàn tất muộn vẫn ghi về nháp lúc bắt đầu, không đổi Round đang chọn.
+      draft.setField("imageUrl", data.url);
       setErrors((prev) => {
         const next = { ...prev };
         delete next.imageUrl;
@@ -89,7 +116,11 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedScope, setSubmittedScope] = useState<string | undefined>();
+  const isSubmitted = Boolean(draftKey && submittedScope === draftKey);
+  useEffect(() => {
+    setErrors({}); setUploadError(null); setIsSubmitting(false);
+  }, [draftKey]);
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -140,7 +171,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
       txToast.error(toastId, t.verification.title, t.verification.roundNotEligible);
       return;
     }
-    if (!validate()) return;
+    if (!draft.ready || !validate()) return;
     const flow = beginFlow();
 
     setIsSubmitting(true);
@@ -171,7 +202,8 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
         throw new Error("Registration transaction reverted.");
       }
 
-      setIsSubmitted(true);
+      draft.clearSubmitted();
+      setSubmittedScope(draftKey);
       flow.toast.success(
         toastId,
         t.toasts.registerSuccess,
@@ -235,11 +267,10 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
           <Button
             variant="secondary"
             onClick={() => {
-              setIsSubmitted(false);
-              setName("");
-              setDescription("");
-              setContactUrl("");
-              setImageUrl("");
+              setSubmittedScope(undefined);
+              draft.clear();
+              setErrors({});
+              setUploadError(null);
             }}
           >
             {t.common.submitAnother}
@@ -257,8 +288,8 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
       <select
         id="registration-round"
         value={selectedAddress ?? ""}
-        disabled={isSubmitting || selection.isLoading || selection.rounds.length === 0}
-        onChange={event => { selection.selectRound(event.target.value); setErrors({}); }}
+        disabled={isSubmitting || !rememberedRound.ready || selection.isLoading || selection.rounds.length === 0}
+        onChange={event => { selection.selectRound(event.target.value); rememberedRound.setField("roundAddress", event.target.value); setErrors({}); }}
         className="min-h-11 w-full rounded-sm border border-line-strong bg-bg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
       >
         {!selectedAddress && <option value="">{t.register.selectRound}</option>}
@@ -307,7 +338,10 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4 max-w-[720px]">
+          <FormDraftStatus {...draft} disabled={isSubmitting || isUploadingImage}
+            onDiscard={() => { draft.clear(); setErrors({}); setUploadError(null); }} />
+          <form onSubmit={handleSubmit} className="mt-4 max-w-[720px]">
+            <fieldset disabled={!draft.ready || isSubmitting} className="space-y-4">
             <p className="text-sm text-muted">{t.phase2.ownerProjectLimit}</p>
             <Input
               label={`${t.register.nameLabel} (max 60 bytes)`}
@@ -461,6 +495,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
                     : t.register.submitButton}
               </Button>
             </div>
+            </fieldset>
           </form>
         </div>
 
