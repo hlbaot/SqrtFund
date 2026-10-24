@@ -9,5 +9,5 @@ export function isRealtimeChange(value: unknown): value is RealtimeChange {
 
 export function isNotificationQuery(key: readonly unknown[]) {
   return ["readContract", "readContracts", "round-fields", "round-notifications",
-    "organizer-application", "admin-organizer-applications"].includes(String(key[0]));
+    "organizer-application", "admin-organizer-applications", "ui-mirror", "round-donation-history"].includes(String(key[0]));
 }

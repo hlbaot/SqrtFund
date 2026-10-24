@@ -1,5 +1,6 @@
 // src/lib/txToast.ts
 import { getContractErrorMessage, isUserRejected } from "@/lib/errors";
+import { ConfirmationReadError } from "@/lib/txAction";
 import { copy } from "@/lib/copy";
 
 export type ToastType = "success" | "error" | "info" | "pending";
@@ -165,6 +166,11 @@ export function handleTxError(
   locale: "en" | "vi" = "en"
 ): void {
   const t = copy[locale].transactions;
+  if (error instanceof ConfirmationReadError) {
+    txToast.error(id, locale === "vi" ? "Giao dịch đã xác nhận, chưa đồng bộ dữ liệu" : "Transaction confirmed; UI sync pending",
+      locale === "vi" ? "Đã hoàn tác bản hiển thị tạm. Thử đọc lại dữ liệu; không cần gửi lại giao dịch." : "The temporary UI patch was rolled back. Retry the data read, not the transaction.");
+    return;
+  }
   if (isUserRejected(error)) {
     txToast.error(id, t.rejected, t.rejectedDescription);
     return;
@@ -192,7 +198,7 @@ export class TransactionFlow {
   private failed = false;
   private receipts = new Map<string, bigint>();
   get cancelled() { return this.controller.signal.aborted; }
-  constructor(private onConfirmed?: () => Promise<unknown>) { activeFlows.add(this); }
+  constructor(private onConfirmed?: (receipt: unknown) => Promise<unknown>) { activeFlows.add(this); }
 
   private show(method: "pending" | "success" | "error" | "info", args: [string, string, string?, string?]) {
     if (this.cancelled || this.failed) return;
@@ -237,7 +243,7 @@ export class TransactionFlow {
       if (receipt && typeof receipt.transactionHash === "string" && typeof receipt.gasUsed === "bigint" && typeof receipt.effectiveGasPrice === "bigint") {
         this.receipts.set(receipt.transactionHash.toLowerCase(), receipt.gasUsed * receipt.effectiveGasPrice);
       }
-      if (!this.cancelled && receipt?.transactionHash && receipt.status === "success") await this.onConfirmed?.();
+      if (!this.cancelled && receipt?.transactionHash && receipt.status === "success") await this.onConfirmed?.(value);
       return value;
     });
     return withTimeout(promise, timeoutMs ?? Infinity, undefined, signal);

@@ -1,4 +1,6 @@
 "use client";
+import { organizerStore } from "@/lib/store/organizerStore";
+import { useShallow } from "zustand/react/shallow";
 
 import type { Address } from "viem";
 import { studentCanParticipate } from "@/lib/studentAccess";
@@ -49,10 +51,11 @@ export function useRole(customRound?: Address) {
     return isNonZero(factoryOwner) && address.toLowerCase() === factoryOwner.toLowerCase();
   }, [address, factoryOwner, hasConnectedTargetAccount]);
 
+  const mirroredAuthorization = organizerStore(useShallow(state => address ? state.entities[address.toLowerCase()]?.authorized : undefined));
   const isOrganizer = useMemo(() => {
     if (!hasConnectedTargetAccount || !address) return false;
-    return Boolean(isOrganizerFromRound);
-  }, [hasConnectedTargetAccount, address, isOrganizerFromRound]);
+    return mirroredAuthorization ?? Boolean(isOrganizerFromRound);
+  }, [hasConnectedTargetAccount, address, isOrganizerFromRound, mirroredAuthorization]);
 
   // Round Admin is the admin of the active or custom QFRound
   const isRoundAdmin = useMemo(() => {
@@ -61,7 +64,7 @@ export function useRole(customRound?: Address) {
   }, [address, admin, hasConnectedTargetAccount]);
 
   // Combined administrative and creation capabilities
-  const canCreateRound = (isPlatformOwner || isOrganizer) && !isLegacyFactory && !isFactoryAuthorizationError;
+  const canCreateRound = (isPlatformOwner || (isOrganizerFromRound && mirroredAuthorization !== false)) && !isLegacyFactory && !isFactoryAuthorizationError;
   const canManagePlatform = isPlatformOwner;
   const canManageSelectedRound = isRoundAdmin;
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAccount, useChainId, useReadContracts, useWriteContract, usePublicClient } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
+import type { Address } from "viem";
 import { TARGET_CHAIN_ID, usdcAddress } from "@/lib/contracts/addresses";
 import { mockUsdcAbi, qfRoundAbi } from "@/lib/contracts/abis";
 import { useRound } from "@/hooks/useRound";
@@ -241,9 +242,9 @@ export function useClaim() {
 
   // 5. Claim project matching funds
   const claimMatching = useCallback(
-    async (projectId: bigint) => {
-      const flow = beginFlow(`claim-${projectId}`);
-      if (!roundAddress || !publicClient) return false;
+    async (projectId: bigint, targetRound: Address | undefined = roundAddress) => {
+      const flow = beginFlow(`claim-${targetRound}-${projectId}`);
+      if (!targetRound || !publicClient || !isConnected || !isTargetChain) return false;
 
       const toastId = `claim-${projectId}`;
       setIsPendingMatching(true);
@@ -252,7 +253,8 @@ export function useClaim() {
 
         const hash = await flow.wait(() =>
           writeContractAsync({
-            address: roundAddress,
+            address: targetRound,
+            chainId: TARGET_CHAIN_ID,
             abi: qfRoundAbi,
             functionName: "claim",
             args: [projectId],
@@ -297,6 +299,8 @@ export function useClaim() {
     },
     [
       beginFlow,
+      isConnected,
+      isTargetChain,
       roundAddress,
       publicClient,
       t.transactions,
@@ -308,9 +312,9 @@ export function useClaim() {
 
   // Overloaded claim dispatcher
   const claim = useCallback(
-    async (projectId?: bigint) => {
+    async (projectId?: bigint, targetRound?: Address) => {
       if (typeof projectId === "bigint") {
-        return claimMatching(projectId);
+        return claimMatching(projectId, targetRound);
       }
       return claimUsdc();
     },
