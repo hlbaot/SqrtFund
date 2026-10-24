@@ -2,11 +2,15 @@
 
 import { useTxFlow } from "@/hooks/useTxFlow";
 
-import React, { useRef, useState } from "react";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { formDraftKey } from "@/lib/formDrafts";
+import { FormDraftStatus } from "@/components/common/FormDraftStatus";
+import React, { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { mockUsdcAbi, roundFactoryAbi } from "@/lib/contracts/abis";
-import { formatUsdc, parseUsdc } from "@/lib/format";
+import { OPEN_DONATION_POLICY } from "@/lib/donationPolicy";
+import { formatUsdc } from "@/lib/format";
 import { factoryAddress, usdcAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { fundRound, parseInitialPool } from "@/lib/roundFunding";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
@@ -28,6 +32,14 @@ function toLocalDatetimeString(date: Date): string {
   return `${y}-${m}-${d}T${hh}:${mm}`;
 }
 
+const ROUND_DEFAULTS = { roundName: "", organizer: "", startDateTime: "", endDateTime: "", maxMatchPercent: "30", initialPool: "" };
+function freshRoundDraft() {
+  return { ...ROUND_DEFAULTS,
+    startDateTime: toLocalDatetimeString(new Date(Date.now() + 2 * 60 * 1000)),
+    endDateTime: toLocalDatetimeString(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+  };
+}
+
 export function CreateRoundForm() {
   const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
@@ -38,37 +50,33 @@ export function CreateRoundForm() {
   const { writeContractAsync } = useWriteContract();
   const { refetch } = useRound();
 
-  const [roundName, setRoundName] = useState("");
-  const [organizer, setOrganizer] = useState("");
+  const draftKey = formDraftKey("round", TARGET_CHAIN_ID, factoryAddress, address);
+  const draft = useFormDraft(draftKey, ROUND_DEFAULTS, freshRoundDraft);
+  const { roundName, organizer, startDateTime, endDateTime, maxMatchPercent, initialPool } = draft.values;
+  const setRoundName = (value: string) => draft.setField("roundName", value);
+  const setOrganizer = (value: string) => draft.setField("organizer", value);
+  const setStartDateTime = (value: string) => draft.setField("startDateTime", value);
+  const setEndDateTime = (value: string) => draft.setField("endDateTime", value);
+  const setMaxMatchPercent = (value: string) => draft.setField("maxMatchPercent", value);
+  const setInitialPool = (value: string) => draft.setField("initialPool", value);
   const [nameError, setNameError] = useState<string | null>(null);
   const [organizerError, setOrganizerError] = useState<string | null>(null);
-
-  const [startDateTime, setStartDateTime] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return toLocalDatetimeString(new Date(Date.now() + 2 * 60 * 1000));
-  });
-  const [endDateTime, setEndDateTime] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return toLocalDatetimeString(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-  });
-  const [tzLabel] = useState(() => {
-    if (typeof window === "undefined") return "";
+  const [tzLabel, setTzLabel] = useState("");
+  useEffect(() => {
     const offsetMinutes = -new Date().getTimezoneOffset();
     const sign = offsetMinutes >= 0 ? "+" : "-";
     const hours = Math.floor(Math.abs(offsetMinutes) / 60);
     const mins = Math.abs(offsetMinutes) % 60;
-    return `GMT${sign}${hours}${mins > 0 ? `:${mins.toString().padStart(2, "0")}` : ""}`;
-  });
-  const [minDonationUsdc, setMinDonationUsdc] = useState("1");
-  const [maxDonationUsdc, setMaxDonationUsdc] = useState("5");
-  const [maxPerRoundUsdc, setMaxPerRoundUsdc] = useState("10");
-  const [maxMatchPercent, setMaxMatchPercent] = useState("30");
+    setTzLabel(`GMT${sign}${hours}${mins > 0 ? `:${mins.toString().padStart(2, "0")}` : ""}`);
+  }, []);
   const [pending, setPending] = useState<"deposit" | "create" | "withdraw" | null>(null);
   const isSubmitting = pending !== null;
+  useEffect(() => {
+    setNameError(null); setOrganizerError(null); setPending(null);
+  }, [draftKey]);
   const busy = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   const deposit = useInitialPoolDeposit(address);
-  const [initialPool, setInitialPool] = useState("");
   const poolValidation = parseInitialPool(initialPool);
   const initialAmount = poolValidation.success ? poolValidation.amount : 0n;
   const credit = deposit.credit ?? 0n;
@@ -77,7 +85,7 @@ export function CreateRoundForm() {
     ? t.admin.initialPoolInvalid : undefined;
   const funded = initialAmount > 0n && deposit.credit !== undefined && credit >= initialAmount;
   const canDeposit = deposit.canDeposit;
-  const ready = isConnected && chainId === TARGET_CHAIN_ID && deposit.supported && !deposit.isError && canDeposit && deposit.credit !== undefined;
+  const ready = draft.ready && isConnected && chainId === TARGET_CHAIN_ID && deposit.supported && !deposit.isError && canDeposit && deposit.credit !== undefined;
   const insufficientBalance = balance.isReady && balance.balance !== undefined && remaining > balance.balance;
 
   const roundNameBytes = React.useMemo(
@@ -102,12 +110,10 @@ export function CreateRoundForm() {
     if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end <= start || end <= Date.now() / 1000) {
       throw new Error(t.toasts.invalidScheduleDesc);
     }
-    const minimum = parseUsdc(minDonationUsdc), maximum = parseUsdc(maxDonationUsdc), budget = parseUsdc(maxPerRoundUsdc);
     const percent = Number(maxMatchPercent);
-    if (!minimum.success || !maximum.success || !budget.success || minimum.amount > maximum.amount || budget.amount < maximum.amount
-      || !Number.isFinite(percent) || percent < 1 || percent > 100) throw new Error(t.admin.invalidRoundBudget);
-    return [trimmedName, trimmedOrg, usdcAddress, BigInt(start), BigInt(end), minimum.amount, maximum.amount,
-      BigInt(Math.round(percent * 100)), budget.amount, initialAmount] as const;
+    if (!Number.isFinite(percent) || percent < 1 || percent > 100) throw new Error(t.admin.invalidMatchingCap);
+    return [trimmedName, trimmedOrg, usdcAddress, BigInt(start), BigInt(end), OPEN_DONATION_POLICY.minDonation, OPEN_DONATION_POLICY.maxDonation,
+      BigInt(Math.round(percent * 100)), OPEN_DONATION_POLICY.maxPerRound, initialAmount] as const;
   }
 
   async function act(action: "deposit" | "create" | "withdraw") {
@@ -153,7 +159,8 @@ export function CreateRoundForm() {
           functionName: "createFundedRound", args: args!, chainId: TARGET_CHAIN_ID }));
         await confirm(hash);
         flow.toast.success(toastId, t.toasts.roundCreatedTitle, t.toasts.roundCreatedDesc, hash);
-        setRoundName(""); setOrganizer(""); setInitialPool("");
+        // Chỉ xóa nháp sau receipt tạo Round thành công; nạp quỹ chưa xóa.
+        draft.clearSubmitted(); setNameError(null); setOrganizerError(null);
         refetch();
       } else {
         if (saved <= 0n) { await deposit.refetch(); return; }
@@ -186,8 +193,10 @@ export function CreateRoundForm() {
         </p>
       </div>
 
+      <FormDraftStatus {...draft} disabled={isSubmitting}
+        onDiscard={() => { draft.clear(); setNameError(null); setOrganizerError(null); }} />
       <form ref={formRef} onSubmit={event => { event.preventDefault(); void act("create"); }}>
-        <fieldset disabled={isSubmitting} className="space-y-3.5">
+        <fieldset disabled={isSubmitting || !draft.ready} className="space-y-3.5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label={`${t.admin.roundNameLabel} *`}
@@ -256,25 +265,7 @@ export function CreateRoundForm() {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <Input
-              label={t.admin.minDonationLabel}
-              type="number"
-              min="1"
-              value={minDonationUsdc}
-              onChange={(e) => setMinDonationUsdc(e.target.value)}
-              suffixElement="USDC"
-              required
-            />
-            <Input
-              label={t.admin.maxDonationLabel}
-              type="number"
-              min="1"
-              value={maxDonationUsdc}
-              onChange={(e) => setMaxDonationUsdc(e.target.value)}
-              suffixElement="USDC"
-              required
-            />
+          <div>
             <Input
               label={t.admin.matchCapLabel}
               type="number"
@@ -287,9 +278,7 @@ export function CreateRoundForm() {
             />
           </div>
 
-          <Input label={t.admin.maxPerRoundLabel} type="number" min={maxDonationUsdc} step="0.000001"
-            value={maxPerRoundUsdc} onChange={event => setMaxPerRoundUsdc(event.target.value)} suffixElement="USDC"
-            helperText={t.admin.invalidRoundBudget} required />
+          <p className="text-xs text-muted">{t.admin.openDonationPolicy}</p>
 
           <div className="border-t border-line pt-4 space-y-3">
             <Input label={t.admin.initialPoolLabel} type="text" inputMode="decimal" required

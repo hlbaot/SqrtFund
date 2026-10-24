@@ -9,11 +9,17 @@ const f = vi.hoisted(() => ({
   selected: undefined as Address | undefined, rounds: [] as { address: Address; number: number; name: string }[],
   loading: false, error: false, unavailable: false, readError: false, wrongTarget: false,
   endTime: 2000n, chainId: 43113, fill: false, emptyStates: 0,
+  draftReady: true, clearDraft: vi.fn(),
   submit: undefined as ((event: { preventDefault: () => void }) => Promise<unknown>) | undefined,
   write: vi.fn(), receipt: vi.fn(), role: vi.fn(), round: vi.fn(), initial: vi.fn(), begin: vi.fn(),
 }));
 const first = `0x${"1".repeat(40)}` as Address;
 const second = `0x${"2".repeat(40)}` as Address;
+vi.mock("@/hooks/useFormDraft", () => ({ useFormDraft: (_key: string, defaults: Record<string, string>) => ({
+  ready: f.draftReady, hasDraft: f.fill, storageError: false,
+  values: f.fill && "name" in defaults ? { ...defaults, name: "Robotics club", description: "A detailed project description", contactUrl: "https://example.test" } : defaults,
+  setField: vi.fn(), clear: vi.fn(), clearSubmitted: f.clearDraft,
+}) }));
 vi.mock("react", async importOriginal => {
   const actual = await importOriginal<typeof import("react")>();
   return { ...actual,
@@ -57,7 +63,7 @@ vi.mock("@/lib/context/locale", async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   Object.assign(f, { selected: undefined, rounds: [], loading: false, error: false, unavailable: false,
-    readError: false, wrongTarget: false, endTime: 2000n, chainId: 43113, fill: false, emptyStates: 0, submit: undefined });
+    readError: false, wrongTarget: false, endTime: 2000n, chainId: 43113, fill: false, emptyStates: 0, submit: undefined, draftReady: true });
   vi.spyOn(Date, "now").mockReturnValue(1000_000);
   f.write.mockResolvedValue(`0x${"a".repeat(64)}`);
   f.receipt.mockResolvedValue({ status: "success" });
@@ -109,6 +115,26 @@ it("writes registerProject to the selected contract on Fuji", async () => {
     address: second, chainId: 43113, functionName: "registerProject",
     args: ["Robotics club", "A detailed project description", "", "https://example.test"],
   }));
+  expect(f.clearDraft).toHaveBeenCalledTimes(1);
+  expect(f.clearDraft.mock.invocationCallOrder[0]).toBeGreaterThan(f.receipt.mock.invocationCallOrder[0]);
+});
+it("keeps the draft when the wallet rejects or the receipt reverts", async () => {
+  for (const failure of ["wallet", "receipt"]) {
+    vi.clearAllMocks(); chooseSecond(); f.fill = true;
+    f.begin.mockReturnValue({ wait: async (work: () => Promise<unknown>) => work(), toast: { pending: vi.fn(), success: vi.fn() }, finish: vi.fn(), error: vi.fn() });
+    f.write.mockResolvedValue(`0x${"a".repeat(64)}`);
+    f.receipt.mockResolvedValue({ status: "success" });
+    if (failure === "wallet") f.write.mockRejectedValueOnce(new Error("Rejected"));
+    else f.receipt.mockResolvedValueOnce({ status: "reverted" });
+    render(second);
+    await f.submit!({ preventDefault: vi.fn() });
+    expect(f.clearDraft).not.toHaveBeenCalled();
+  }
+});
+it("blocks submission until the correct scoped draft has loaded", async () => {
+  chooseSecond(); f.fill = true; f.draftReady = false; render(second);
+  await f.submit!({ preventDefault: vi.fn() });
+  expect(f.write).not.toHaveBeenCalled();
 });
 it.each(["expired", "wrong-network", "wrong-target"])("blocks a stale or invalid submission: %s", async reason => {
   chooseSecond(); f.fill = true;

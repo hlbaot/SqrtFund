@@ -21,6 +21,11 @@ it.each(["vi", "en"] as const)("requires a separate deposit before round creatio
   const html = renderToStaticMarkup(createElement(CreateRoundForm));
   expect(html).toContain(copy[locale].admin.initialPoolLabel);
   expect(html).toContain(copy[locale].admin.initialPoolHint);
+  expect(html).toContain(copy[locale].admin.openDonationPolicy);
+  expect(html).not.toContain(copy[locale].admin.minDonationLabel);
+  expect(html).not.toContain(copy[locale].admin.maxDonationLabel);
+  expect(html).not.toContain(copy[locale].admin.maxPerRoundLabel);
+  expect(html).toContain(copy[locale].admin.matchCapLabel);
   expect(html).toContain('placeholder="0"');
   expect(html).toContain(copy[locale].admin.initialPoolDeposit);
   expect(html).toMatch(/<button[^>]*disabled=""[^>]*type="submit"|<button[^>]*type="submit"[^>]*disabled=""/);

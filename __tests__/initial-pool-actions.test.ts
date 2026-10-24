@@ -6,12 +6,20 @@ import { factoryAddress } from "@/lib/contracts/addresses";
 
 // A small state harness exercises the real event handlers without a browser wallet.
 const f = vi.hoisted(() => ({
+  draft: {} as Record<string, string>,
   states: [] as unknown[], cursor: 0, submit: undefined as (() => void) | undefined,
   fields: new Map<string, (event: { target: { value: string } }) => void>(),
   buttons: new Map<string, { disabled?: boolean; onClick?: () => void }>(),
   credit: 0n, saved: 0n, allowance: 0n, balance: 100_000_000n,
   supported: true, isOwner: true, organizer: false, write: vi.fn(), read: vi.fn(), receipt: vi.fn(), error: vi.fn(),
 }));
+// Funding tests exercise hydrated fields; persistence itself is covered by form-drafts tests.
+vi.mock("@/hooks/useFormDraft", () => ({ useFormDraft: (_key: string, defaults: Record<string, string>) => {
+  if (!Object.keys(f.draft).length) f.draft = { ...defaults };
+  return { ready: true, hasDraft: true, storageError: false, values: f.draft,
+    setField: (field: string, value: string) => { f.draft = { ...f.draft, [field]: value }; },
+    clear: () => { f.draft = { ...defaults }; }, clearSubmitted: () => { f.draft = { ...defaults }; } };
+} }));
 vi.mock("react", async original => {
   const actual = await original<typeof import("react")>();
   return { ...actual,
@@ -67,7 +75,7 @@ function fill() {
   render();
 }
 beforeEach(() => {
-  vi.clearAllMocks(); Object.assign(f, { states: [], cursor: 0, credit: 0n, saved: 0n, allowance: 0n, balance: 100_000_000n, supported: true, isOwner: true, organizer: false });
+  vi.clearAllMocks(); Object.assign(f, { draft: {}, states: [], cursor: 0, credit: 0n, saved: 0n, allowance: 0n, balance: 100_000_000n, supported: true, isOwner: true, organizer: false });
   f.read.mockImplementation(async ({ functionName }: { functionName: string }) => functionName === "allowance" ? f.allowance : f.saved);
   f.write.mockImplementation(async ({ functionName }: { functionName: string }) => ({ approve: "0x01", depositInitialPool: "0x02", createFundedRound: "0x03", withdrawInitialPool: "0x04" })[functionName]);
   f.receipt.mockImplementation(async ({ hash }: { hash: string }) => {

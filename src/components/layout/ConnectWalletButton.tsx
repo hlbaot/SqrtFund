@@ -72,10 +72,15 @@ export function ConnectWalletButton() {
     canCreateRound,
   } = useRole();
   const counts = useNotificationCounts(isReady ? role : "guest");
-  const { profile, selectProfile, resetProfile, switchProfile } = useWalletProfile(address, chainId,
-    defaultWalletProfile(isOrganizer || isRoundAdmin || hasManagedRounds || canCreateRound, isStudent));
-  const choosingProfile = !isPlatformOwner && profile === null;
-  const activeProfile = profile;
+  const hasOrganizerRole = isOrganizer || isRoundAdmin || hasManagedRounds || canCreateRound;
+  const confirmedProfile = defaultWalletProfile(hasOrganizerRole, isStudent);
+  const { profile, switchProfile } = useWalletProfile(address, chainId, confirmedProfile);
+  const chosenProfileConfirmed = profile === "student" ? isStudent : profile === "organizer" ? hasOrganizerRole : false;
+  const activeProfile = chosenProfileConfirmed ? profile : confirmedProfile ?? profile;
+  // Chỉ đổi lựa chọn khi chưa có vai trò xác nhận; lỗi/đang đọc quyền không mở nút đổi.
+  const hasConfirmedRole = isPlatformOwner || isStudent || isOrganizer || isRoundAdmin || hasManagedRounds || canCreateRound;
+  const canSwitchRole = isReady && !hasConfirmedRole;
+  const choosingProfile = canSwitchRole && activeProfile === null;
   const myApp = useMyOrganizerApplication(isConnected && activeProfile === "organizer" ? address : undefined);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -273,11 +278,12 @@ export function ConnectWalletButton() {
             </div>
           </div>
 
-          {(choosingProfile || isChangingRole) && (
+          {(choosingProfile || (canSwitchRole && isChangingRole)) && (
             <WalletProfilePicker
               locale={locale}
               currentProfile={activeProfile}
               onSelect={(newProfile) => {
+                if (!canSwitchRole) return;
                 switchProfile(newProfile);
                 setIsChangingRole(false);
               }}
@@ -451,7 +457,7 @@ export function ConnectWalletButton() {
               </button>
             )}
 
-            {!isPlatformOwner && (
+            {canSwitchRole && activeProfile && (
               <button
                 type="button"
                 onClick={() => setIsChangingRole(prev => !prev)}
