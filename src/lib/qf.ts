@@ -36,6 +36,10 @@ export function computeRawMatching(sumSqrt: bigint, totalDonated: bigint): bigin
   return 0n;
 }
 
+/** Chỉ tính tiền đối ứng: QF thô → chia tỷ lệ nếu thiếu pool → áp trần từng dự án.
+ * Không dùng thứ hạng để chia tiền; không chia tiếp phần bị cắt bởi trần.
+ * BigInt làm tròn xuống giống Solidity, đơn vị là micro-USDC.
+ */
 export function computeMatchingBigInt(
   projects: ProjectMathInput[],
   pool: bigint,
@@ -72,6 +76,16 @@ export function computeMatchingBigInt(
       payout,
     };
   });
+}
+
+/** Tổng kết quỹ: tiền góp trực tiếp không bị trừ vào pool đối ứng.
+ * Chủ dự án claim direct + payout; admin rút leftover riêng sau khi finalize.
+ */
+export function computeRoundAllocation(projects: ProjectMathInput[], pool: bigint, maxMatchBps: bigint = 3000n) {
+  const allocations = computeMatchingBigInt(projects, pool, maxMatchBps);
+  const matching = allocations.reduce((sum, project) => sum + project.payout, 0n);
+  const direct = projects.reduce((sum, project) => sum + project.totalDonated, 0n);
+  return { allocations, matching, direct, totalClaimable: direct + matching, leftover: pool - matching };
 }
 
 /// @notice Simulates the change in matching payout when a donor contributes `amount` (in 6-decimal USDC)
