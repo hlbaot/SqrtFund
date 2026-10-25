@@ -131,6 +131,9 @@ export function NotificationBell() {
 
   const renderIcon = (type: NotificationEntry["type"]) => {
     switch (type) {
+      case "round_ended":
+        return <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Clock className="h-4 w-4" /></span>;
+      case "round_finalized":
       case "project_approved":
         return (
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-money/15 text-money">

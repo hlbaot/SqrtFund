@@ -53,7 +53,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   const isOrgRole = isOrganizer || isRoundAdmin || canCreateRound;
   const { profile } = useWalletProfile(address, chainId, defaultWalletProfile(isOrgRole, isStudent));
   const isOrganizerUser = isConnected && (profile === "organizer" || (!isStudent && isOrgRole));
-  const { donate, step: donationStep, isPending: isDonatePending, activeTxHash, reset: resetDonate } = useDonate(customRound);
+  const { donate, step: donationStep, isPending: isDonatePending, activeTxHash } = useDonate(customRound);
 
   const [batchMode, setBatchMode] = useState(false);
   const [amount, setAmount] = useState<number>(1);
@@ -303,7 +303,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
         </div>
       ) : null}
 
-      {!hasAlreadyDonated && donationStep !== "success" ? (
+      {hasAlreadyDonated ? null : donationStep !== "success" ? (
         <div className="mt-4 space-y-4">
           {/* Amount input & Quick buttons */}
           <div className="space-y-2">
@@ -332,9 +332,9 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
                 value={inputValue}
                 disabled={isDonatePending || isRoundClosed || isOwner || isOrganizerUser || isMaxAllowanceReached || !canParticipate || !budgetReady || roundBudgetExhausted}
                 onChange={(e) => handleAmountChange(e.target.value)}
-                className="w-full border border-line-strong bg-bg px-3 py-2 text-base font-bold text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                className="w-full appearance-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none border border-line-strong bg-bg pl-3 pr-16 py-2 text-base font-bold text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
               />
-              <span className="pointer-events-none absolute right-3 top-2.5 text-xs font-bold text-muted">
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-bold text-muted">
                 USDC
               </span>
             </div>
@@ -465,14 +465,6 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
             </p>
           </div>
           {activeTxHash && <TxStatusDisplay status="success" txHash={activeTxHash} />}
-          <Button
-            variant="secondary"
-            size="sm"
-            fullWidth
-            onClick={resetDonate}
-          >
-            {t.donateBox.donateAgain}
-          </Button>
         </div>
       )}
     </Frame>

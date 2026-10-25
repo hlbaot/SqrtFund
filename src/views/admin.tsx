@@ -356,11 +356,6 @@ export function AdminView() {
               {t.admin.badgeRoundAdmin ?? "Round Admin"}
             </Badge>
           )}
-          {isOrganizer && !isRoundAdmin && (
-            <Badge variant="primary" className="text-[10px] px-1 py-0">
-              Organizer
-            </Badge>
-          )}
         </button>
 
         {isPlatformOwner && <button
@@ -376,11 +371,6 @@ export function AdminView() {
         >
           <ShieldCheck className="h-4 w-4" />
           <span>{t.admin.tabPlatform ?? "Platform Dashboard"}</span>
-          {isPlatformOwner && (
-            <Badge variant="primary" className="text-[10px] px-1 py-0">
-              Owner
-            </Badge>
-          )}
         </button>}
       </div>
 
