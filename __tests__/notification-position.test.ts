@@ -120,7 +120,7 @@ it("centers the mobile panel within 8px margins and uses only vertical motion wi
   vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue({ bottom: 64, right: 340 } as DOMRect);
   await act(async () => trigger.click());
   expect(frames[0]).toMatchObject({ "--bell-top": "72px", "--bell-right": "8px" });
-  const css = readFileSync(new URL("../src/components/layout/NotificationBell.module.css", import.meta.url), "utf8");
+  const css = readFileSync("src/components/layout/NotificationBell.module.css", "utf8");
   expect(css).toContain("width: calc(100vw - 16px)");
   expect(css).toContain("prefers-reduced-motion: reduce");
   expect(css).toContain("translateY(-4px) scale(0.96)");
