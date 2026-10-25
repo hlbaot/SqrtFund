@@ -9,8 +9,6 @@ import { ChainLatticeBackground } from "@/components/background/DeferredLattice"
 
 interface StepData {
   step: string;
-  blockNum: string;
-  hash: string;
   titleEn: string;
   titleVi: string;
   descEn: string;
@@ -21,8 +19,6 @@ interface StepData {
 const STEPS: StepData[] = [
   {
     step: "01",
-    blockNum: "#4892101",
-    hash: "0x7a3f…c91e",
     titleEn: "Register",
     titleVi: "Đăng ký",
     descEn: "Clubs submit a project.",
@@ -31,8 +27,6 @@ const STEPS: StepData[] = [
   },
   {
     step: "02",
-    blockNum: "#4892102",
-    hash: "0x8b14…3d52",
     titleEn: "Donate",
     titleVi: "Quyên góp",
     descEn: "Students choose how much to contribute.",
@@ -41,8 +35,6 @@ const STEPS: StepData[] = [
   },
   {
     step: "03",
-    blockNum: "#4892103",
-    hash: "0x2e99…a70f",
     titleEn: "Match",
     titleVi: "Chia quỹ",
     descEn: "Pool splits by supporters.",
@@ -76,23 +68,6 @@ export function HowItWorksTimeline() {
     }
     return 100;
   }, [scrollProgress]);
-
-  // Terminal typing animation for Step 1
-  const [typedCommand, setTypedCommand] = useState("");
-  useEffect(() => {
-    if (!activeStep1) {
-      const frame = requestAnimationFrame(() => setTypedCommand(""));
-      return () => cancelAnimationFrame(frame);
-    }
-    const fullText = "submit_project(\"UniDAO\")";
-    let curr = 0;
-    const interval = setInterval(() => {
-      curr++;
-      setTypedCommand(fullText.slice(0, curr));
-      if (curr >= fullText.length) clearInterval(interval);
-    }, 45);
-    return () => clearInterval(interval);
-  }, [activeStep1]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -163,9 +138,6 @@ export function HowItWorksTimeline() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-[4px] border border-primary bg-surface text-white">
                       <Icon className="h-5 w-5" />
                     </div>
-                    <span className="font-mono text-xs font-bold tracking-[0.1em] text-muted">
-                      STEP {s.step}
-                    </span>
                   </div>
                   <h3 className="mt-6 text-[20px] font-semibold text-white">
                     {isVi ? s.titleVi : s.titleEn}
@@ -212,21 +184,17 @@ export function HowItWorksTimeline() {
                 </p>
               </div>
 
-              {/* Progress counter right-aligned */}
-              <div className="mono-label hidden items-center gap-2 text-muted sm:flex">
-                <span>CHAIN PROGRESS</span>
-                <span className="font-bold text-foreground">{Math.round(scrollProgress * 100)}%</span>
-              </div>
+
             </div>
 
             {/* 2. Central Timeline & 3 Journey Nodes */}
             <div className="relative mx-auto w-full pt-2 pb-2">
               {/* Timeline Track: 1px rgba(255,255,255,0.12) */}
-              <div className="absolute left-[8%] right-[8%] top-[86px] h-[1px] -translate-y-1/2 bg-white/12" />
+              <div className="absolute left-[8%] right-[8%] top-[36px] h-[1px] -translate-y-1/2 bg-white/12" />
 
               {/* Active Progress Fill Line: 1px Solid Red #E84142 */}
               <div
-                className="absolute left-[8%] top-[86px] h-[1px] -translate-y-1/2 bg-primary transition-all duration-150 ease-out"
+                className="absolute left-[8%] top-[36px] h-[1px] -translate-y-1/2 bg-primary transition-all duration-150 ease-out"
                 style={{
                   width: `calc((100% - 16%) * ${trackFill / 100})`,
                 }}
@@ -254,41 +222,6 @@ export function HowItWorksTimeline() {
                       key={s.step}
                       className="relative flex flex-col items-center text-center transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
                     >
-                      {/* Big Journey Number Watermark behind Node: "01", "02", "03" (64-88px) */}
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none absolute top-[34px] left-1/2 -translate-x-1/2 font-sans font-black text-7xl lg:text-8xl select-none transition-all duration-500 ${
-                          isConfirmed ? "text-white/[0.16]" : "text-white/[0.08]"
-                        }`}
-                      >
-                        {s.step}
-                      </span>
-
-                      {/* Top: Block info & hash */}
-                      <div className="mb-3 flex flex-col items-center h-10 justify-end z-10">
-                        {isConfirmed ? (
-                          <div className="flex flex-col items-center transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]">
-                            <div className="font-mono flex items-center gap-1.5 text-xs font-medium tracking-[0.1em] text-white">
-                              <span>BLOCK {s.step}</span>
-                              <span className="h-1.5 w-1.5 rounded-full bg-money inline-block" />
-                              <span>CONFIRMED</span>
-                            </div>
-                            <span className="font-mono text-xs text-muted tracking-[0.05em] mt-0.5">
-                              {s.blockNum} ({s.hash})
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center">
-                            <span className="font-mono text-xs tracking-[0.1em] text-muted">
-                              BLOCK {s.step} · PENDING
-                            </span>
-                            <span className="font-mono text-xs text-transparent select-none mt-0.5">
-                              placeholder
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
                       {/* Node: 56px Square, rounded-[4px], bg-black, 1px border */}
                       <div className="relative flex items-center justify-center z-10">
                         {/* 1 single 1px ripple wave when active (600ms) */}
@@ -316,9 +249,6 @@ export function HowItWorksTimeline() {
                           isConfirmed ? "translate-y-0 opacity-100" : "translate-y-3 opacity-100"
                         }`}
                       >
-                        <span className="font-mono text-xs tracking-[0.1em] text-muted uppercase">
-                          STEP {s.step}
-                        </span>
 
                         <h3 className="mt-1 text-[20px] font-semibold text-white">
                           {isVi ? s.titleVi : s.titleEn}
@@ -328,54 +258,7 @@ export function HowItWorksTimeline() {
                           {isVi ? s.descVi : s.descEn}
                         </p>
 
-                        {/* Minimalist Engineering Mini-Visuals */}
-                        <div className="mt-4 w-full min-h-[48px] flex items-center justify-center">
-                          {/* Step 01: Clean Terminal Command */}
-                          {idx === 0 && (
-                            <div
-                              className={`w-full max-w-[220px] rounded-[4px] border border-line bg-surface/90 backdrop-blur-sm px-3 py-1.5 text-left font-mono text-xs text-white transition-all duration-400 ${
-                                isConfirmed ? "opacity-100" : "opacity-0 pointer-events-none"
-                              }`}
-                            >
-                              <div className="truncate">
-                                <span className="text-primary">&gt; </span>
-                                <span>{typedCommand}</span>
-                                <span className="inline-block w-1.5 h-3 ml-0.5 bg-primary animate-pulse align-middle" />
-                              </div>
-                            </div>
-                          )}
 
-                          {/* Step 02: Clean Minimal Chips */}
-                          {idx === 1 && (
-                            <div
-                              className={`flex items-center justify-center gap-2 transition-all duration-400 ${
-                                isConfirmed ? "opacity-100" : "opacity-0 pointer-events-none"
-                              }`}
-                            >
-                              <span className="font-mono text-xs text-white rounded-[4px] border border-white/12 bg-transparent px-2.5 py-1">
-                                +1 USDC
-                              </span>
-                              <span className="font-mono text-xs text-white rounded-[4px] border border-white/12 bg-transparent px-2.5 py-1">
-                                +5 USDC
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Step 03: (√N)² amplification */}
-                          {idx === 2 && (
-                            <div
-                              className={`flex items-center justify-center transition-all duration-400 ${
-                                isConfirmed ? "opacity-100" : "opacity-0 pointer-events-none"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 font-mono text-xs text-white">
-                                <span>(√N)² amplification</span>
-                                <span className="h-1.5 w-1.5 rounded-full bg-money" />
-                                <span className="text-xs text-muted">distributed</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   );
@@ -420,13 +303,6 @@ export function HowItWorksTimeline() {
 
                   {/* Content */}
                   <div className="flex-1 space-y-1 pt-0.5">
-                    <div className="font-mono flex flex-wrap items-center gap-2 text-xs text-white">
-                      <span>STEP {s.step}</span>
-                      <span className="text-muted">·</span>
-                      <span className="h-1.5 w-1.5 rounded-full bg-money" />
-                      <span>CONFIRMED</span>
-                    </div>
-
                     <h3 className="text-[18px] font-semibold text-white">
                       {isVi ? s.titleVi : s.titleEn}
                     </h3>
@@ -434,10 +310,6 @@ export function HowItWorksTimeline() {
                     <p className="text-[13px] text-muted leading-relaxed">
                       {isVi ? s.descVi : s.descEn}
                     </p>
-
-                    <div className="pt-1 font-mono text-xs text-muted">
-                      hash: {s.hash}
-                    </div>
                   </div>
                 </div>
               );

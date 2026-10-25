@@ -50,7 +50,7 @@ function DesktopRow({ project, roundId, pool, finalized, wallet, max }: Leaderbo
   </tr>;
 }
 
-function MobileRow({ project, roundId, pool, finalized, wallet, max, top }: LeaderboardProps & { project: RankedProject; max: number; top: boolean }) {
+function MobileRow({ project, roundId, pool, finalized, cancelled, canDonate, wallet, max, top }: LeaderboardProps & { project: RankedProject; max: number; top: boolean }) {
   const { t } = useLocale();
   const row = useValueFlash<HTMLDivElement>(project);
   const c = t.competition;
@@ -105,12 +105,12 @@ function MobileRow({ project, roundId, pool, finalized, wallet, max, top }: Lead
         )}
       </div>
 
-      <Link
+      {!finalized && !cancelled && canDonate !== false && <Link
         href={`/round/${roundId}/project/${project.id}`}
         className="mono-label flex min-h-10 w-full items-center justify-center gap-1.5 border border-money text-money bg-money/5 hover:bg-money/15 py-2 px-3 text-xs font-semibold cursor-pointer transition-all active:scale-[0.99] rounded-xs"
       >
         {c.donateToMe}
-      </Link>
+      </Link>}
     </div>
   );
 }
