@@ -52,7 +52,7 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: t.nav.home },
     { href: "/round", label: t.nav.round },
-    ...(!isPlatformOwner && !isOrganizerUser ? [
+    ...(isConnected && !isPlatformOwner && !isOrganizerUser ? [
       { href: "/register", label: t.nav.register },
     ] : []),
     ...(!isPlatformOwner ? [
