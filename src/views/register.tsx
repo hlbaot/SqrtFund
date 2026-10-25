@@ -8,10 +8,25 @@ import React from "react";
 import { ProjectForm } from "@/components/project/ProjectForm";
 import { useLocale } from "@/lib/context/locale";
 import { Container } from "@/components/layout/Container";
+import { useAccount } from "wagmi";
+import { ConnectWalletButton } from "@/components/layout/ConnectWalletButton";
 
 export function RegisterView({ initialRound }: { initialRound?: string } = {}) {
   const { t } = useLocale();
+  const { isConnected } = useAccount();
   const { isStudent, isLoading } = useStudentStatus();
+
+  if (!isConnected) {
+    return (
+      <Container className="py-8 sm:py-10">
+        <div className="mx-auto max-w-xl py-16 text-center space-y-4">
+          <h1 className="text-xl font-bold text-foreground tracking-tight">{t.common.walletRequired}</h1>
+          <p className="text-sm text-muted">{t.common.walletRequiredDesc}</p>
+          <ConnectWalletButton />
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container className="py-8 sm:py-10 space-y-8">

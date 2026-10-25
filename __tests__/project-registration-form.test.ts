@@ -4,12 +4,13 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Address } from "viem";
 import { ProjectForm } from "@/components/project/ProjectForm";
 import RegisterPage from "@/app/register/page";
+import { RegisterView } from "@/views/register";
 
 const f = vi.hoisted(() => ({
   selected: undefined as Address | undefined, rounds: [] as { address: Address; number: number; name: string }[],
   loading: false, error: false, unavailable: false, readError: false, wrongTarget: false,
   endTime: 2000n, chainId: 43113, fill: false, emptyStates: 0,
-  draftReady: true, clearDraft: vi.fn(),
+  connected: true, draftReady: true, clearDraft: vi.fn(),
   submit: undefined as ((event: { preventDefault: () => void }) => Promise<unknown>) | undefined,
   write: vi.fn(), receipt: vi.fn(), role: vi.fn(), round: vi.fn(), initial: vi.fn(), begin: vi.fn(),
 }));
@@ -37,7 +38,7 @@ vi.mock("react/jsx-dev-runtime", async importOriginal => {
   } };
 });
 vi.mock("wagmi", () => ({
-  useAccount: () => ({ address: `0x${"3".repeat(40)}`, isConnected: true, chainId: f.chainId }),
+  useAccount: () => ({ address: `0x${"3".repeat(40)}`, isConnected: f.connected, chainId: f.chainId }),
   usePublicClient: () => ({ waitForTransactionReceipt: f.receipt }),
   useWriteContract: () => ({ writeContractAsync: f.write }),
 }));
@@ -55,6 +56,9 @@ vi.mock("@/hooks/useRole", () => ({ useRole: (address?: string) => { f.role(addr
 vi.mock("@/hooks/useTxFlow", () => ({ useTxFlow: () => f.begin }));
 vi.mock("@/components/project/ProjectCard", () => ({ ProjectCard: () => null }));
 vi.mock("@/components/verify/StudentAccessGate", () => ({ StudentAccessGate: () => null }));
+vi.mock("@/components/layout/ConnectWalletButton", () => ({ ConnectWalletButton: () => createElement("button", null, "Kết nối ví") }));
+vi.mock("@/components/common/AOSInit", () => ({ AOSInit: () => null }));
+vi.mock("@/hooks/useStudentStatus", () => ({ useStudentStatus: () => ({ isStudent: true, isLoading: false }) }));
 vi.mock("@/lib/seo.server", () => ({ pageMetadata: vi.fn() }));
 vi.mock("@/lib/context/locale", async () => {
   const { copy } = await import("@/lib/copy");
@@ -62,7 +66,7 @@ vi.mock("@/lib/context/locale", async () => {
 });
 beforeEach(() => {
   vi.clearAllMocks();
-  Object.assign(f, { selected: undefined, rounds: [], loading: false, error: false, unavailable: false,
+  Object.assign(f, { connected: true, selected: undefined, rounds: [], loading: false, error: false, unavailable: false,
     readError: false, wrongTarget: false, endTime: 2000n, chainId: 43113, fill: false, emptyStates: 0, submit: undefined, draftReady: true });
   vi.spyOn(Date, "now").mockReturnValue(1000_000);
   f.write.mockResolvedValue(`0x${"a".repeat(64)}`);
@@ -72,6 +76,14 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 const render = (initialRound?: string) => renderToStaticMarkup(createElement(ProjectForm, { initialRound }));
+it("hides the registration page until a wallet is connected even with cached Student status", () => {
+  f.connected = false;
+  const html = renderToStaticMarkup(createElement(RegisterView));
+  expect(html).toContain("Kết nối ví");
+  expect(html).not.toContain("Đăng ký dự án sinh viên");
+  expect(html).not.toContain("<form");
+  expect(f.initial).not.toHaveBeenCalled();
+});
 function chooseSecond() {
   f.selected = second;
   f.rounds = [{ address: second, number: 2, name: "Student fund" }, { address: first, number: 1, name: "Older fund" }];

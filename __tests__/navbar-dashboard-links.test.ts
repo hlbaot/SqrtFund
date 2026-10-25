@@ -38,11 +38,20 @@ it("names the platform owner's entry Organizer Access and links to role approval
 it.each(["student", "guest"])("preserves project registration and personal activity for %s", role => {
   f.role = role;
   f.admin = false;
-  f.connected = role !== "guest";
+  f.connected = true;
   const html = renderToStaticMarkup(createElement(Navbar));
   expect(html).toContain('href="/register"');
   expect(html).toContain('href="/my"');
   expect(html).not.toContain('href="/admin?tab=platform"');
+});
+
+it("hides project registration until a wallet is connected", () => {
+  f.role = "guest";
+  f.admin = false;
+  f.connected = false;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  expect(html).not.toContain('href="/register"');
+  expect(html).toContain('href="/my"');
 });
 
 it.each(["organizer", "admin"])("hides project registration on navbar for %s but preserves personal activity", role => {
