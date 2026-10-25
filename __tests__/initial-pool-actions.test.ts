@@ -122,6 +122,28 @@ it("refunds credit even when the form is incomplete and ownership has changed", 
   await vi.waitFor(() => expect(f.write).toHaveBeenCalledWith(expect.objectContaining({ functionName: "withdrawInitialPool" })));
 });
 
+it("submits the organizer's chosen student budget for on-chain enforcement", async () => {
+  f.credit = f.saved = 25_000_000n;
+  fill();
+  f.fields.get(t.admin.maxPerRoundLabel)!({ target: { value: "12.5" } });
+  render();
+  f.submit!();
+  await vi.waitFor(() => expect(f.write).toHaveBeenCalled());
+  const args = f.write.mock.calls[0][0].args;
+  expect(args[6]).toBe(12_500_000n);
+  expect(args[8]).toBe(12_500_000n);
+});
+
+it("blocks round creation with an invalid student budget", () => {
+  f.credit = f.saved = 25_000_000n;
+  fill();
+  f.fields.get(t.admin.maxPerRoundLabel)!({ target: { value: "0" } });
+  render();
+  expect(f.buttons.get(t.admin.createRoundBtn)?.disabled).toBe(true);
+  f.submit!();
+  expect(f.write).not.toHaveBeenCalled();
+});
+
 it("rechecks credit before create when another tab has withdrawn it", async () => {
   f.credit = 25_000_000n; f.saved = 0n;
   fill(); f.submit!();

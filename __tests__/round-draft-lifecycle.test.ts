@@ -24,7 +24,7 @@ vi.mock("react/jsx-dev-runtime", async importOriginal => {
 });
 vi.mock("@/hooks/useFormDraft", () => ({ useFormDraft: () => ({
   ready: f.ready, hasDraft: true, storageError: false,
-  values: { roundName: "Student Fund", organizer: "Club", startDateTime: "2030-01-01T10:00", endDateTime: "2030-01-08T10:00", maxMatchPercent: "30", initialPool: "100" },
+  values: { roundName: "Student Fund", organizer: "Club", startDateTime: "2030-01-01T10:00", endDateTime: "2030-01-08T10:00", maxMatchPercent: "30", studentBudget: "10", initialPool: "100" },
   setField: vi.fn(), clear: vi.fn(), clearSubmitted: f.clear,
 }) }));
 vi.mock("wagmi", () => ({
@@ -53,6 +53,7 @@ it("restores visible form values and clears the draft only after creation is con
   expect(html).toContain('value="Student Fund"'); expect(html).toContain('value="2030-01-08T10:00"');
   f.submit!({ preventDefault: vi.fn() }); await finish();
   expect(f.write).toHaveBeenCalledWith(expect.objectContaining({ functionName: "createFundedRound" }));
+  expect(f.write.mock.calls[0][0].args.slice(5, 9)).toEqual([1n, 10_000_000n, 3000n, 10_000_000n]);
   expect(f.clear).toHaveBeenCalledTimes(1);
   expect(f.clear.mock.invocationCallOrder[0]).toBeGreaterThan(f.receipt.mock.invocationCallOrder[0]);
 });

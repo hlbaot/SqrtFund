@@ -4,8 +4,10 @@ import { NextResponse } from "next/server";
 import { isAddress } from "viem";
 import { verifyOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
 import { VerificationError } from "@/lib/verify/errors";
+import { verifyOrganizerReapplication } from "@/lib/server/organizerReapplication";
 import {
   createOrganizerApplication,
+  resubmitOrganizerApplication,
   listOrganizerApplications,
   updateOrganizerApplicationStatus,
 } from "@/lib/server/organizerApplications";
@@ -57,13 +59,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "INVALID_REASON" }, { status: 400 });
     }
 
-    // Luôn kiểm tra ở backend; không thể bỏ qua OTP bằng cách gọi API trực tiếp.
-    if (!verifyOrganizerEmailProof(body.emailVerificationToken, contactEmail, walletAddress)) {
+    const existing = await listOrganizerApplications({ walletAddress: walletAddress.trim() });
+    const previous = existing[0];
+    const reverified = await verifyOrganizerReapplication(body, previous);
+    // Reuse stored verification only with a valid signature from the same wallet.
+    if (!reverified && !verifyOrganizerEmailProof(body.emailVerificationToken, contactEmail, walletAddress)) {
       return NextResponse.json({ ok: false, error: "EMAIL_NOT_VERIFIED" }, { status: 403 });
     }
 
     // Check if wallet already has a pending application
-    const existing = await listOrganizerApplications({ walletAddress: walletAddress.trim() });
     const activePending = existing.find(a => a.status === "pending");
     if (activePending) {
       return NextResponse.json(
@@ -72,13 +76,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const application = await createOrganizerApplication({
+    const input = {
       walletAddress: walletAddress.trim(),
       organizationName: organizationName.trim(),
       contactEmail: contactEmail.trim(),
-      emailVerifiedAt: new Date().toISOString(),
+      emailVerifiedAt: reverified ? previous.emailVerifiedAt! : new Date().toISOString(),
       reason: reason.trim(),
-    });
+    };
+    const application = reverified
+      ? await resubmitOrganizerApplication(previous, input)
+      : await createOrganizerApplication(input);
 
     await publishNotificationChange();
     return NextResponse.json({ ok: true, application }, { status: 201 });
