@@ -5,13 +5,13 @@ import { maxUint256 } from "viem";
 import { copy } from "@/lib/copy";
 import { DonateBox } from "@/components/project/DonateBox";
 
-const f = vi.hoisted(() => ({ input: "100", donated: 20_000_000n, legacy: false, balance: 500_000_000n }));
+const f = vi.hoisted(() => ({ connected: true, input: "100", donated: 20_000_000n, legacy: false, balance: 500_000_000n }));
 vi.mock("react", async importOriginal => {
   const react = await importOriginal<typeof import("react")>();
   return { ...react, useState: (initial: unknown) => react.useState(initial === "1" ? f.input : initial === 1 ? Number(f.input) : initial) };
 });
 vi.mock("wagmi", () => ({
-  useAccount: () => ({ address: "0x1111111111111111111111111111111111111111", isConnected: true }),
+  useAccount: () => ({ address: "0x1111111111111111111111111111111111111111", isConnected: f.connected }),
   useReadContract: ({ functionName }: { functionName: string }) => ({ data: functionName === "donationOf" ? f.donated : 10_000_000n, refetch: vi.fn() }),
 }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
@@ -27,13 +27,28 @@ vi.mock("@/hooks/useTokenBalance", () => ({ useTokenBalance: () => ({ balance: f
 vi.mock("@/lib/tokenBalance", () => ({ tokenMatchesConfigured: () => true }));
 vi.mock("@/components/verify/DeferredStudentVerifyBox", () => ({ StudentVerifyBox: () => null }));
 vi.mock("@/components/project/BatchDonationForm", () => ({ BatchDonationForm: () => null }));
+vi.mock("@/components/layout/ConnectWalletButton", () => ({ ConnectWalletButton: () => createElement("button", null, "Kết nối ví") }));
 vi.mock("@/lib/context/locale", () => ({ useLocale: () => ({ t: copy.vi, locale: "vi" }) }));
 
 const project = { id: "1", name: "Project", roundId: "round", ownerAddress: "0x3333333333333333333333333333333333333333",
   status: "approved" as const, category: "technology" as const, shortDescription: "", description: "", contactUrl: "",
   supporterCount: 1, totalDonated: 20, estimatedMatching: 0, sumSqrtRaw: 0n, totalDonatedRaw: 20_000_000n };
 const render = () => renderToStaticMarkup(createElement(DonateBox, { project }));
-beforeEach(() => Object.assign(f, { input: "100", donated: 0n, legacy: false, balance: 500_000_000n }));
+beforeEach(() => Object.assign(f, { connected: true, input: "100", donated: 0n, legacy: false, balance: 500_000_000n }));
+it("requires wallet connection before showing donation controls even with cached account data", () => {
+  f.connected = false;
+  f.donated = 20_000_000n;
+  const html = render();
+  expect(html).toContain(copy.vi.common.walletRequired);
+  expect(html).toContain(copy.vi.donateBox.notConnected);
+  expect(html).toContain("<button");
+  expect(html).not.toContain('disabled=""');
+  expect(html).not.toContain('id="donation-amount"');
+  expect(html).not.toContain(copy.vi.donateBox.alreadyDonatedTitle);
+  f.connected = true;
+  f.donated = 0n;
+  expect(render()).toContain('id="donation-amount"');
+});
 it("lets a supporter contribute above 5 USDC without displaying a fake maximum or round budget, and blocks repeat contributions", () => {
   f.donated = 0n;
   const html = render();

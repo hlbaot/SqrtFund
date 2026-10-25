@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useId, useMemo } from "react";
+import React, { useState, useRef, useEffect, useId, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useNotifications, type NotificationEntry } from "@/hooks/useNotifications";
@@ -41,21 +41,25 @@ export function NotificationBell() {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
 
+  const reposition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) {
+      setPosition({
+        top: rect.bottom + 8,
+        right: Math.max(12, window.innerWidth - rect.right),
+      });
+    }
+  }, []);
+
+  const togglePanel = () => {
+    // Measure before mounting the portal so its first frame uses the bell's position.
+    if (!isOpen) reposition();
+    setIsOpen(prev => !prev);
+  };
+
   // Position calculation and outside click/escape listener
   useEffect(() => {
     if (!isOpen) return;
-
-    const reposition = () => {
-      const rect = triggerRef.current?.getBoundingClientRect();
-      if (rect) {
-        setPosition({
-          top: rect.bottom + 8,
-          right: Math.max(12, window.innerWidth - rect.right),
-        });
-      }
-    };
-
-    reposition();
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
@@ -85,7 +89,7 @@ export function NotificationBell() {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, reposition]);
 
   const displayedEntries = useMemo(() => {
     return filter === "unread" ? unreadEntries : entries;
@@ -147,7 +151,7 @@ export function NotificationBell() {
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen(prev => !prev)}
+        onClick={togglePanel}
         aria-label={
           unreadCount > 0
             ? `${unreadCount} ${t.notifications.badge}`

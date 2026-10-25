@@ -29,6 +29,7 @@ import { Stepper, StepItem } from "@/components/tx/Stepper";
 import { TxStatusDisplay } from "@/components/tx/TxStatusToast";
 import { Button } from "@/components/ui/Button";
 import { Frame } from "@/components/ui/Frame";
+import { ConnectWalletButton } from "@/components/layout/ConnectWalletButton";
 import { AlertCircle, Sparkles, Check, CheckCircle2, ArrowRight } from "lucide-react";
 
 export interface DonateBoxProps {
@@ -172,7 +173,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   ];
 
   const handleExecuteDonate = async () => {
-    if (!balance.isReady || !tokenReady || !parsedInput.success || !budgetReady || !canParticipate || error || isOwner || isOrganizerUser || hasAlreadyDonated) return;
+    if (!isConnected || !address || !balance.isReady || !tokenReady || !parsedInput.success || !budgetReady || !canParticipate || error || isOwner || isOrganizerUser || hasAlreadyDonated) return;
     const donationAmountBigInt = parsedInput.amount;
     const ok = await donate(projectIdBigInt, donationAmountBigInt);
     if (ok) {
@@ -188,6 +189,16 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   const isRoundClosed = roundStatus !== "open";
   const hasAlreadyDonated = Boolean(isConnected && userDonatedBigInt > 0n);
   const isMaxAllowanceReached = !noProjectLimit && remainingAllowanceUsdc <= 0;
+
+  if (!isConnected || !address) {
+    return (
+      <Frame className={`space-y-4 bg-surface p-5 lg:p-6 ${className}`}>
+        <h2 className="text-base font-bold text-foreground">{t.common.walletRequired}</h2>
+        <p className="text-sm text-muted">{t.donateBox.notConnected}</p>
+        <ConnectWalletButton />
+      </Frame>
+    );
+  }
 
   if (project.rejected || project.status === "rejected") return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><p role="status">{t.rejection.blocked}</p><Button disabled fullWidth>{t.rejection.status}</Button></Frame>;
   if (isCancelled) return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><h2 className="font-bold text-primary">{t.phase2.cancelled}</h2><p className="text-sm">{t.phase2.cancelledHint}</p><Link className="underline" href={`/round/${roundAddress}`}>{t.phase2.refund}</Link></Frame>;
@@ -397,16 +408,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
 
           {/* Primary Action Button */}
           <div>
-            {!isConnected ? (
-              <Button
-                variant="primary"
-                fullWidth
-                disabled
-                className="py-3 text-sm font-bold opacity-60"
-              >
-                {t.donateBox.notConnected}
-              </Button>
-            ) : isOwner ? (
+            {isOwner ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
                 {t.donateBox.ownerBtn}
               </Button>
