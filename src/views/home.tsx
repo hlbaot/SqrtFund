@@ -58,7 +58,6 @@ export function HomeView() {
   const pageRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState("intro");
   const [headerHeight, setHeaderHeight] = useState(102);
-  const [hasAeroShardsError, setHasAeroShardsError] = useState(false);
 
   useEffect(() => {
     const sectionIds = ["intro", "stats", "how-it-works", "current-round", "projects-list"];
@@ -230,25 +229,22 @@ export function HomeView() {
         style={{ minHeight: `calc(100dvh - ${headerHeight}px)` }}
       >
         {/* AeroShards 3D Cyber Shards Background - ONLY in Hero */}
-        {!hasAeroShardsError && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-60"
-          >
-            <AeroShards
-              shardColor="#f43f5e"
-              accentColor="#ff2a6d"
-              backgroundColor="#07070c"
-              material="glass"
-              count={750}
-              speed={0.5}
-              glow={0.45}
-              grain={0.04}
-              placement="full"
-              onError={() => setHasAeroShardsError(true)}
-            />
-          </div>
-        )}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-60"
+        >
+          <AeroShards
+            shardColor="#f43f5e"
+            accentColor="#ff2a6d"
+            backgroundColor="#07070c"
+            material="glass"
+            count={750}
+            speed={0.5}
+            glow={0.45}
+            grain={0.04}
+            placement="full"
+          />
+        </div>
 
         {/* Layer 2: Aurora glows (Top-left red/orange ~12%, Bottom-right green ~10%) */}
         <div
@@ -327,7 +323,7 @@ export function HomeView() {
               </div>
             </div>
 
-            <WalletConstellation />
+            <div className="hidden lg:block"><WalletConstellation /></div>
           </div>
         </Container>
       </section>

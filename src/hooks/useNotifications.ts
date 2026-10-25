@@ -8,7 +8,7 @@ import { useRoundRefunds } from "@/hooks/useRoundRefunds";
 import { useNotificationSeen } from "@/hooks/useNotificationSeen";
 import { useRole } from "@/hooks/useRole";
 import { useRoundNotifications } from "@/hooks/useRoundNotifications";
-import { roundProjectNotificationItems } from "@/lib/roundNotifications";
+import { roundProjectNotificationItems, roundLifecycleNotificationItems } from "@/lib/roundNotifications";
 import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
 import { useOrganizerApplicationsAdmin, useMyOrganizerApplication } from "@/hooks/useOrganizerApplications";
 import { useLocale } from "@/lib/context/locale";
@@ -17,6 +17,8 @@ import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { formatUsdcFixed } from "@/lib/format";
 
 export type NotificationType =
+  | "round_ended"
+  | "round_finalized"
   | "project_approved"
   | "project_rejected"
   | "project_pending"
@@ -79,6 +81,7 @@ export function useNotifications() {
     const projectMap = new Map<string, string>();
     for (const snapshot of roundSnapshots) {
       for (const item of roundProjectNotificationItems(snapshot, address, now)) rawItems.push(item);
+      rawItems.push(...roundLifecycleNotificationItems(snapshot, address, now));
       for (const project of snapshot.projects) projectMap.set(`${snapshot.roundAddress.toLowerCase()}:${project.id}`, project.name);
     }
     for (const p of projects) {
@@ -133,6 +136,16 @@ export function useNotifications() {
 
     for (const item of rawItems) {
       const isRead = ready && keys.includes(item.key);
+
+      if (item.key.startsWith("roundEnded:") || item.key.startsWith("roundFinalized:")) {
+        const finalized = item.key.startsWith("roundFinalized:");
+        const roundAddress = item.key.split(":")[1];
+        result.push({ key: item.key, scope: item.scope, type: finalized ? "round_finalized" : "round_ended",
+          title: finalized ? t.notifications.roundFinalizedTitle : t.notifications.roundEndedTitle,
+          description: finalized ? t.notifications.roundFinalizedDesc : t.notifications.roundEndedDesc,
+          href: item.scope === "admin" ? `/admin?tab=organizer&round=${roundAddress}` : `/round/${roundAddress}`, isRead });
+        continue;
+      }
 
       if (item.key.startsWith("refund:")) {
         const refundAmt = refunds.isReady && refunds.total > 0n ? ` (${formatUsdcFixed(refunds.total)} USDC)` : "";

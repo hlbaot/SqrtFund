@@ -20,6 +20,7 @@ beforeEach(() => Object.assign(f, { platformOwner: false, role: "organizer", con
 it("keeps Organizer round creation in the wallet menu instead of duplicating it in the Navbar", () => {
   f.platformOwner = false;
   const html = renderToStaticMarkup(createElement(Navbar));
+  expect(html).not.toContain("min-h-9");
   expect(html).not.toContain("Tạo round");
   expect(html).not.toContain('href="/admin?tab=organizer"');
   expect(html).not.toContain("Quản trị");

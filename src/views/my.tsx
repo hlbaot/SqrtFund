@@ -3,7 +3,6 @@ import type { Address } from "viem";
 import { projectsStore } from "@/lib/store/projectsStore";
 import { roundsStore } from "@/lib/store/roundsStore";
 import { useShallow } from "zustand/react/shallow";
-import { isPublicProject } from "@/lib/projectVisibility";
 import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
 import { StudentVerifyBox } from "@/components/verify/DeferredStudentVerifyBox";
 
@@ -11,8 +10,9 @@ import { AOSInit } from "@/components/common/AOSInit";
 
 import React, { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useReadContracts } from "wagmi";
-import { qfRoundAbi } from "@/lib/contracts/abis";
+import { useAccount } from "wagmi";
+import { useWalletDonationHistory } from "@/hooks/useWalletDonationHistory";
+import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
 import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
@@ -52,9 +52,10 @@ import {
 export function MyView() {
   const router = useRouter();
   const { t, locale } = useLocale();
+  const now = useCurrentTimestamp();
   const { address, isConnected } = useAccount();
 
-  const { roundAddress, finalized, isCancelled, isLoading: isRoundLoading } = useRound();
+  const { roundAddress, isCancelled, isLoading: isRoundLoading } = useRound();
   const { projects, isLoading: isProjectsLoading, refetch: refetchProjects } = useProjects();
   const {
     isStudent,
@@ -94,42 +95,7 @@ export function MyView() {
   const closeAvatarDialog = useCallback(() => setIsAvatarDialogOpen(false), []);
   const handleOpenAvatarDialog = () => setIsAvatarDialogOpen(true);
 
-  // Read donations for all projects via multicall (skipped for organizers as they do not donate)
-  const approvedProjects = useMemo(() => projects.filter(isPublicProject), [projects]);
-
-  const donationContracts = useMemo(() => {
-    if (isOrgMode || !roundAddress || !address) return [];
-    return approvedProjects.map((p) => ({
-      address: roundAddress,
-      abi: qfRoundAbi,
-      functionName: "donationOf" as const,
-      args: [address, p.contractId] as const,
-    }));
-  }, [roundAddress, address, approvedProjects]);
-
-  const { data: donationsData, isLoading: isDonationsLoading } = useReadContracts({
-    contracts: donationContracts,
-    query: {
-      enabled: Boolean(donationContracts.length > 0),
-      refetchInterval: 5000,
-    },
-  });
-
-  const myDonations = useMemo(() => {
-    if (!donationsData) return [];
-    const list: { project: (typeof approvedProjects)[0]; amount: bigint; amountNum: number; }[] = [];
-    for (let i = 0; i < donationsData.length; i++) {
-      const amt = donationsData[i]?.result as bigint | undefined;
-      if (amt && amt > 0n) {
-        list.push({
-          project: approvedProjects[i],
-          amount: amt,
-          amountNum: Number(amt) / 1_000_000,
-        });
-      }
-    }
-    return list;
-  }, [donationsData, approvedProjects]);
+  const { donations: myDonations, isLoading: isDonationsLoading, isError: isDonationsError, refetch: refetchDonations } = useWalletDonationHistory();
 
   const allProjects = projectsStore(useShallow(state => state.projectsByRound));
   const roundSnapshots = roundsStore(useShallow(state => state.entities));
@@ -211,20 +177,13 @@ export function MyView() {
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
                   {t.common.walletActivity}
                 </h1>
-                {isStudent ? (
+                {isStudent && (
                   <Badge variant="accent" className="gap-1 font-semibold text-xs">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     <span>{t.common.verifiedStudent}</span>
                   </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-xs">
-                    {t.common.unverified}
-                  </Badge>
                 )}
               </div>
-              <p className="font-mono text-xs text-muted">
-                {address ? address : "Not connected"}
-              </p>
             </div>
           </div>
 
@@ -390,9 +349,13 @@ export function MyView() {
 
             {/* Tab 1: My Donations */}
             <TabsContent value="donations">
-              {isCancelled ? <p className="text-sm text-muted">{t.cancellation.banner}</p> : isDonationsLoading ? (
+              {isDonationsError && <div role="alert" className="mb-4 space-y-2 border border-primary/40 bg-surface p-4 text-sm">
+                <p>{locale === "vi" ? "Chưa tải đủ lịch sử ủng hộ của tất cả các vòng. Vui lòng thử lại." : "Donation history is incomplete. Some rounds could not be loaded. Please retry."}</p>
+                <Button variant="secondary" size="sm" onClick={refetchDonations}>{locale === "vi" ? "Thử lại" : "Retry"}</Button>
+              </div>}
+              {isDonationsLoading ? (
                 <div className="py-8 text-center text-xs text-muted">{t.common.loadingDonations}</div>
-              ) : myDonations.length === 0 ? (
+              ) : myDonations.length === 0 && isDonationsError ? null : myDonations.length === 0 ? (
                 <EmptyState
                   title={t.myActivity.donationsEmptyTitle}
                   description={t.myActivity.donationsEmptyDesc}
@@ -422,21 +385,24 @@ export function MyView() {
                     </TableHeader>
                     <TableBody>
                       {myDonations.map((item) => (
-                        <TableRow key={item.project.id}>
+                        <TableRow key={`${item.roundAddress}:${item.project.id}`}>
                           <TableCell className="font-medium text-foreground">
                             {item.project.name}
+                            <div className="mt-1 text-xs text-muted" title={item.roundAddress}>
+                              {shortAddress(item.roundAddress)} · {item.isCancelled ? (locale === "vi" ? "Đã hủy" : "Cancelled") : item.finalized || now > 0 && BigInt(now) >= item.endTime ? (locale === "vi" ? "Đã kết thúc" : "Ended") : (locale === "vi" ? "Đang mở" : "Open")}
+                            </div>
                           </TableCell>
                           <TableCell className="font-mono font-bold text-money tabular-nums">
-                            {formatUsdcFixed(item.amountNum)}
+                            {formatUsdcFixed(Number(item.amount) / 1_000_000)}
                           </TableCell>
                           <TableCell className="font-mono text-xs text-muted tabular-nums">
-                            +{formatUsdcFixed(item.project.estimatedMatching)}
+                            {item.project.matching === undefined ? "—" : `+${formatUsdcFixed(Number(item.project.matching) / 1_000_000)}`}
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => router.push(`/round/${roundAddress}/project/${item.project.id}`)}
+                              onClick={() => router.push(`/round/${item.roundAddress}/project/${item.project.id}`)}
                               className="h-7 text-xs font-semibold text-primary"
                             >
                               {t.common.view}
