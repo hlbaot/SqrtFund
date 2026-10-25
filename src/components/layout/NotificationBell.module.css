@@ -1,0 +1,38 @@
+.panel {
+  max-height: min(70vh, calc(100dvh - var(--bell-top) - 8px));
+  transform-origin: top right;
+  animation: bell-open 140ms ease-out both;
+}
+
+.panel[data-state="closed"] {
+  pointer-events: none;
+  animation: bell-close 100ms ease-out both;
+}
+
+/* Override the site's hidden scrollbars only inside this notification list. */
+.list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.list::-webkit-scrollbar { display: block; width: 4px; }
+.list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+@media (max-width: 639px) {
+  .panel { right: 8px; width: calc(100vw - 16px); }
+}
+
+@keyframes bell-open {
+  from { opacity: 0; transform: translateY(-4px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes bell-close {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-4px) scale(0.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel, .panel[data-state="closed"] { animation: none; }
+  .panel[data-state="closed"] { opacity: 0; }
+}

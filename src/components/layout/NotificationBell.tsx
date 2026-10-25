@@ -17,12 +17,13 @@ import {
   ShieldCheck,
   ShieldAlert,
   X,
-  ChevronRight,
   Wallet,
 } from "lucide-react";
+import styles from "./NotificationBell.module.css";
 
 export function NotificationBell() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const vi = locale === "vi";
   const { isConnected, isAdmin, isPlatformOwner, isOrganizer } = useRole();
   const {
     entries,
@@ -34,6 +35,7 @@ export function NotificationBell() {
   } = useNotifications();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [position, setPosition] = useState({ top: 0, right: 16 });
 
@@ -46,16 +48,30 @@ export function NotificationBell() {
     if (rect) {
       setPosition({
         top: rect.bottom + 8,
-        right: Math.max(12, window.innerWidth - rect.right),
+        right: window.innerWidth < 640 ? 8 : Math.min(Math.max(8, window.innerWidth - rect.right), Math.max(8, window.innerWidth - 368)),
       });
     }
   }, []);
 
+  const closePanel = useCallback(() => {
+    setIsOpen(false);
+    setIsClosing(true);
+    triggerRef.current?.focus();
+  }, []);
+
   const togglePanel = () => {
-    // Measure before mounting the portal so its first frame uses the bell's position.
-    if (!isOpen) reposition();
-    setIsOpen(prev => !prev);
+    if (isOpen) { closePanel(); return; }
+    // Measure before mounting the portal; never animate from default coordinates.
+    reposition();
+    setIsClosing(false);
+    setIsOpen(true);
   };
+
+  useEffect(() => {
+    if (!isClosing) return;
+    const timer = window.setTimeout(() => setIsClosing(false), 100);
+    return () => window.clearTimeout(timer);
+  }, [isClosing]);
 
   // Position calculation and outside click/escape listener
   useEffect(() => {
@@ -67,17 +83,28 @@ export function NotificationBell() {
         !triggerRef.current?.contains(target) &&
         !panelRef.current?.contains(target)
       ) {
-        setIsOpen(false);
+        closePanel();
       }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsOpen(false);
-        triggerRef.current?.focus();
+        closePanel();
+      }
+      if (event.key === "Tab") {
+        const controls = panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]');
+        if (!controls?.length) return;
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !panelRef.current?.contains(document.activeElement))) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !panelRef.current?.contains(document.activeElement))) {
+          event.preventDefault(); first.focus();
+        }
       }
     };
 
+    panelRef.current?.querySelector<HTMLElement>("button, a[href]")?.focus();
     window.addEventListener("resize", reposition);
     window.addEventListener("scroll", reposition, true);
     document.addEventListener("pointerdown", handlePointerDown);
@@ -89,7 +116,7 @@ export function NotificationBell() {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, reposition]);
+  }, [isOpen, reposition, closePanel]);
 
   const displayedEntries = useMemo(() => {
     return filter === "unread" ? unreadEntries : entries;
@@ -99,7 +126,7 @@ export function NotificationBell() {
     if (!entry.isRead) {
       markAsRead(entry.key);
     }
-    setIsOpen(false);
+    closePanel();
   };
 
   const renderIcon = (type: NotificationEntry["type"]) => {
@@ -168,20 +195,23 @@ export function NotificationBell() {
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-            <span className="relative inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 font-mono text-[10px] font-bold leading-none text-white shadow-xs">
+            <span className="relative inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 font-mono text-xs font-bold leading-none text-white shadow-xs">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           </span>
         )}
       </button>
 
-      {isOpen &&
+      {(isOpen || isClosing) &&
         typeof document !== "undefined" &&
         createPortal(
           <div
             ref={panelRef}
             id={menuId}
             role="dialog"
+            data-state={isOpen ? "open" : "closed"}
+            aria-hidden={!isOpen}
+            inert={!isOpen}
             aria-label={t.notifications.title}
             style={
               {
@@ -189,44 +219,28 @@ export function NotificationBell() {
                 "--bell-right": `${position.right}px`,
               } as React.CSSProperties
             }
-            className="fixed right-[var(--bell-right)] top-[var(--bell-top)] z-50 flex w-[380px] max-w-[calc(100vw-1.5rem)] max-h-[min(540px,calc(100dvh-var(--bell-top)-1rem))] flex-col rounded-lg border border-line bg-bg font-mono text-xs text-foreground shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
+            className={`${styles.panel} fixed right-[var(--bell-right)] top-[var(--bell-top)] z-50 flex w-[360px] max-w-[calc(100vw-1rem)] max-h-[70vh] flex-col origin-top-right rounded-lg border border-line bg-bg text-[13px] text-foreground shadow-2xl overflow-hidden`}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-line bg-surface/80 px-4 py-3 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Bell className="h-3.5 w-3.5" />
-                </div>
-                <h3 className="font-semibold text-foreground text-sm tracking-tight">
-                  {t.notifications.title}
-                </h3>
+            <div className="flex shrink-0 items-center justify-between gap-1 border-b border-line bg-surface/80 px-3 py-2">
+              <div className="flex min-w-0 items-center gap-1">
+                <Bell className="h-4 w-4 shrink-0 text-primary" />
+                <h3 className="shrink-0 whitespace-nowrap text-[13px] font-semibold">{t.notifications.title}</h3>
                 {unreadCount > 0 && (
-                  <span className="rounded-full bg-primary/20 border border-primary/30 px-2 py-0.5 text-[10px] font-bold text-primary">
+                  <span title={`${unreadCount} ${t.notifications.unread.toLowerCase()}`} className="min-w-0 truncate whitespace-nowrap rounded bg-primary/15 px-1 text-xs text-primary">
                     {unreadCount} {t.notifications.unread.toLowerCase()}
                   </span>
                 )}
               </div>
-
-              <div className="flex items-center gap-1">
+              <div className="flex shrink-0 items-center gap-1">
                 {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={markAllAsRead}
-                    title={t.notifications.markAllRead}
-                    className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-muted hover:bg-surface-2 hover:text-foreground cursor-pointer transition-colors"
-                  >
-                    <CheckCheck className="h-3.5 w-3.5 text-primary" />
-                    <span className="hidden sm:inline">
-                      {t.notifications.markAllRead}
-                    </span>
+                  <button type="button" onClick={markAllAsRead} title={t.notifications.markAllRead} aria-label={t.notifications.markAllRead}
+                    className="flex items-center gap-1 whitespace-nowrap rounded px-1 py-1 text-xs text-muted hover:bg-surface-2 hover:text-foreground focus-visible:outline focus-visible:outline-primary">
+                    <CheckCheck className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span>{t.notifications.markRead}</span>
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="rounded p-1 text-muted hover:bg-surface-2 hover:text-foreground cursor-pointer transition-colors"
-                  aria-label="Close"
-                >
+                <button type="button" onClick={closePanel} aria-label={vi ? "Đóng thông báo" : "Close notifications"}
+                  className="shrink-0 rounded p-1 text-muted hover:bg-surface-2 hover:text-foreground focus-visible:outline focus-visible:outline-primary">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -234,11 +248,12 @@ export function NotificationBell() {
 
             {/* Filter Tabs if there are notifications */}
             {isConnected && totalCount > 0 && (
-              <div className="flex border-b border-line bg-surface/30 px-3 py-1.5 gap-2">
+              <div className="flex shrink-0 flex-nowrap whitespace-nowrap border-b border-line bg-surface/30 px-3 py-1 gap-2">
                 <button
                   type="button"
                   onClick={() => setFilter("all")}
-                  className={`rounded px-2.5 py-1 text-[11px] transition-colors cursor-pointer ${
+                  aria-pressed={filter === "all"}
+                  className={`rounded px-2.5 py-1 text-xs transition-colors cursor-pointer ${
                     filter === "all"
                       ? "bg-surface-2 text-foreground font-semibold"
                       : "text-muted hover:text-foreground"
@@ -249,7 +264,8 @@ export function NotificationBell() {
                 <button
                   type="button"
                   onClick={() => setFilter("unread")}
-                  className={`rounded px-2.5 py-1 text-[11px] transition-colors cursor-pointer ${
+                  aria-pressed={filter === "unread"}
+                  className={`rounded px-2.5 py-1 text-xs transition-colors cursor-pointer ${
                     filter === "unread"
                       ? "bg-surface-2 text-foreground font-semibold"
                       : "text-muted hover:text-foreground"
@@ -261,34 +277,29 @@ export function NotificationBell() {
             )}
 
             {/* List / Empty States */}
-            <div className="flex-1 overflow-y-auto divide-y divide-line/40 overscroll-contain">
+            <div className={`${styles.list} min-h-0 flex-1 overflow-y-auto divide-y divide-line/40 overscroll-contain`}>
               {!isConnected ? (
-                <div className="flex flex-col items-center justify-center px-6 py-10 text-center space-y-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 border border-line text-muted">
-                    <Wallet className="h-6 w-6" />
+                <div className="flex flex-col items-center justify-center px-3 py-5 text-center space-y-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 border border-line text-muted">
+                    <Wallet className="h-4 w-4" />
                   </div>
                   <div className="space-y-1">
                     <p className="font-semibold text-foreground text-xs">
                       {t.notifications.walletPrompt}
                     </p>
-                    <p className="text-[11px] text-muted leading-relaxed">
+                    <p className="text-xs text-muted leading-relaxed">
                       {t.notifications.walletPromptDesc}
                     </p>
                   </div>
                 </div>
               ) : displayedEntries.length === 0 ? (
-                <div className="flex flex-col items-center justify-center px-6 py-10 text-center space-y-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 border border-line text-muted/60">
-                    <BellOff className="h-6 w-6" />
+                <div className="flex flex-col items-center justify-center px-3 py-5 text-center space-y-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 border border-line text-muted/60">
+                    <BellOff className="h-4 w-4" />
                   </div>
                   <div className="space-y-1">
                     <p className="font-semibold text-foreground text-xs">
-                      {filter === "unread"
-                        ? t.notifications.emptyTitle
-                        : t.notifications.emptyTitle}
-                    </p>
-                    <p className="text-[11px] text-muted leading-relaxed">
-                      {t.notifications.emptyDesc}
+                      {vi ? "Chưa có thông báo" : "No notifications"}
                     </p>
                   </div>
                 </div>
@@ -298,16 +309,17 @@ export function NotificationBell() {
                     key={entry.key}
                     href={entry.href}
                     onClick={() => handleEntryClick(entry)}
-                    className={`group flex items-start gap-3 p-3.5 transition-colors cursor-pointer ${
+                    title={`${entry.title}: ${entry.description}`}
+                    className={`group flex min-w-0 items-center gap-2 px-3 py-2 transition-colors cursor-pointer focus-visible:outline focus-visible:outline-primary ${
                       !entry.isRead
                         ? "bg-surface-2/60 hover:bg-surface-2"
                         : "hover:bg-surface/60"
                     }`}
                   >
                     {renderIcon(entry.type)}
-                    <div className="min-w-0 flex-1 space-y-1">
+                    <div className="min-w-0 flex-1 space-y-0.5">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-foreground truncate">
+                        <span title={entry.title} className="min-w-0 font-semibold text-foreground truncate">
                           {entry.title}
                         </span>
                         {!entry.isRead && (
@@ -317,11 +329,10 @@ export function NotificationBell() {
                           />
                         )}
                       </div>
-                      <p className="text-[11px] leading-relaxed text-muted line-clamp-2">
+                      <p title={entry.description} className="text-[13px] leading-snug text-muted line-clamp-1 break-words [overflow-wrap:anywhere]">
                         {entry.description}
                       </p>
                     </div>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted/40 transition-transform group-hover:translate-x-0.5 group-hover:text-muted self-center" />
                   </Link>
                 ))
               )}
@@ -329,21 +340,22 @@ export function NotificationBell() {
 
             {/* Footer with Quick Links */}
             {isConnected && (
-              <div className="flex items-center justify-between border-t border-line bg-surface/50 px-4 py-2.5 text-[11px]">
+              <div className="flex shrink-0 min-w-0 items-center justify-between gap-2 whitespace-nowrap border-t border-line bg-surface/50 px-3 py-2 text-xs">
                 <Link
                   href="/my"
-                  onClick={() => setIsOpen(false)}
-                  className="text-muted hover:text-foreground hover:underline transition-colors cursor-pointer"
+                  onClick={closePanel}
+                  className="min-w-0 truncate whitespace-nowrap text-muted hover:text-foreground hover:underline transition-colors cursor-pointer"
                 >
                   {t.notifications.viewMyActivity} &rarr;
                 </Link>
                 {(isAdmin || isPlatformOwner || isOrganizer) && (
                   <Link
                     href={isPlatformOwner ? "/admin?tab=platform" : "/admin?tab=organizer"}
-                    onClick={() => setIsOpen(false)}
-                    className="text-primary hover:underline transition-colors cursor-pointer"
+                    onClick={closePanel}
+                    title={t.notifications.adminDashboard}
+                    className="min-w-0 truncate whitespace-nowrap text-primary hover:underline transition-colors cursor-pointer"
                   >
-                    {t.notifications.adminDashboard} &rarr;
+                    {vi ? "Quản trị" : "Admin"} &rarr;
                   </Link>
                 )}
               </div>
