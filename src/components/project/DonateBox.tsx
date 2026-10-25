@@ -172,7 +172,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   ];
 
   const handleExecuteDonate = async () => {
-    if (!balance.isReady || !tokenReady || !parsedInput.success || !budgetReady || !canParticipate || error) return;
+    if (!balance.isReady || !tokenReady || !parsedInput.success || !budgetReady || !canParticipate || error || isOwner || isOrganizerUser || hasAlreadyDonated) return;
     const donationAmountBigInt = parsedInput.amount;
     const ok = await donate(projectIdBigInt, donationAmountBigInt);
     if (ok) {
@@ -186,7 +186,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
 
   const isOwner = Boolean(address && project.ownerAddress && address.toLowerCase() === project.ownerAddress.toLowerCase());
   const isRoundClosed = roundStatus !== "open";
-  const hasAlreadyDonated = Boolean(isConnected && userDonatedBigInt > 0n && !openDonations);
+  const hasAlreadyDonated = Boolean(isConnected && userDonatedBigInt > 0n);
   const isMaxAllowanceReached = !noProjectLimit && remainingAllowanceUsdc <= 0;
 
   if (project.rejected || project.status === "rejected") return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><p role="status">{t.rejection.blocked}</p><Button disabled fullWidth>{t.rejection.status}</Button></Frame>;
@@ -204,7 +204,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
       </div>
 
       {token && !tokenReady && <p role="alert">{t.tokenBalance.tokenMismatch}</p>}
-      {!hasAlreadyDonated && !isOrganizerUser && supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
+      {!hasAlreadyDonated && !isOrganizerUser && !isOwner && supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
 
       {/* Round Closed Banner */}
       {isRoundClosed && (
@@ -244,14 +244,10 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
         </div>
       )}
 
-      {!hasAlreadyDonated && !isOrganizerUser && <StudentVerifyBox />}
-      {!hasAlreadyDonated && isStudent && !noRoundLimit && <div className="my-4 border border-line bg-bg p-3 text-sm">
+      {!hasAlreadyDonated && !isOrganizerUser && !isOwner && <StudentVerifyBox />}
+      {!hasAlreadyDonated && !isOwner && isStudent && !noRoundLimit && <div className="my-4 border border-line bg-bg p-3 text-sm">
         {fmt(t.donateBox.roundBudgetRemaining, { remaining: budgetReady ? formatUsdcFixed(roundRemainingUsdc, { includeSymbol: false }) : "—", max: maxPerRound === undefined ? "—" : formatUsdcFixed(Number(maxPerRound) / 1_000_000, { includeSymbol: false }) })}
       </div>}
-
-      {openDonations && userDonatedBigInt > 0n && <p className="mt-3 text-xs text-muted">
-        {fmt(t.donateBox.previousContribution, { amount: formatUsdcFixed(userDonatedUsdc) })}
-      </p>}
 
       {/* Round cũ giữ trạng thái và giới hạn đã deploy. */}
       {hasAlreadyDonated ? (

@@ -33,7 +33,7 @@ export function Podium({
   finalized: boolean;
   canDonate?: boolean;
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { address } = useAccount();
   const [donatingProject, setDonatingProject] = useState<RankedProject | null>(null);
   const targetRoundAddress = roundId && isAddress(roundId) ? (roundId as Address) : undefined;
@@ -79,7 +79,8 @@ export function Podium({
       <div className={`mx-auto grid max-w-6xl items-end gap-4 ${top.length === 1 ? "max-w-md grid-cols-1" : top.length === 2 ? "max-w-3xl grid-cols-2" : "grid-cols-3"}`}>
         {top.map((project, index) => {
           const hasDonated = Boolean(donatedMap.get(project.id));
-          const isDonatable = (canDonate !== undefined ? canDonate : !finalized) && project.status !== "pending" && project.status !== "rejected" && !hasDonated;
+          const isOwner = Boolean(address && project.ownerAddress && address.toLowerCase() === project.ownerAddress.toLowerCase());
+          const isDonatable = (canDonate !== undefined ? canDonate : !finalized) && project.status !== "pending" && project.status !== "rejected" && !hasDonated && !isOwner;
 
           return (
             <article
@@ -90,6 +91,11 @@ export function Podium({
               <div className="flex items-center justify-between gap-2">
                 <RankBadge project={project} large />
                 <div className="flex items-center gap-2">
+                  {isOwner && (
+                    <span className="mono-label text-[11px] text-primary border border-primary/30 bg-primary/10 px-2 py-0.5 rounded-xs">
+                      {locale === "vi" ? "Dự án của bạn" : "Your project"}
+                    </span>
+                  )}
                   {hasDonated && (
                     <span className="mono-label text-[11px] text-money border border-money/30 bg-money/10 px-2 py-0.5 rounded-xs">
                       ✓ {t.donateBox.alreadyDonatedBadge}
@@ -144,10 +150,23 @@ export function Podium({
                 <button
                   type="button"
                   onClick={() => setDonatingProject(project)}
-                  className="mono-label w-full flex min-h-10 items-center justify-center gap-1.5 border border-money text-money bg-money/5 hover:bg-money/15 py-2 px-3 text-xs font-semibold transition-all cursor-pointer active:scale-[0.98] rounded-xs"
+                  disabled={isOwner}
+                  className={`mono-label w-full flex min-h-10 items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold transition-all rounded-xs ${
+                    isOwner
+                      ? "border border-line bg-surface text-muted cursor-not-allowed opacity-60"
+                      : hasDonated
+                        ? "border border-money/40 bg-money/10 text-money cursor-pointer active:scale-[0.98]"
+                        : "border border-money text-money bg-money/5 hover:bg-money/15 cursor-pointer active:scale-[0.98]"
+                  }`}
                 >
                   <Coins className="h-3.5 w-3.5 shrink-0 text-money" />
-                  <span>{t.competition.donateToMe}</span>
+                  <span>
+                    {isOwner
+                      ? (locale === "vi" ? "Dự án của bạn" : "Your project")
+                      : hasDonated
+                        ? `✓ ${t.donateBox.alreadyDonatedBadge}`
+                        : t.competition.donateToMe}
+                  </span>
                 </button>
               </div>
             </article>

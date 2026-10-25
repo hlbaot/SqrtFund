@@ -20,7 +20,7 @@ import { simulateDonationBatch } from "@/lib/qf";
 import { Button } from "@/components/ui/Button";
 
 export function BatchDonationForm({ roundAddress, onBack }: { roundAddress: Address; onBack: () => void }) {
-  const { address } = useAccount(); const { t } = useLocale(); const c = t.phase2;
+  const { address } = useAccount(); const { t, locale } = useLocale(); const c = t.phase2;
   const round = useRound(roundAddress); const { projects } = useProjects(roundAddress);
   const { canParticipate } = useRole(roundAddress); const query = useQueryClient();
   const { donateMany, isPending } = useDonate(roundAddress);
@@ -38,7 +38,7 @@ export function BatchDonationForm({ roundAddress, onBack }: { roundAddress: Addr
   const allocations = selected.map(p => { const result = parseUsdc(amounts[p.id]); return { id: p.id, amount: result.success ? result.amount : 0n, valid: result.success }; });
   const total = allocations.reduce((sum, a) => sum + a.amount, 0n);
   const loaded = typeof roundRemaining === "bigint" && balance.isReady && tokenMatchesConfigured(round.token) && donations.data?.length === approved.length && donations.data.every(r => r.status === "success");
-  const invalid = !round.minDonation || !round.maxDonation || allocations.some(a => !a.valid || donationLimit(a.amount, round.minDonation!, round.maxDonation!, donorTotals[a.id] ?? 0n, roundRemaining ?? 0n) !== null) || total > (roundRemaining ?? 0n);
+  const invalid = !round.minDonation || !round.maxDonation || allocations.some(a => !a.valid || (donorTotals[a.id] ?? 0n) > 0n || donationLimit(a.amount, round.minDonation!, round.maxDonation!, donorTotals[a.id] ?? 0n, roundRemaining ?? 0n) !== null) || total > (roundRemaining ?? 0n);
   const insufficient = balance.isReady && balance.balance !== undefined && total > balance.balance;
   const expected = simulateDonationBatch(approved.map(p => ({ id: p.id, sumSqrt: p.sumSqrtRaw, totalDonated: p.totalDonatedRaw })), donorTotals, allocations, round.pool, round.maxMatchBps ?? 3000n);
   async function submit() {
@@ -54,13 +54,39 @@ export function BatchDonationForm({ roundAddress, onBack }: { roundAddress: Addr
     <MatchingPoolWarning totalRaw={expected.reduce((sum, p) => sum + p.raw, 0n)} pool={round.pool} />
     {!noRoundLimit && <p className="text-sm">{t.donateBox.roundBudgetRemaining.replace("{remaining}", formatUnits(roundRemaining ?? 0n, 6)).replace("{max}", formatUnits(round.maxPerRound ?? 0n, 6))}</p>}
     <div className="max-h-[28rem] space-y-3 overflow-auto">
-      {approved.map(p => <div key={p.id} className="space-y-2 border border-line p-3">
-        <label className="block text-sm"><span className="font-semibold">{p.name}</span><input aria-label={`${c.allocation}: ${p.name}`} type="text" inputMode="decimal" autoComplete="off" placeholder="0 USDC" value={amounts[p.id] ?? ""}
-          disabled={!canParticipate || !loaded || isPending || round.status !== "open" || p.ownerAddress.toLowerCase() === address?.toLowerCase()}
-          onChange={event => setAmounts(current => ({ ...current, [p.id]: event.target.value }))}
-          className="mt-2 w-full border border-line bg-bg p-2" /></label>
-        <p className="text-xs text-money">{c.expectedMatching}: {formatUnits(expected.find(item => String(item.id) === p.id)?.payout ?? 0n, 6)} USDC</p>
-      </div>)}
+      {approved.map(p => {
+        const isOwnerProject = Boolean(address && p.ownerAddress && p.ownerAddress.toLowerCase() === address.toLowerCase());
+        const hasAlreadyDonatedProject = (donorTotals[p.id] ?? 0n) > 0n;
+        return (
+          <div key={p.id} className="space-y-2 border border-line p-3">
+            <label className="block text-sm">
+              <span className="font-semibold">{p.name}</span>
+              {isOwnerProject && (
+                <span className="ml-2 text-xs text-primary font-normal">
+                  ({locale === "vi" ? "Dự án của bạn - Không thể tự donate" : "Your project - Cannot self-donate"})
+                </span>
+              )}
+              {!isOwnerProject && hasAlreadyDonatedProject && (
+                <span className="ml-2 text-xs text-money font-normal">
+                  ({locale === "vi" ? "Đã ủng hộ" : "Already supported"})
+                </span>
+              )}
+              <input
+                aria-label={`${c.allocation}: ${p.name}`}
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder={hasAlreadyDonatedProject ? (locale === "vi" ? "Đã ủng hộ" : "Already supported") : "0 USDC"}
+                value={amounts[p.id] ?? ""}
+                disabled={!canParticipate || !loaded || isPending || round.status !== "open" || isOwnerProject || hasAlreadyDonatedProject}
+                onChange={event => setAmounts(current => ({ ...current, [p.id]: event.target.value }))}
+                className="mt-2 w-full border border-line bg-bg p-2 disabled:opacity-50"
+              />
+            </label>
+            <p className="text-xs text-money">{c.expectedMatching}: {formatUnits(expected.find(item => String(item.id) === p.id)?.payout ?? 0n, 6)} USDC</p>
+          </div>
+        );
+      })}
     </div>
     <p className="font-semibold">{c.total}: {formatUnits(total, 6)} USDC</p>
     {selected.length > 0 && (invalid || insufficient) && <p role="alert" className="text-sm text-primary">{insufficient ? c.insufficientBalance : c.invalidAllocation}</p>}
