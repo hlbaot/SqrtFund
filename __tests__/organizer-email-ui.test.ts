@@ -3,6 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
 const f = vi.hoisted(() => ({ expired: false, verified: false, hasChallenge: false, code: "", reset: vi.fn() }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
+vi.mock("wagmi", () => ({ useSignMessage: () => ({ signMessageAsync: vi.fn() }) }));
+vi.mock("@/hooks/useFormDraft", () => ({ useFormDraft: (_key: string, defaults: Record<string, string>) => ({ values: defaults, ready: true, setField: vi.fn() }) }));
 vi.mock("@/components/ui/Dialog", () => ({ Dialog: ({children}: {children: ReactNode}) => createElement("div", null, children) }));
 vi.mock("@/hooks/useOrganizerApplications", () => ({ useMyOrganizerApplication: () => ({application:null,isPending:false,refetch:vi.fn()}) }));
 vi.mock("@/hooks/useOrganizerEmailOtp", () => ({ useOrganizerEmailOtp: () => ({expired:f.expired,expiresIn:f.expired ? 0 : 60,verified:f.verified,hasChallenge:f.hasChallenge,code:f.code,busy:false,resendIn:0,reset:f.reset,setCode:vi.fn(),requestOtp:vi.fn(),verifyOtp:vi.fn()}) }));

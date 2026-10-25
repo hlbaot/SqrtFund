@@ -5,6 +5,10 @@ import { api, ApiError } from "@/lib/api";
 
 import React, { useState } from "react";
 import { isAddress } from "viem";
+import { useSignMessage } from "wagmi";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { organizerReapplicationMessage } from "@/lib/organizerReapplication";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog } from "@/components/ui/Dialog";
 import { OtpInput } from "@/components/ui/OtpInput";
@@ -36,6 +40,8 @@ interface ApplyOrganizerModalProps {
   isPlatformOwner?: boolean;
 }
 
+const APPLICATION_DEFAULTS = { orgName: "", email: "", reason: "" };
+
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
 function OrganizerApplicationForm({
@@ -53,25 +59,47 @@ function OrganizerApplicationForm({
     application,
     isPending,
     isRevoked,
+    isLoading: isApplicationLoading,
     refetch,
   } = useMyOrganizerApplication(walletAddress);
 
-  const [orgName, setOrgName] = useState("");
-  const [email, setEmail] = useState("");
-  const [reason, setReason] = useState("");
+  const draft = useFormDraft(walletAddress && !isApplicationLoading
+    ? `sqrt-fund:organizer-application-draft:${TARGET_CHAIN_ID}:${walletAddress.toLowerCase()}` : undefined,
+    APPLICATION_DEFAULTS, () => ({ orgName: application?.organizationName ?? "", email: application?.contactEmail ?? "", reason: application?.reason ?? "" }));
+  const { orgName, email, reason } = draft.values;
+  const setOrgName = (value: string) => draft.setField("orgName", value);
+  const setEmail = (value: string) => draft.setField("email", value);
+  const setReason = (value: string) => draft.setField("reason", value);
+  const { signMessageAsync } = useSignMessage();
   const [fieldErrors, setFieldErrors] = useState<{ orgName?: string; email?: string; reason?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const emailOtp = useOrganizerEmailOtp(walletAddress, email);
   const vi = locale === "vi";
+  const reuseEmail = Boolean(application?.emailVerifiedAt && (application.status === "revoked" || application.status === "rejected")
+    && application.walletAddress.toLowerCase() === walletAddress?.toLowerCase()
+    && application.contactEmail.trim().toLowerCase() === email.trim().toLowerCase());
+  const emailVerified = emailOtp.verified || reuseEmail;
   const otpRequired = vi ? "Vui lòng xác thực email liên hệ bằng OTP trước khi gửi đơn." : "Verify your contact email with an OTP before submitting.";
 
   // Revocation detail state
   const [showRevocationDetails, setShowRevocationDetails] = useState(false);
   const [isReapplying, setIsReapplying] = useState(false);
 
+  const startReapplying = () => {
+    if (!application) return;
+    setOrgName(application.organizationName);
+    setEmail(application.contactEmail);
+    setReason(application.reason);
+    emailOtp.reset();
+    setFieldErrors({});
+    setIsReapplying(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(undefined);
     if (!walletAddress || !isAddress(walletAddress)) {
       txToast.error("apply-org-error", c.validationWallet);
       return;
@@ -93,19 +121,23 @@ function OrganizerApplicationForm({
       return;
     }
     setFieldErrors({});
-    if (!emailOtp.verified) {
+    if (!emailVerified) {
       setFieldErrors({ email: otpRequired });
       return;
     }
 
     setIsSubmitting(true);
     try {
+      const input = { walletAddress: walletAddress.trim(), organizationName: orgName.trim(), contactEmail: email.trim(), reason: reason.trim() };
+      let signedReapplication = {};
+      if (reuseEmail && application) {
+        const reapplication = { ...input, applicationId: application.id, expectedUpdatedAt: application.updatedAt, issuedAt: Date.now() };
+        const signature = await signMessageAsync({ account: walletAddress as `0x${string}`,
+          message: organizerReapplicationMessage(reapplication, factoryAddress, TARGET_CHAIN_ID) });
+        signedReapplication = { ...reapplication, signature };
+      }
       const { data } = await api.post("/api/organizer-applications", {
-        walletAddress: walletAddress.trim(),
-        organizationName: orgName.trim(),
-        contactEmail: email.trim(),
-        reason: reason.trim(),
-        emailVerificationToken: emailOtp.token,
+        ...input, emailVerificationToken: emailOtp.token, ...signedReapplication,
       });
       if (!data.ok) throw new ApiError(data.error || "Submission failed");
 
@@ -117,6 +149,12 @@ function OrganizerApplicationForm({
       void refetch();
     } catch (err) {
       if (err instanceof ApiError) {
+        if (reuseEmail && ["EMAIL_NOT_VERIFIED", "EMAIL_ALREADY_USED", "WALLET_ALREADY_VERIFIED"].includes(err.code)) {
+          setFieldErrors({});
+          setSubmitError(vi ? "Chưa gửi được yêu cầu. Vui lòng thử lại." : "Could not resubmit your application. Please retry.");
+          void refetch();
+          return;
+        }
         if (err.code === "EMAIL_NOT_VERIFIED") {
           emailOtp.reset(); setFieldErrors({ email: otpRequired }); return;
         }
@@ -163,7 +201,9 @@ function OrganizerApplicationForm({
         </div>
 
         {/* State 1: Already Organizer on-chain */}
-        {isOrganizer ? (
+        {isApplicationLoading || (walletAddress && !draft.ready) ? (
+          <p role="status" className="py-4 text-sm text-muted">{t.common.loading}</p>
+        ) : isOrganizer ? (
           <div className="space-y-4 py-2">
             <StatusAlert
               tone="success"
@@ -282,7 +322,8 @@ function OrganizerApplicationForm({
                   <Button
                     type="button"
                     variant="primary"
-                    onClick={() => { setShowRevocationDetails(false); setIsReapplying(true); }}
+                    disabled={!draft.ready || isApplicationLoading}
+                    onClick={() => { setShowRevocationDetails(false); startReapplying(); }}
                   >
                     <Send className="h-3.5 w-3.5 mr-1.5" />
                     {vi ? "Gửi yêu cầu lại" : "Re-apply"}
@@ -298,7 +339,8 @@ function OrganizerApplicationForm({
                 </Button>
                 <Button
                   variant="primary"
-                  onClick={() => setIsReapplying(true)}
+                  disabled={!draft.ready || isApplicationLoading}
+                  onClick={startReapplying}
                 >
                   <Send className="h-3.5 w-3.5 mr-1.5" />
                   {vi ? "Gửi yêu cầu lại" : "Re-apply"}
@@ -323,9 +365,6 @@ function OrganizerApplicationForm({
                 error={fieldErrors.orgName}
                 required
               />
-              {fieldErrors.orgName && (
-                <p className="text-xs text-destructive">{fieldErrors.orgName}</p>
-              )}
             </div>
 
             <div className="space-y-1.5">
@@ -338,15 +377,12 @@ function OrganizerApplicationForm({
                 value={email}
                 onChange={e => { setEmail(e.target.value); emailOtp.reset(); setFieldErrors(previous => ({ ...previous, email: undefined })); }}
                 placeholder={c.emailPlaceholder}
-                disabled={isSubmitting || emailOtp.busy}
-                error={fieldErrors.email}
+                disabled={isSubmitting || emailOtp.busy || reuseEmail}
+                error={reuseEmail ? undefined : fieldErrors.email}
                 required
               />
-              {fieldErrors.email && (
-                <p className="text-xs text-destructive">{fieldErrors.email}</p>
-              )}
               <div className="space-y-3 pt-2">
-                {emailOtp.verified ? <Badge variant="accent">{vi ? "Email đã xác thực" : "Email verified"}</Badge> : <>
+                {emailVerified ? <Badge variant="accent">{vi ? "Email đã xác thực" : "Email verified"}</Badge> : <>
                   <Button type="button" variant="outline" onClick={() => void emailOtp.requestOtp()}
                     disabled={isSubmitting || emailOtp.busy || emailOtp.resendIn > 0 || !validContactEmail(email) || !walletAddress}>
                     {emailOtp.busy ? (vi ? "Đang xử lý…" : "Processing…") : emailOtp.resendIn > 0 ? `${vi ? "Gửi lại sau" : "Resend in"} ${emailOtp.resendIn}s` : (vi ? "Gửi mã OTP" : "Send OTP")}
@@ -365,10 +401,11 @@ function OrganizerApplicationForm({
                     </div>
                   </div>}
                 </>}
-                {emailOtp.error && <p role="alert" className="text-xs text-primary">{emailOtp.error in t.verification.emailErrors
+                {!reuseEmail && emailOtp.error && <p role="alert" className="text-xs text-primary">{emailOtp.error in t.verification.emailErrors
                   ? t.verification.emailErrors[emailOtp.error as keyof typeof t.verification.emailErrors]
                   : (vi ? "Không thể xác thực email. Vui lòng thử lại." : "Email verification failed. Please retry.")}</p>}
-                <p className="text-xs text-muted">{vi ? "Mã có hiệu lực 5 phút. Xác thực email không cấp quyền Organizer và không yêu cầu email trường." : "Codes expire after 5 minutes. Email verification does not grant Organizer access; a university email is not required."}</p>
+                {reuseEmail && <p className="text-xs text-muted">{vi ? "Thông tin đơn cũ đã được khôi phục. Ký xác nhận bằng ví để gửi lại, không cần OTP mới." : "Your previous application is restored. Sign with your wallet to reapply without another OTP."}</p>}
+                {!reuseEmail && <p className="text-xs text-muted">{vi ? "Mã có hiệu lực 5 phút. Xác thực email không cấp quyền Organizer và không yêu cầu email trường." : "Codes expire after 5 minutes. Email verification does not grant Organizer access; a university email is not required."}</p>}
               </div>
             </div>
 
@@ -391,12 +428,13 @@ function OrganizerApplicationForm({
               )}
             </div>
 
+            {submitError && <p role="alert" className="text-sm text-muted">{submitError}</p>}
             <div className="pt-3 flex items-center justify-end gap-3 border-t border-line">
               <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                 {t.common.cancel}
               </Button>
-              <Button type="submit" variant="primary" disabled={isSubmitting || emailOtp.busy || !walletAddress || !emailOtp.verified}>
-                {isSubmitting ? c.submitting : c.submitBtn}
+              <Button type="submit" variant="primary" disabled={isSubmitting || emailOtp.busy || !walletAddress || !emailVerified || !draft.ready || isApplicationLoading}>
+                {isSubmitting ? c.submitting : isReapplying ? (vi ? "Gửi lại yêu cầu" : "Resubmit application") : c.submitBtn}
               </Button>
             </div>
           </form>

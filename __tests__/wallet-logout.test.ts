@@ -21,7 +21,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.stubGlobal("window", {
     localStorage: memoryStorage(), sessionStorage: memoryStorage(),
-    location: { replace: vi.fn() },
+    location: { replace: vi.fn(), reload: vi.fn() },
     addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn(),
   });
 });
@@ -54,7 +54,8 @@ describe("wallet logout persistence", () => {
     await session.logoutWallet(() => disconnect(config), client);
     expect(config.state.status).toBe("disconnected");
     expect(client.getQueryCache().getAll()).toEqual([]);
-    expect(window.location.replace).toHaveBeenCalledWith("/");
+    expect(window.location.replace).not.toHaveBeenCalled();
+    expect(window.location.reload).not.toHaveBeenCalled();
     expect(window.localStorage.getItem(seenKey)).toBe('["refund:0xround"]');
     expect(Object.keys(window.localStorage).filter(key => key.startsWith("wagmi"))).toEqual(["wagmi.test-core.disconnected"]);
     // The retained shim blocks authorization even though the provider still exposes accounts.
@@ -80,7 +81,8 @@ describe("wallet logout persistence", () => {
     await expect(session.logoutWallet(async () => { throw new Error("Provider disconnected"); }, client)).resolves.toBeUndefined();
     expect(session.isWalletLoggedOut()).toBe(true);
     expect(client.getQueryCache().getAll()).toEqual([]);
-    expect(window.location.replace).toHaveBeenCalledWith("/");
+    expect(window.location.replace).not.toHaveBeenCalled();
+    expect(window.location.reload).not.toHaveBeenCalled();
   });
 
   it("retains logout intent after a rejected reconnect and tolerates unavailable storage", async () => {
@@ -94,4 +96,18 @@ describe("wallet logout persistence", () => {
     session.markWalletConnected();
     expect(session.isWalletLoggedOut()).toBe(false);
   });
+});
+
+it("allows another connect/logout cycle without remounting the page", async () => {
+  const session = await import("../src/lib/walletSession");
+  const client = new QueryClient();
+  const disconnect = vi.fn().mockResolvedValue(undefined);
+  await session.logoutWallet(disconnect, client);
+  session.markWalletConnected();
+  expect(session.isWalletLoggedOut()).toBe(false);
+  await session.logoutWallet(disconnect, client);
+  expect(disconnect).toHaveBeenCalledTimes(2);
+  expect(session.isWalletLoggedOut()).toBe(true);
+  expect(window.location.reload).not.toHaveBeenCalled();
+  expect(window.location.replace).not.toHaveBeenCalled();
 });

@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
 import { useProjects } from "@/hooks/useProjects";
 import { Podium } from "@/components/leaderboard/Podium";
+import { Leaderboard } from "@/components/leaderboard/Leaderboard";
 import { matchingValue, rankProjects } from "@/components/leaderboard/model";
 
 const f = vi.hoisted(() => ({
@@ -58,6 +59,17 @@ it("keeps estimates for open rounds and does not expose cached payouts as final"
   expect(f.payoutEnabled).toBe(false);
   expect(projects.every(project => project.finalMatching === undefined)).toBe(true);
   expect(matchingValue(projects[0], false)).toBe(60);
+});
+it.each([
+  { finalized: false, canDonate: false, cancelled: false },
+  { finalized: true, canDonate: true, cancelled: false },
+  { finalized: false, canDonate: false, cancelled: true },
+])("hides project donation actions after a round closes: %s", lifecycle => {
+  const { projects } = probe();
+  const html = renderToStaticMarkup(createElement(Leaderboard, { projects, roundId: roundAddress, pool: 20, ...lifecycle }));
+  expect(html).not.toContain("DONATE");
+  expect(html).not.toContain('class="mono-label w-full flex min-h-10');
+  expect(html).toContain("Project 1");
 });
 it("does not replace a failed final read with an estimate or a fabricated zero", () => {
   f.failedId = 1;

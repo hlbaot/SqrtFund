@@ -54,7 +54,7 @@ export function WalletWatcher() {
     if (shouldReload(prevState, nextState)) {
       prevRef.current = nextState;
       if (prevState.address && (status === "disconnected" || !currentAddress)) {
-        // Disconnect: clear and replace to '/'
+        // Disconnect: clear wallet state in place without restarting the page background.
         void logoutWallet(disconnectAsync, queryClient).catch(() => {});
       } else if (
         prevState.address &&
