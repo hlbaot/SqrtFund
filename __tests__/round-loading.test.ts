@@ -105,3 +105,6 @@ it("treats missing maxPerRound as legacy and skips modern reads on subsequent po
   await loadRoundFields(read,good,cache);
   expect(read.mock.calls[2][0].map(c=>c.functionName)).toEqual([...roundCoreFunctions]);
 });
+
+// This static render has no Next router; query pagination starts on page one.
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));

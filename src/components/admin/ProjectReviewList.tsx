@@ -1,11 +1,12 @@
 "use client";
 
+import { Pagination } from "@/components/common/Pagination";
+
 import { useId, useState } from "react";
 import { Inbox, Search } from "lucide-react";
 import { useLocale } from "@/lib/context/locale";
 import { filterReviewProjects, projectReviewCopy, projectReviewStatus, type ReviewFilter } from "@/lib/projectReview";
 import { PendingProjectCard, type PendingProjectCardProps, type ReviewProject } from "./PendingProjectCard";
-import { Button } from "@/components/ui/Button";
 import { StatusAlert } from "@/components/ui/StatusAlert";
 
 type ReviewListProps = Omit<PendingProjectCardProps, "project" | "expanded" | "onToggle" | "onAction"> & {
@@ -44,34 +45,7 @@ export function ProjectReviewList({ projects, isLoading, isError, onRetry, ...ac
     <p aria-live="polite" className="text-xs text-muted">{isLoading ? c.loading : c.count.replace("{shown}", String(visibleProjects.length)).replace("{total}", String(projects.length))}</p>
     {isError ? <StatusAlert tone="error" title={c.readError}>{onRetry && <button type="button" onClick={onRetry} className="rounded-sm font-semibold underline transition-colors hover:text-primary focus-visible:outline focus-visible:outline-primary">{c.retry}</button>}</StatusAlert> : <ProjectReviewResults id={resultsId} projects={visibleProjects} isLoading={isLoading} isFiltered={Boolean(query.trim()) || filter !== "all"} expanded={expanded} onToggle={id => setExpanded(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; })} {...actions} />}
     {!isLoading && !isError && totalPages > 1 && (
-      <div className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="font-mono text-xs text-muted" role="status">
-          {locale === "vi" ? "Hiển thị" : "Showing"} {pageStart + 1}–{Math.min(pageStart + PROJECTS_PAGE_SIZE, sorted.length)} / {sorted.length}
-        </p>
-        <nav aria-label={locale === "vi" ? "Phân trang duyệt dự án" : "Project review pagination"} className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="ghost" size="sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} aria-controls={resultsId}>
-            {locale === "vi" ? "Trước" : "Previous"}
-          </Button>
-          {Array.from({ length: totalPages }, (_, index) => index + 1).map(pageNumber => (
-            <Button
-              key={pageNumber}
-              type="button"
-              variant={pageNumber === currentPage ? "primary" : "ghost"}
-              size="sm"
-              aria-label={`${locale === "vi" ? "Trang" : "Page"} ${pageNumber}`}
-              aria-current={pageNumber === currentPage ? "page" : undefined}
-              aria-controls={resultsId}
-              onClick={() => setPage(pageNumber)}
-              className="min-w-10 font-mono"
-            >
-              {pageNumber}
-            </Button>
-          ))}
-          <Button type="button" variant="ghost" size="sm" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)} aria-controls={resultsId}>
-            {locale === "vi" ? "Sau" : "Next"}
-          </Button>
-        </nav>
-      </div>
+      <Pagination page={currentPage} pageSize={PROJECTS_PAGE_SIZE} total={sorted.length} onPageChange={setPage} controls={resultsId} label={locale === "vi" ? "Phân trang duyệt dự án" : "Pagination"} />
     )}
   </section>;
 }

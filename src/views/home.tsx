@@ -226,7 +226,7 @@ export function HomeView() {
       {/* 1. Hero Section: Takes 100% of the viewport height below header */}
       <section
         id="intro"
-        className="relative flex flex-col justify-center scroll-mt-20 overflow-hidden bg-[#07070c]"
+        className="relative flex flex-col justify-center scroll-mt-20 overflow-hidden bg-bg"
         style={{ minHeight: `calc(100dvh - ${headerHeight}px)` }}
       >
         {/* AeroShards 3D Cyber Shards Background - ONLY in Hero */}
@@ -253,11 +253,11 @@ export function HomeView() {
         {/* Layer 2: Aurora glows (Top-left red/orange ~12%, Bottom-right green ~10%) */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-28 -left-20 z-0 h-[480px] w-[540px] rounded-full bg-[#ef4444] opacity-[0.12] blur-[140px]"
+          className="pointer-events-none absolute -top-28 -left-20 z-0 h-[480px] w-[540px] rounded-full bg-primary opacity-[0.12] blur-[140px]"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-28 -right-16 z-0 h-[520px] w-[560px] rounded-full bg-[#22c55e] opacity-[0.10] blur-[150px]"
+          className="pointer-events-none absolute -bottom-28 -right-16 z-0 h-[520px] w-[560px] rounded-full bg-money opacity-[0.10] blur-[150px]"
         />
 
         {/* Layer 3: Noise / grain texture (opacity ~3.5%) */}

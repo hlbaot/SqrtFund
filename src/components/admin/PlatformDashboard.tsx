@@ -1,7 +1,9 @@
 "use client";
 
+import { Pagination } from "@/components/common/Pagination";
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { isAddress, isHash, type Address } from "viem";
+import { isHash, type Address } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
@@ -564,33 +566,7 @@ export function PlatformDashboard({
         )}
 
         {totalPages > 1 && (
-          <div className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="font-mono text-xs text-muted" role="status">
-              {locale === "vi" ? "Hiển thị" : "Showing"} {pageStart + 1}–{Math.min(pageStart + APPLICATIONS_PAGE_SIZE, applications.length)} / {applications.length}
-            </p>
-            <nav aria-label={locale === "vi" ? "Phân trang đơn Organizer" : "Organizer applications pagination"} className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="ghost" size="sm" disabled={currentPage === 1} onClick={() => setAppsPage(currentPage - 1)}>
-                {locale === "vi" ? "Trước" : "Previous"}
-              </Button>
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
-                <Button
-                  key={page}
-                  type="button"
-                  variant={page === currentPage ? "primary" : "ghost"}
-                  size="sm"
-                  aria-label={`${locale === "vi" ? "Trang" : "Page"} ${page}`}
-                  aria-current={page === currentPage ? "page" : undefined}
-                  onClick={() => setAppsPage(page)}
-                  className="min-w-10 font-mono"
-                >
-                  {page}
-                </Button>
-              ))}
-              <Button type="button" variant="ghost" size="sm" disabled={currentPage === totalPages} onClick={() => setAppsPage(currentPage + 1)}>
-                {locale === "vi" ? "Sau" : "Next"}
-              </Button>
-            </nav>
-          </div>
+          <Pagination page={currentPage} pageSize={APPLICATIONS_PAGE_SIZE} total={applications.length} onPageChange={setAppsPage} label={locale === "vi" ? "Phân trang đơn Organizer" : "Pagination"} />
         )}
       </section>
 

@@ -160,17 +160,17 @@ export function HowItWorksTimeline() {
                   className="relative border border-line bg-surface/80 backdrop-blur-sm p-6 rounded-[4px]"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-[4px] border border-[#E84142] bg-surface text-white">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-[4px] border border-primary bg-surface text-white">
                       <Icon className="h-5 w-5" />
                     </div>
-                    <span className="font-mono text-[11px] font-bold tracking-[0.1em] text-[#71717A]">
+                    <span className="font-mono text-xs font-bold tracking-[0.1em] text-muted">
                       STEP {s.step}
                     </span>
                   </div>
                   <h3 className="mt-6 text-[20px] font-semibold text-white">
                     {isVi ? s.titleVi : s.titleEn}
                   </h3>
-                  <p className="mt-2 text-[14px] leading-relaxed text-[#A1A1AA]">
+                  <p className="mt-2 text-[14px] leading-relaxed text-muted">
                     {isVi ? s.descVi : s.descEn}
                   </p>
                 </div>
@@ -226,7 +226,7 @@ export function HowItWorksTimeline() {
 
               {/* Active Progress Fill Line: 1px Solid Red #E84142 */}
               <div
-                className="absolute left-[8%] top-[86px] h-[1px] -translate-y-1/2 bg-[#E84142] transition-all duration-150 ease-out"
+                className="absolute left-[8%] top-[86px] h-[1px] -translate-y-1/2 bg-primary transition-all duration-150 ease-out"
                 style={{
                   width: `calc((100% - 16%) * ${trackFill / 100})`,
                 }}
@@ -234,7 +234,7 @@ export function HowItWorksTimeline() {
                 {/* Solid 6px Red Dot at Leading Edge (NO GLOW) */}
                 {trackFill > 0 && trackFill < 100 && (
                   <span
-                    className="absolute right-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 translate-x-1/2 rounded-full bg-[#E84142]"
+                    className="absolute right-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary"
                   />
                 )}
               </div>
@@ -252,9 +252,7 @@ export function HowItWorksTimeline() {
                   return (
                     <div
                       key={s.step}
-                      className={`relative flex flex-col items-center text-center transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                        isConfirmed ? "opacity-100" : "opacity-35"
-                      } ${!isCurrentActive && isConfirmed ? "opacity-60" : ""}`}
+                      className="relative flex flex-col items-center text-center transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
                     >
                       {/* Big Journey Number Watermark behind Node: "01", "02", "03" (64-88px) */}
                       <span
@@ -270,21 +268,21 @@ export function HowItWorksTimeline() {
                       <div className="mb-3 flex flex-col items-center h-10 justify-end z-10">
                         {isConfirmed ? (
                           <div className="flex flex-col items-center transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]">
-                            <div className="font-mono flex items-center gap-1.5 text-[11px] font-medium tracking-[0.1em] text-white">
+                            <div className="font-mono flex items-center gap-1.5 text-xs font-medium tracking-[0.1em] text-white">
                               <span>BLOCK {s.step}</span>
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#22c55e] inline-block" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-money inline-block" />
                               <span>CONFIRMED</span>
                             </div>
-                            <span className="font-mono text-[10px] text-[#71717A] tracking-[0.05em] mt-0.5">
+                            <span className="font-mono text-xs text-muted tracking-[0.05em] mt-0.5">
                               {s.blockNum} ({s.hash})
                             </span>
                           </div>
                         ) : (
                           <div className="flex flex-col items-center">
-                            <span className="font-mono text-[10px] tracking-[0.1em] text-[#71717A]">
+                            <span className="font-mono text-xs tracking-[0.1em] text-muted">
                               BLOCK {s.step} · PENDING
                             </span>
-                            <span className="font-mono text-[10px] text-transparent select-none mt-0.5">
+                            <span className="font-mono text-xs text-transparent select-none mt-0.5">
                               placeholder
                             </span>
                           </div>
@@ -296,7 +294,7 @@ export function HowItWorksTimeline() {
                         {/* 1 single 1px ripple wave when active (600ms) */}
                         {isCurrentActive && (
                           <span
-                            className="absolute -inset-2 rounded-[4px] border border-[#E84142]/40 animate-ping pointer-events-none"
+                            className="absolute -inset-2 rounded-[4px] border border-primary/40 animate-ping pointer-events-none"
                             style={{ animationDuration: "1.2s" }}
                           />
                         )}
@@ -304,8 +302,8 @@ export function HowItWorksTimeline() {
                         <div
                           className={`relative flex h-14 w-14 items-center justify-center rounded-[4px] border bg-surface/90 backdrop-blur-sm transition-all duration-400 ${
                             isConfirmed
-                              ? "border-[#E84142] text-white shadow-[0_0_15px_rgba(232,65,66,0.15)]"
-                              : "border-line text-[#71717A]"
+                              ? "border-primary text-white shadow-[0_0_15px_rgba(232,65,66,0.15)]"
+                              : "border-line text-muted"
                           }`}
                         >
                           <Icon className="h-5 w-5" />
@@ -315,10 +313,10 @@ export function HowItWorksTimeline() {
                       {/* Bottom Step Content (Slide up 12px + fade) */}
                       <div
                         className={`mt-4 flex flex-col items-center max-w-[240px] z-10 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                          isConfirmed ? "translate-y-0 opacity-100" : "translate-y-3 opacity-40"
+                          isConfirmed ? "translate-y-0 opacity-100" : "translate-y-3 opacity-100"
                         }`}
                       >
-                        <span className="font-mono text-[11px] tracking-[0.1em] text-[#71717A] uppercase">
+                        <span className="font-mono text-xs tracking-[0.1em] text-muted uppercase">
                           STEP {s.step}
                         </span>
 
@@ -326,7 +324,7 @@ export function HowItWorksTimeline() {
                           {isVi ? s.titleVi : s.titleEn}
                         </h3>
 
-                        <p className="mt-1 text-[14px] leading-relaxed text-[#A1A1AA]">
+                        <p className="mt-1 text-[14px] leading-relaxed text-muted">
                           {isVi ? s.descVi : s.descEn}
                         </p>
 
@@ -340,9 +338,9 @@ export function HowItWorksTimeline() {
                               }`}
                             >
                               <div className="truncate">
-                                <span className="text-[#E84142]">&gt; </span>
+                                <span className="text-primary">&gt; </span>
                                 <span>{typedCommand}</span>
-                                <span className="inline-block w-1.5 h-3 ml-0.5 bg-[#E84142] animate-pulse align-middle" />
+                                <span className="inline-block w-1.5 h-3 ml-0.5 bg-primary animate-pulse align-middle" />
                               </div>
                             </div>
                           )}
@@ -372,8 +370,8 @@ export function HowItWorksTimeline() {
                             >
                               <div className="flex items-center gap-2 font-mono text-xs text-white">
                                 <span>(√N)² amplification</span>
-                                <span className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
-                                <span className="text-[11px] text-[#A1A1AA]">distributed</span>
+                                <span className="h-1.5 w-1.5 rounded-full bg-money" />
+                                <span className="text-xs text-muted">distributed</span>
                               </div>
                             </div>
                           )}
@@ -416,16 +414,16 @@ export function HowItWorksTimeline() {
               return (
                 <div key={s.step} className="relative flex items-start gap-4">
                   {/* Vertical Node: 38px Square, rounded-[4px], border #E84142 */}
-                  <div className="relative -left-[14px] flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-[#E84142] bg-surface text-white">
+                  <div className="relative -left-[14px] flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-primary bg-surface text-white">
                     <Icon className="h-4 w-4" />
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 space-y-1 pt-0.5">
-                    <div className="font-mono flex flex-wrap items-center gap-2 text-[11px] text-white">
+                    <div className="font-mono flex flex-wrap items-center gap-2 text-xs text-white">
                       <span>STEP {s.step}</span>
-                      <span className="text-[#71717A]">·</span>
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
+                      <span className="text-muted">·</span>
+                      <span className="h-1.5 w-1.5 rounded-full bg-money" />
                       <span>CONFIRMED</span>
                     </div>
 
@@ -433,11 +431,11 @@ export function HowItWorksTimeline() {
                       {isVi ? s.titleVi : s.titleEn}
                     </h3>
 
-                    <p className="text-[13px] text-[#A1A1AA] leading-relaxed">
+                    <p className="text-[13px] text-muted leading-relaxed">
                       {isVi ? s.descVi : s.descEn}
                     </p>
 
-                    <div className="pt-1 font-mono text-[10px] text-[#71717A]">
+                    <div className="pt-1 font-mono text-xs text-muted">
                       hash: {s.hash}
                     </div>
                   </div>

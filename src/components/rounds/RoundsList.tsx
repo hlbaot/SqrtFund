@@ -1,6 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Pagination } from "@/components/common/Pagination";
+import { paginateRounds, parsePage, ROUNDS_GRID, ROUNDS_PAGE_SIZE, type RoundFilter } from "./pagination";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useLocale } from "@/lib/context/locale";
@@ -17,6 +20,7 @@ export interface RoundsListProps {
   rounds: RoundSummary[];
   state?: ViewState;
   isAdmin?: boolean;
+  paginationReady?: boolean;
   onRetry?: () => void;
 }
 
@@ -45,7 +49,7 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
 
   return (
     <article
-      className={`relative flex h-full min-w-0 flex-col bg-surface p-5 sm:p-6 ${
+      className={`round-list-card relative flex h-full min-w-0 flex-col bg-surface p-5 sm:p-6 ${
         round.phase === "open"
           ? "gradient-border before:absolute before:inset-x-5 before:top-0 before:h-0.5 before:bg-primary"
           : "border border-line"
@@ -172,18 +176,49 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
   );
 }
 
-export function RoundsList({ rounds, state = "ready", isAdmin, onRetry }: RoundsListProps) {
+function RoundSkeletons() {
+  const { t } = useLocale();
+  return <div className={ROUNDS_GRID} role="status" aria-label={t.competition.loading}>{Array.from({ length: ROUNDS_PAGE_SIZE }, (_, i) => <div key={i} className="competition-skeleton border border-line bg-surface p-6"><div className="h-6 w-1/2 bg-line" /><div className="mt-8 h-14 bg-line" /><div className="mt-8 h-16 bg-line" /><div className="mt-8 h-10 bg-line" /><div className="mt-10 h-11 bg-line" /></div>)}</div>;
+}
+
+export function RoundsList(props: RoundsListProps) {
+  return <Suspense fallback={<RoundSkeletons />}><PaginatedRoundsList {...props} /></Suspense>;
+}
+
+function PaginatedRoundsList({ rounds, state = "ready", isAdmin, onRetry, paginationReady = true }: RoundsListProps) {
   const { t, locale } = useLocale();
   const c = t.competition;
-  const [filter, setFilter] = useState<"all" | "active" | "ended">("all");
+  const searchParams = useSearchParams();
+  const [filter, setFilter] = useState<RoundFilter>("all");
+  const sectionRef = useRef<HTMLElement>(null);
+  const resultsId = useId();
+  const requestedPage = parsePage(searchParams.get("page"));
+  const visible = paginateRounds(rounds, filter, requestedPage);
+  const previousPage = useRef(requestedPage);
+  const writePage = (page: number, replace = false) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("page", String(page));
+    window.history[replace ? "replaceState" : "pushState"](null, "", `${url.pathname}${url.search}${url.hash}`);
+  };
+  // Wait for all discovery reads before normalizing a shared URL; partial realtime
+  // snapshots may temporarily contain fewer pages than the completed list.
+  useEffect(() => {
+    if (state === "ready" && paginationReady && (requestedPage !== visible.page || (searchParams.has("page") && searchParams.get("page") !== String(visible.page)))) writePage(visible.page, true);
+  }, [requestedPage, visible.page, state, paginationReady, searchParams]);
+  useEffect(() => {
+    if (previousPage.current !== requestedPage) {
+      sectionRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
+      previousPage.current = requestedPage;
+    }
+  }, [requestedPage]);
   const counts = { all: rounds.length, active: rounds.filter(r => !r.readError && r.phase === "open").length, ended: rounds.filter(r => !r.readError && (r.phase === "closed" || r.phase === "finalized" || r.phase === "cancelled")).length };
-  const visible = useMemo(() => [...rounds].sort((a, b) => b.number - a.number).filter(round => filter === "all" || (!round.readError && (filter === "active" ? round.phase === "open" : ["closed", "finalized", "cancelled"].includes(round.phase)))), [rounds, filter]);
-  return <section className="min-w-0 space-y-7" aria-label={c.rounds}>
+  return <section ref={sectionRef} className="min-w-0 space-y-7 scroll-mt-24" aria-label={c.rounds}>
     <header className="flex flex-col justify-between gap-6 border-b border-line pb-7 xl:flex-row xl:items-end">
       <div className="min-w-0"><span className="mono-label text-xs text-primary">{c.currency} / {c.timezone}</span><h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{c.rounds}</h1><p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">{c.subtitle}</p></div>
-      <div role="group" aria-label={c.rounds} className="competition-segment flex max-w-full self-start border border-line bg-bg xl:self-auto">{(["all", "active", "ended"] as const).map(key => <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className="competition-focus flex min-h-11 min-w-0 flex-wrap items-center justify-center gap-2 px-3 py-2 text-xs sm:px-5"><span>{c[key]}</span><span className="tabular-mono text-xs text-muted">{state === "loading" ? c.unavailable : displayNumber(counts[key], locale, 0)}</span></button>)}</div>
+      <div role="group" aria-label={c.rounds} className="competition-segment flex max-w-full self-start border border-line bg-bg xl:self-auto">{(["all", "active", "ended"] as const).map(key => <button key={key} type="button" aria-pressed={filter === key} onClick={() => { setFilter(key); writePage(1, true); }} aria-controls={resultsId} className="competition-focus flex min-h-11 min-w-0 flex-wrap items-center justify-center gap-2 px-3 py-2 text-xs sm:px-5"><span>{c[key]}</span><span className="tabular-mono text-xs text-muted">{state === "loading" ? c.unavailable : displayNumber(counts[key], locale, 0)}</span></button>)}</div>
     </header>
-    {state === "error" ? <PresentationState state="error" onRetry={onRetry} /> : state === "loading" ? <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3" role="status" aria-label={c.loading}>{[0, 1, 2].map(i => <div key={i} className="competition-skeleton border border-line bg-surface p-6"><div className="h-6 w-1/2 bg-line" /><div className="mt-8 h-14 bg-line" /><div className="mt-8 h-16 bg-line" /><div className="mt-8 h-10 bg-line" /><div className="mt-10 h-11 bg-line" /></div>)}</div> : visible.length ? <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{visible.map(round => <RoundListCard key={round.id} round={round} onRetry={onRetry} />)}</div> : <PresentationState state="empty"><h2 className="font-semibold">{rounds.length ? c.noFilteredRounds : c.noRounds}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted">{rounds.length ? c.filterHint : c.noRoundsHint}</p>{isAdmin && !rounds.length && <Link href="/admin" className="competition-action mt-6 inline-flex">{c.admin}</Link>}</PresentationState>}
-    <span className="sr-only" aria-live="polite">{displayNumber(visible.length, locale, 0)} {c.rounds}</span>
+    {state === "error" ? <PresentationState state="error" onRetry={onRetry} /> : state === "loading" ? <RoundSkeletons /> : visible.total ? <div id={resultsId} className={ROUNDS_GRID}>{visible.rounds.map(round => <RoundListCard key={round.id} round={round} onRetry={onRetry} />)}</div> : <PresentationState state="empty"><h2 className="font-semibold">{rounds.length ? c.noFilteredRounds : c.noRounds}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted">{rounds.length ? c.filterHint : c.noRoundsHint}</p>{isAdmin && !rounds.length && <Link href="/admin" className="competition-action mt-6 inline-flex">{c.admin}</Link>}</PresentationState>}
+    {state === "ready" && <Pagination page={visible.page} pageSize={ROUNDS_PAGE_SIZE} total={visible.total} onPageChange={page => writePage(page)} controls={resultsId} label={locale === "vi" ? "Phân trang round" : "Rounds pagination"} />}
+    <span className="sr-only" aria-live="polite">{displayNumber(visible.total, locale, 0)} {c.rounds}</span>
   </section>;
 }

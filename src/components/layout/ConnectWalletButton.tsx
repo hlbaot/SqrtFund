@@ -20,7 +20,6 @@ import {
   ShieldCheck,
   Award,
   ShieldOff,
-  ArrowLeftRight,
 } from "lucide-react";
 import { ExplorerLink } from "@/components/tx/ExplorerLink";
 import dynamic from "next/dynamic";
@@ -74,20 +73,18 @@ export function ConnectWalletButton() {
   const counts = useNotificationCounts(isReady ? role : "guest");
   const hasOrganizerRole = isOrganizer || isRoundAdmin || hasManagedRounds || canCreateRound;
   const confirmedProfile = defaultWalletProfile(hasOrganizerRole, isStudent);
-  const { profile, switchProfile } = useWalletProfile(address, chainId, confirmedProfile);
+  const { profile, selectProfile } = useWalletProfile(address, chainId, confirmedProfile);
   const chosenProfileConfirmed = profile === "student" ? isStudent : profile === "organizer" ? hasOrganizerRole : false;
   const activeProfile = chosenProfileConfirmed ? profile : confirmedProfile ?? profile;
-  // Chỉ đổi lựa chọn khi chưa có vai trò xác nhận; lỗi/đang đọc quyền không mở nút đổi.
+  // Khi ví mới đã chọn role hoặc đã xác minh thành công thì không được đổi lại
   const hasConfirmedRole = isPlatformOwner || isStudent || isOrganizer || isRoundAdmin || hasManagedRounds || canCreateRound;
-  const canSwitchRole = isReady && !hasConfirmedRole;
-  const choosingProfile = canSwitchRole && activeProfile === null;
+  const choosingProfile = isReady && !hasConfirmedRole && activeProfile === null;
   const myApp = useMyOrganizerApplication(isConnected && activeProfile === "organizer" ? address : undefined);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const { avatar } = useAvatar(address);
   const [copied, setCopied] = useState(false);
-  const [isChangingRole, setIsChangingRole] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, right: 16 });
@@ -278,16 +275,13 @@ export function ConnectWalletButton() {
             </div>
           </div>
 
-          {(choosingProfile || (canSwitchRole && isChangingRole)) && (
+          {choosingProfile && (
             <WalletProfilePicker
               locale={locale}
               currentProfile={activeProfile}
               onSelect={(newProfile) => {
-                if (!canSwitchRole) return;
-                switchProfile(newProfile);
-                setIsChangingRole(false);
+                selectProfile(newProfile);
               }}
-              onCancel={activeProfile ? () => setIsChangingRole(false) : undefined}
             />
           )}
 
@@ -457,19 +451,6 @@ export function ConnectWalletButton() {
               </button>
             )}
 
-            {canSwitchRole && activeProfile && (
-              <button
-                type="button"
-                onClick={() => setIsChangingRole(prev => !prev)}
-                className="w-full flex items-center justify-between min-h-11 px-2 py-2 text-left hover:bg-surface hover:text-foreground cursor-pointer transition-colors rounded-sm group"
-              >
-                <span className="flex items-center gap-2 text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                  <ArrowLeftRight className="h-3.5 w-3.5 text-muted group-hover:text-primary transition-colors" />
-                  {locale === "vi" ? "Chuyển đổi vai trò" : "Switch role"}
-                </span>
-                <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted transition-transform ${isChangingRole ? "rotate-180" : ""}`} aria-hidden="true" />
-              </button>
-            )}
 
             <Link
               href="/my"

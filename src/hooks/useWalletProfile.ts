@@ -32,6 +32,8 @@ export function saveWalletProfile(address: string | undefined, chainId: number |
 
 export function switchWalletProfile(address: string | undefined, chainId: number | undefined, profile: WalletProfile): boolean {
   if (!address || !chainId || !isWalletProfile(profile) || typeof window === "undefined") return false;
+  const existing = readWalletProfile(address, chainId);
+  if (existing) return existing === profile;
   const key = walletProfileKey(address, chainId);
   try { window.localStorage.setItem(key, profile); memoryFallback.delete(key); }
   catch { memoryFallback.set(key, profile); }

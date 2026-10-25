@@ -114,22 +114,18 @@ it("shows only the chosen profile even when a wallet holds both roles", () => {
   expect(html).not.toContain('href="/verify"');
 });
 
-it("shows a single revocation banner and role switch without exposing the reason", () => {
+it("shows a single revocation banner without exposing the reason", () => {
   f.profile = "organizer"; f.revoked = true;
   const html = render();
   expect(html.match(/Quyền Organizer đã bị thu hồi/g)).toHaveLength(1);
   expect(html.match(/Xem chi tiết &amp; Gửi yêu cầu lại/g)).toHaveLength(1);
-  expect(html.match(/Chuyển đổi vai trò/g)).toHaveLength(1);
+  expect(html).not.toContain("Chuyển đổi vai trò");
   expect(html).not.toContain("Private revocation reason");
   expect(html).not.toContain("Chi tiết thu hồi &amp; Nộp lại");
   expect(html).not.toContain("Đã bị thu hồi quyền");
   expect(html).not.toContain("Đã thu hồi");
   expect(html).not.toContain("Đổi vai trò");
   expect(html).not.toContain("Đăng ký làm Organizer");
-  expect(html.indexOf("0x1234...7890", html.indexOf('role="dialog"')))
-    .toBeLessThan(html.indexOf("Quyền Organizer đã bị thu hồi"));
-  expect(html.indexOf("Quyền Organizer đã bị thu hồi"))
-    .toBeLessThan(html.indexOf("Chuyển đổi vai trò"));
 });
 it("preserves the pending application action without displaying a revocation warning", () => {
   f.profile = "organizer"; f.pending = true;
@@ -158,9 +154,9 @@ it.each(["student", "organizer", "round-admin", "managed-round", "platform"])("h
   expect(html).not.toContain("Chuyển đổi vai trò");
   expect(html).not.toContain("Bạn sử dụng ví với vai trò nào?");
 });
-it("lets an unverified wallet correct its choice before role confirmation", () => {
+it("does not allow an unverified wallet to switch roles once a choice was made", () => {
   f.profile = "student";
-  expect(render()).toContain("Chuyển đổi vai trò");
+  expect(render()).not.toContain("Chuyển đổi vai trò");
 });
 it("does not expose role switching while role reads are loading or unavailable", () => {
   f.profile = "organizer"; f.ready = false; f.changing = true;

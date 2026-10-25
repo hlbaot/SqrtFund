@@ -107,9 +107,9 @@ function MobileRow({ project, roundId, pool, finalized, wallet, max, top }: Lead
 
       <Link
         href={`/round/${roundId}/project/${project.id}`}
-        className="competition-action flex min-h-11 w-full items-center justify-center cursor-pointer transition-all active:scale-[0.99]"
+        className="mono-label flex min-h-10 w-full items-center justify-center gap-1.5 border border-money text-money bg-money/5 hover:bg-money/15 py-2 px-3 text-xs font-semibold cursor-pointer transition-all active:scale-[0.99] rounded-xs"
       >
-        {c.viewProject}
+        {c.donateToMe}
       </Link>
     </div>
   );

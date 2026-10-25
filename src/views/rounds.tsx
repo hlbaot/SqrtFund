@@ -62,6 +62,6 @@ export function RoundsView() {
   const error = discoveryError && allRounds.length === 0;
   return <Container className="competition-page min-w-0 py-8 sm:py-10">
     {allRounds.map(({ address, number }) => <RoundData key={`${address}:${retry}`} address={address} number={number} onData={onData} retry={retry} />)}
-    <RoundsList rounds={entries.flatMap(entry => entry && !entry.loading ? [entry.round] : [])} state={error ? "error" : loading ? "loading" : "ready"} isAdmin={isReady && role === "admin"} onRetry={() => { refetch(); setRetry(value => value + 1); }} />
+    <RoundsList paginationReady={!isLoading && entries.every(entry => entry && !entry.loading)} rounds={entries.flatMap(entry => entry && !entry.loading ? [entry.round] : [])} state={error ? "error" : loading ? "loading" : "ready"} isAdmin={isReady && role === "admin"} onRetry={() => { refetch(); setRetry(value => value + 1); }} />
   </Container>;
 }

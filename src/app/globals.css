@@ -1,15 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #0a0a10;
-  --surface: #0d0d14;
-  --surface-2: #12121b;
-  --line: #23232e;
-  --line-strong: #34344a;
-  --text: #f2f1ec;
-  --muted: #9a9ab0;
-  --primary: #e84142;
-  --money: #22c55e;
+  --bg: #0d0d12;
+  --surface: #16161d;
+  --surface-2: #1e1e28;
+  --line: rgb(255 255 255 / 0.12);
+  --line-strong: rgb(255 255 255 / 0.24);
+  --text: #f4f4f6;
+  --muted: #c3c3cc;
+  --primary: #ff4d4f;
+  --money: #4ade80;
+  /* Red text and solid buttons need separate contrast pairs. */
+  --button-red: #cc3036;
+  --button-red-hover: #d3343a;
+  --button-ink: #ffffff;
+  --focus: var(--primary);
   --accent-gradient: linear-gradient(90deg, #5eead4, #6366f1, #a78bfa, #fb923c);
   --background: var(--bg);
   --foreground: var(--text);
@@ -20,15 +25,15 @@
   --border: var(--line);
   --input: var(--surface);
   --input-border: var(--line-strong);
-  --primary-hover: #ff5a5b;
+  --primary-hover: #ff7072;
   --primary-foreground: var(--text);
   --accent: var(--money);
   --accent-foreground: var(--bg);
-  --destructive: #ef4444;
+  --destructive: var(--primary);
   --destructive-foreground: #ffffff;
-  --scroll-track: #0b0b12;
-  --scroll-thumb: #e84142;
-  --scroll-thumb-hover: #ff5a5b;
+  --scroll-track: var(--bg);
+  --scroll-thumb: var(--primary);
+  --scroll-thumb-hover: var(--primary-hover);
   --scroll-thumb-active: #c73536;
   --container-max: 1600px;
   --page-pad: clamp(1rem, 4vw, 4rem);
@@ -83,7 +88,7 @@ html {
 }
 
 body {
-  background: #0a0a10;
+  background: var(--bg);
   color: var(--foreground);
   font-family: var(--font-sans);
   margin: 0;
@@ -96,7 +101,7 @@ body {
 
 ::selection {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--bg);
 }
 
 a,
@@ -140,7 +145,7 @@ summary:hover,
 }
 
 :focus-visible {
-  outline: 1px solid var(--primary);
+  outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
 
@@ -150,15 +155,18 @@ summary:hover,
   text-wrap: balance;
 }
 
+@layer components {
+  .mono-label, .role-label, .stat-label { color: var(--muted); }
+}
+
 .mono-label,
 .role-label,
 .stat-label {
   font-family: var(--font-mono);
   font-size: 0.75rem;
   line-height: 1rem;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -589,10 +597,10 @@ body,
   min-height: 44px;
   padding: 0.75rem 1rem;
   border: 1px solid var(--primary);
-  background: color-mix(in srgb, var(--primary) 8%, var(--bg));
+  background: color-mix(in srgb, var(--primary) 12%, var(--bg));
   color: var(--text);
   font-family: var(--font-jetbrains-mono), monospace;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   transition: background 160ms ease;
 }
 
@@ -636,7 +644,7 @@ body,
 }
 
 .competition-row:focus-within {
-  outline: 1px solid var(--primary);
+  outline: 2px solid var(--primary);
   outline-offset: -1px;
 }
 
@@ -752,7 +760,7 @@ body,
 
 .chain-lattice-host {
   isolation: isolate;
-  background-color: #000;
+  background-color: var(--bg);
 }
 
 .chain-lattice {
@@ -766,7 +774,7 @@ body,
   z-index: -1;
   pointer-events: none;
   overflow: hidden;
-  background: radial-gradient(circle 900px at 50% 25%, #0e0e18 0%, #0a0a12 55%, #050508 100%);
+  background: radial-gradient(circle 900px at 50% 25%, var(--surface) 0%, var(--bg) 70%);
   contain: paint;
 }
 
@@ -793,6 +801,7 @@ body,
 }
 
 .chain-lattice__field {
+  opacity: 0.6;
   /* Fade at both section seams and screen edges; keep the middle quieter. */
   mask-image: radial-gradient(ellipse 78% 90% at 50% 38%, #000 20%, transparent 100%),
     linear-gradient(transparent, #000 48px, #000 70%, transparent);
@@ -837,7 +846,7 @@ body,
 }
 
 .chain-lattice__columns {
-  opacity: 0.04;
+  opacity: 0.025;
   background-image: linear-gradient(90deg, #fff 1px, transparent 1px),
     linear-gradient(90deg, #fff 1px, transparent 1px),
     linear-gradient(90deg, #fff 1px, transparent 1px);
@@ -916,7 +925,7 @@ body,
 }
 
 .chain-lattice[data-variant="calm"] .chain-lattice__field {
-  opacity: 0.8;
+  opacity: 0.6;
 }
 
 .chain-lattice[data-variant="calm"] .chain-lattice__ambient {
@@ -1055,3 +1064,50 @@ body,
     animation: none !important;
   }
 }
+
+/* Shared contrast rules apply to pages, portalled dialogs, forms and toasts.
+   Keep opacity for decoration; readable copy always uses the complete ink token. */
+[class~="text-muted/60"], [class~="text-muted/40"] { color: var(--muted); }
+[class*="placeholder:text-muted/"]::placeholder { color: var(--muted); opacity: 1; }
+[class*="text-primary/"] { color: var(--primary); }
+[class*="text-money/"] { color: var(--money); }
+.ui-button:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.ui-button[data-variant="outline"], .ui-button[data-variant="destructive"] {
+  border-color: var(--primary);
+  background-color: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  color: var(--text);
+}
+.ui-button[data-variant="outline"]:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--primary) 22%, var(--surface));
+}
+.bg-primary:is(.text-white, .text-foreground),
+.pagination-button[aria-current="page"],
+.ui-button[data-variant="destructive"]:not(:disabled):hover {
+  background-color: var(--button-red);
+  color: var(--button-ink);
+}
+.bg-primary:is(.text-white, .text-foreground):hover,
+.pagination-button[aria-current="page"]:hover {
+  background-color: var(--button-red-hover);
+}
+.pagination-button:not(:disabled):hover { border-color: var(--primary); }
+.pagination-button:disabled { background: var(--bg); }
+.round-list-card, .hud-frame { transition: border-color 160ms ease, box-shadow 160ms ease; }
+.round-list-card:hover, .round-list-card:focus-within,
+.hud-frame:hover, .hud-frame:focus-within {
+  border-color: color-mix(in srgb, var(--primary) 50%, var(--line));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+/* Brightness filters would lower white-on-red contrast on solid hover states. */
+.bg-primary:is(.text-white, .text-foreground):hover,
+.pagination-button[aria-current="page"]:hover,
+.ui-button[data-variant="destructive"]:not(:disabled):hover { filter: none; }
+.uppercase:is(.text-\[9px\], .text-\[10px\], .text-\[11px\]) { font-size: 0.75rem; }
+[class~="hover:bg-primary"][class~="hover:text-foreground"]:hover {
+  background-color: var(--button-red-hover);
+  color: var(--button-ink);
+  filter: none;
+}
+/* Higher-opacity red chips use light ink rather than red-on-red text. */
+.text-primary:is(.bg-primary\/15, .bg-primary\/20) { color: var(--text); }
