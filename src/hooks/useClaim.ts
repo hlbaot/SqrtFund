@@ -330,6 +330,7 @@ export function useClaim() {
     claim,
     claimUsdc,
     claimMatching,
+    isClaimingUsdc,
     isClaiming: isClaimingUsdc || isPendingMatching,
     isPending: isPendingMatching,
     claimableUsdc: canClaim ? 1 : 0,

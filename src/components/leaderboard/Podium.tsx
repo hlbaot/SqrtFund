@@ -36,6 +36,7 @@ export function Podium({
   const { t, locale } = useLocale();
   const { address } = useAccount();
   const [donatingProject, setDonatingProject] = useState<RankedProject | null>(null);
+  const donationsOpen = !finalized && (canDonate ?? true);
   const targetRoundAddress = roundId && isAddress(roundId) ? (roundId as Address) : undefined;
 
   const top = projects.slice(0, 3);
@@ -80,7 +81,6 @@ export function Podium({
         {top.map((project, index) => {
           const hasDonated = Boolean(donatedMap.get(project.id));
           const isOwner = Boolean(address && project.ownerAddress && address.toLowerCase() === project.ownerAddress.toLowerCase());
-          const isDonatable = (canDonate !== undefined ? canDonate : !finalized) && project.status !== "pending" && project.status !== "rejected" && !hasDonated && !isOwner;
 
           return (
             <article
@@ -146,7 +146,7 @@ export function Podium({
                 </div>
               </div>
 
-              <div className="mt-4">
+              {donationsOpen && project.status !== "pending" && project.status !== "rejected" && <div className="mt-4">
                 <button
                   type="button"
                   onClick={() => setDonatingProject(project)}
@@ -168,13 +168,13 @@ export function Podium({
                         : t.competition.donateToMe}
                   </span>
                 </button>
-              </div>
+              </div>}
             </article>
           );
         })}
       </div>
 
-      {donatingProject && (
+      {donationsOpen && donatingProject && (
         <Dialog
           isOpen={Boolean(donatingProject)}
           onClose={() => setDonatingProject(null)}

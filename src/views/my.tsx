@@ -83,7 +83,7 @@ export function MyView() {
     nextClaimAt,
     remainingSeconds,
     cooldownDuration,
-    isClaiming,
+    isClaimingUsdc,
     claim,
     isPending: isClaimPending,
   } = useClaim();
@@ -189,18 +189,18 @@ export function MyView() {
 
           {/* Test Faucets & Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
-            {canClaim ? (
+            {canClaim || isClaimingUsdc ? (
               <Button
                 variant="accent"
                 size="sm"
                 id="claim-usdc"
                 onClick={() => void claim()}
-                disabled={isClaiming}
-                isLoading={isClaiming}
+                disabled={isClaimingUsdc}
+                isLoading={isClaimingUsdc}
                 className="text-xs font-bold gap-1.5"
               >
                 <Droplets className="h-3.5 w-3.5" />
-                <span>{isClaiming ? t.faucet.claiming : t.faucet.getTestUsdc}</span>
+                <span>{isClaimingUsdc ? t.faucet.claiming : t.faucet.getTestUsdc}</span>
               </Button>
             ) : (
               <div className="relative inline-flex flex-col">
