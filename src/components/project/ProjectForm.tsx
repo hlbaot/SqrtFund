@@ -240,7 +240,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
     shortDescription: description ? description.slice(0, 100) : "Project summary...",
     description: description || "Full project proposal description...",
     category,
-    contactUrl: contactUrl || "https://t.me/your_club",
+    contactUrl: contactUrl || "https://example.com/demo",
     imageUrl: imageUrl.trim() || undefined,
     ownerAddress: address || "0x0000000000000000000000000000000000000000",
     supporterCount: 0,
@@ -517,6 +517,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
           </div>
           <ProjectCard
             project={previewProject}
+            imageLayout="square"
             roundId={roundAddress ?? selectedAddress}
             roundAddress={roundAddress ?? selectedAddress}
           />

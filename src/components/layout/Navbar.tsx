@@ -8,13 +8,12 @@ import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
 import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 import { NavLink } from "./NavLink";
-import { useRound } from "@/hooks/useRound";
 import { ConnectWalletButton } from "./ConnectWalletButton";
 import { LanguageToggle } from "./LanguageToggle";
 import { NotificationBell } from "./NotificationBell";
 import { NetworkGuard } from "@/components/common/NetworkGuard";
 import { defaultWalletProfile, useWalletProfile } from "@/hooks/useWalletProfile";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 import { Container } from "./Container";
 
@@ -38,7 +37,6 @@ export function Navbar() {
   const isOrganizerUser = isConnected && (isPlatformOwner || profile === "organizer" || (!isStudent && isOrgRole) || (profile !== "student" && isOrgRole));
   const counts = useNotificationCounts(isReady ? role : "guest");
   const { t } = useLocale();
-  const { roundAddress, status, isLoading: isRoundLoading, isError: isRoundError } = useRound();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [previousPathname, setPreviousPathname] = useState(pathname);
@@ -46,7 +44,6 @@ export function Navbar() {
     setPreviousPathname(pathname);
     setPendingHref(null);
   }
-  const [showAnnouncement, setShowAnnouncement] = useState(true);
 
   const dashboardHref = isPlatformOwner ? "/admin?tab=platform" : "/admin?tab=organizer";
   const navLinks = [
@@ -64,34 +61,10 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-line bg-bg/95 backdrop-blur-md">
       <NetworkGuard />
-      {showAnnouncement && (
-        <div className="border-b border-line bg-surface">
-          <Container className="flex min-h-9 items-center justify-between gap-3">
-            <div className="mono-label flex min-w-0 items-center gap-2 text-muted text-xs">
-              <ArrowRight className={`h-3.5 w-3.5 shrink-0 ${status === "finalized" ? "text-money" : "text-primary"}`} aria-hidden="true" />
-              <span className={`truncate ${status === "finalized" ? "text-money" : status === "open" ? "text-primary" : "text-muted"}`}>
-                {isRoundLoading ? t.common.loading : isRoundError ? t.competition.roundReadHint : !roundAddress ? t.competition.noRounds : status === "cancelled" ? t.phase2.cancelled : status === "finalized"
-                  ? t.nav.announcementFinalized
-                  : status === "closed"
-                    ? t.nav.announcementClosed
-                    : t.nav.announcementOpen}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowAnnouncement(false)}
-              className="mono-label px-2 py-1 text-muted hover:text-foreground hover:bg-surface-2 cursor-pointer transition-colors rounded-xs text-xs"
-              aria-label={t.nav.dismissAnnouncement}
-            >
-              x
-            </button>
-          </Container>
-        </div>
-      )}
-      <Container className="flex min-h-16 items-center justify-between gap-4">
+      <Container className="flex min-h-16 items-center justify-end gap-4 xl:justify-between">
         <Link
           href="/"
-          className="flex min-h-[44px] min-w-[44px] items-center shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs cursor-pointer transition-opacity hover:opacity-85 active:scale-95"
+          className="hidden xl:flex min-h-[44px] min-w-[44px] items-center shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs cursor-pointer transition-opacity hover:opacity-85 active:scale-95"
           aria-label={t.nav.homeAria}
         >
           <Image

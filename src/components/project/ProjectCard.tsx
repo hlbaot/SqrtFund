@@ -32,6 +32,7 @@ export interface ProjectCardProps {
   roundId?: string;
   roundAddress?: Address;
   canDonate?: boolean;
+  imageLayout?: "banner" | "square";
 }
 
 export function ProjectCard({
@@ -39,6 +40,7 @@ export function ProjectCard({
   roundId = "1",
   roundAddress,
   canDonate,
+  imageLayout = "banner",
 }: ProjectCardProps) {
   const { t, locale } = useLocale();
   const { address } = useAccount();
@@ -133,7 +135,7 @@ export function ProjectCard({
 
       {/* 1. Image placeholder area, name, short description */}
       <div>
-        <div className="relative mb-4 flex h-32 w-full items-center justify-center overflow-hidden border border-line bg-bg">
+        <div className={`relative mb-4 flex w-full items-center justify-center overflow-hidden border border-line bg-bg ${imageLayout === "square" ? "mx-auto aspect-square max-w-[200px]" : "h-32"}`}>
           {project.imageUrl && !imageFailed ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -141,7 +143,7 @@ export function ProjectCard({
               src={project.imageUrl}
               alt={name}
               onError={() => setImageFailed(true)}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className={imageLayout === "square" ? "absolute inset-0 h-full w-full object-contain" : "h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"}
             />
           ) : (
             <div className="flex flex-col items-center justify-center text-center p-4">

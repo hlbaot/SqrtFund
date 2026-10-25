@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { loadRoundNotificationSnapshot, roundProjectNotificationItems } from "@/lib/roundNotifications";
+import { loadRoundNotificationSnapshot, roundProjectNotificationItems, roundLifecycleNotificationItems } from "@/lib/roundNotifications";
 
 const round = `0x${"1".repeat(40)}` as const;
 const admin = `0x${"2".repeat(40)}` as const;
@@ -27,5 +27,32 @@ describe("notification snapshots across rounds", () => {
   });
   it("does not convert RPC errors into empty or approved snapshots", async () => {
     await expect(loadRoundNotificationSnapshot(vi.fn().mockRejectedValue(new Error("RPC down")), round)).rejects.toThrow("RPC down");
+  });
+  it("notifies donors and the round organizer as time crosses the end, with separate finalization acknowledgement", async () => {
+    const snapshot = { ...await loadRoundNotificationSnapshot(read(), round), hasDonated: true };
+    expect(roundLifecycleNotificationItems(snapshot, owner, 999)).toEqual([]);
+    expect(roundLifecycleNotificationItems(snapshot, owner, 1000)).toEqual([{ key: `roundEnded:${round}`, scope: "activity" }]);
+    expect(roundLifecycleNotificationItems(snapshot, admin, 1000)).toEqual([{ key: `roundEnded:${round}`, scope: "admin" }]);
+    expect(roundLifecycleNotificationItems({ ...snapshot, hasDonated: false }, owner, 1000)).toEqual([]);
+    const finalized = roundLifecycleNotificationItems({ ...snapshot, finalized: true }, owner, 1001);
+    expect(finalized.map(item => item.key)).toEqual([`roundEnded:${round}`, `roundFinalized:${round}`]);
+    expect(roundLifecycleNotificationItems({ ...snapshot, isCancelled: true }, owner, 1001)).toEqual([]);
+    expect(roundLifecycleNotificationItems(snapshot, owner, 1001)).toEqual(roundLifecycleNotificationItems(snapshot, owner, 1002));
+  });
+  it("checks on-chain participation for the current wallet, including projects after the first page", async () => {
+    const base = read();
+    const reader = vi.fn(async (call: Parameters<Parameters<typeof loadRoundNotificationSnapshot>[0]>[0]) => {
+      if (call.functionName === "donationOf") {
+        expect(call.args?.[0]).toBe(owner);
+        return call.args?.[1] === 51n ? 1n : 0n;
+      }
+      return base(call);
+    });
+    expect((await loadRoundNotificationSnapshot(reader, round, owner)).hasDonated).toBe(true);
+    expect(reader.mock.calls.filter(([call]) => call.functionName === "donationOf")).toHaveLength(51);
+    await expect(loadRoundNotificationSnapshot(async call => {
+      if (call.functionName === "donationOf") throw new Error("RPC down");
+      return base(call);
+    }, round, owner)).rejects.toThrow("RPC down");
   });
 });

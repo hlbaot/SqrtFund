@@ -5,7 +5,7 @@ import { maxUint256 } from "viem";
 import { copy } from "@/lib/copy";
 import { DonateBox } from "@/components/project/DonateBox";
 
-const f = vi.hoisted(() => ({ connected: true, input: "100", donated: 20_000_000n, legacy: false, balance: 500_000_000n }));
+const f = vi.hoisted(() => ({ step: "idle", connected: true, input: "100", donated: 20_000_000n, legacy: false, balance: 500_000_000n }));
 vi.mock("react", async importOriginal => {
   const react = await importOriginal<typeof import("react")>();
   return { ...react, useState: (initial: unknown) => react.useState(initial === "1" ? f.input : initial === 1 ? Number(f.input) : initial) };
@@ -22,7 +22,7 @@ vi.mock("@/hooks/useRound", () => ({ useRound: () => ({
 }) }));
 vi.mock("@/hooks/useProjects", () => ({ useProjects: () => ({ projects: [], refetch: vi.fn() }) }));
 vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ isStudent: true, canParticipate: true }) }));
-vi.mock("@/hooks/useDonate", () => ({ useDonate: () => ({ donate: vi.fn(), step: "idle", isPending: false, reset: vi.fn() }) }));
+vi.mock("@/hooks/useDonate", () => ({ useDonate: () => ({ donate: vi.fn(), step: f.step, isPending: false, reset: vi.fn() }) }));
 vi.mock("@/hooks/useTokenBalance", () => ({ useTokenBalance: () => ({ balance: f.balance, isReady: true }) }));
 vi.mock("@/lib/tokenBalance", () => ({ tokenMatchesConfigured: () => true }));
 vi.mock("@/components/verify/DeferredStudentVerifyBox", () => ({ StudentVerifyBox: () => null }));
@@ -34,7 +34,7 @@ const project = { id: "1", name: "Project", roundId: "round", ownerAddress: "0x3
   status: "approved" as const, category: "technology" as const, shortDescription: "", description: "", contactUrl: "",
   supporterCount: 1, totalDonated: 20, estimatedMatching: 0, sumSqrtRaw: 0n, totalDonatedRaw: 20_000_000n };
 const render = () => renderToStaticMarkup(createElement(DonateBox, { project }));
-beforeEach(() => Object.assign(f, { connected: true, input: "100", donated: 0n, legacy: false, balance: 500_000_000n }));
+beforeEach(() => Object.assign(f, { step: "idle", connected: true, input: "100", donated: 0n, legacy: false, balance: 500_000_000n }));
 it("requires wallet connection before showing donation controls even with cached account data", () => {
   f.connected = false;
   f.donated = 20_000_000n;
@@ -81,4 +81,18 @@ it("retains the actual deployed bounds when opening an old round", () => {
   const input = html.match(/<input[^>]*id="donation-amount"[^>]*>/)?.[0];
   expect(input).toContain('min="1"');
   expect(input).toContain('max="5"');
+});
+
+it("never offers another donation and avoids a duplicate success card once the contribution is recorded", () => {
+  f.step = "success";
+  const success = render();
+  expect(success).toContain(copy.vi.donateBox.txSuccess);
+  expect(success).not.toContain(copy.vi.donateBox.donateAgain);
+  expect(success).not.toContain('id="donation-amount"');
+  f.donated = 1_000_000n;
+  const recorded = render();
+  expect(recorded).toContain(copy.vi.donateBox.alreadyDonatedTitle);
+  expect(recorded).not.toContain(copy.vi.donateBox.txSuccess);
+  expect(recorded).not.toContain(copy.vi.donateBox.donateAgain);
+  expect(recorded).not.toContain('id="donation-amount"');
 });

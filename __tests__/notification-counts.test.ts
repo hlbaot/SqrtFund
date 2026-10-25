@@ -16,6 +16,8 @@ vi.mock("react", async original => ({
 vi.mock("wagmi", () => ({ useAccount: () => ({ address: f.address, isConnected: f.connected, chainId: f.chainId }) }));
 vi.mock("@/hooks/useRound", () => ({ useRound: () => ({ roundAddress: "0xround", projectCount: 1n, isCancelled: f.cancelled, finalized: f.finalized }) }));
 vi.mock("@/hooks/useProjects", () => ({ useProjects: () => ({ projects: [], isLoading: f.projectsLoading, isError: false }) }));
+vi.mock("@/hooks/useRoundNotifications", () => ({ useRoundNotifications: () => [] }));
+vi.mock("@/hooks/useCurrentTimestamp", () => ({ useCurrentTimestamp: () => 0 }));
 vi.mock("@/hooks/useRoundRefunds", () => ({ useRoundRefunds: vi.fn(() => ({ total: f.refund, isReady: f.refundReady })) }));
 vi.mock("@/hooks/useNotificationSeen", () => ({ useNotificationSeen: (address?: string) => ({
   ...store.snapshot(address), ready: Boolean(address && f.ready),
