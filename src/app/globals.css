@@ -1068,7 +1068,7 @@ body,
 /* Shared contrast rules apply to pages, portalled dialogs, forms and toasts.
    Keep opacity for decoration; readable copy always uses the complete ink token. */
 [class~="text-muted/60"], [class~="text-muted/40"] { color: var(--muted); }
-[class*="placeholder:text-muted/"]::placeholder { color: var(--muted); opacity: 1; }
+[class*="placeholder:text-muted/"]::placeholder { color: var(--muted); opacity: 0.5; }
 [class*="text-primary/"] { color: var(--primary); }
 [class*="text-money/"] { color: var(--money); }
 .ui-button:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }

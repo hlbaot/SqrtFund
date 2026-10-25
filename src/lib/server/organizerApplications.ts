@@ -1,6 +1,7 @@
 import "server-only";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
 import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
+import { VerificationError } from "@/lib/verify/errors";
 
 export interface OrganizerApplication {
   id: string;
@@ -171,6 +172,40 @@ function getFallbackApplications(wallet?: string, status?: string): OrganizerApp
     list = list.filter(a => a.status === status);
   }
   return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+/** Reopen the signed, previously verified application without creating a new email binding. */
+export async function resubmitOrganizerApplication(previous: OrganizerApplication, input: ApplicationInput): Promise<OrganizerApplication> {
+  if (!previous.emailVerifiedAt || !["revoked", "rejected"].includes(previous.status)
+    || previous.walletAddress.toLowerCase() !== input.walletAddress.toLowerCase()
+    || previous.contactEmail.trim().toLowerCase() !== input.contactEmail.trim().toLowerCase()) {
+    throw new VerificationError("APPLICATION_CHANGED", 409);
+  }
+  const now = new Date().toISOString();
+  const patch = {
+    organization_name: input.organizationName.trim(), reason: input.reason.trim(), status: "pending",
+    tx_hash: null, revocation_reason: null, reviewed_by: null, reviewed_at: null, updated_at: now,
+  };
+  // Only entries already held in the development fallback may be reopened there.
+  const fallback = fallbackStore.get(previous.id);
+  if (fallback) {
+    if (fallback.updatedAt !== previous.updatedAt || fallback.status !== previous.status) throw new VerificationError("APPLICATION_CHANGED", 409);
+    const application: OrganizerApplication = { ...fallback, organizationName: patch.organization_name, reason: patch.reason,
+      status: "pending", txHash: null, revocationReason: null, reviewedBy: null, reviewedAt: null, updatedAt: now };
+    fallbackStore.set(previous.id, application);
+    return application;
+  }
+  try {
+    const { data, error } = await supabaseAdmin().from("organizer_applications").update(patch)
+      .eq("id", previous.id).eq("wallet_address", previous.walletAddress)
+      .eq("status", previous.status).eq("updated_at", previous.updatedAt).select().maybeSingle();
+    if (error) throw new VerificationError("SERVICE_UNAVAILABLE", 503);
+    if (!data) throw new VerificationError("APPLICATION_CHANGED", 409);
+    return mapRow(data as Record<string, unknown>);
+  } catch (error) {
+    if (error instanceof VerificationError) throw error;
+    throw new VerificationError("SERVICE_UNAVAILABLE", 503);
+  }
 }
 
 export async function updateOrganizerApplicationStatus(
