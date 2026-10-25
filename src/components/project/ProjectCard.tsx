@@ -66,12 +66,13 @@ export function ProjectCard({
       refetchInterval: 5000,
     },
   });
+  const isOwner = Boolean(address && project.ownerAddress && address.toLowerCase() === project.ownerAddress.toLowerCase());
   const hasAlreadyDonated = Boolean(userDonatedData && (userDonatedData as bigint) > 0n);
 
   const isDonatable =
     (canDonate !== undefined
       ? canDonate && project.status !== "pending" && project.status !== "rejected"
-      : project.status !== "pending" && project.status !== "rejected") && !hasAlreadyDonated;
+      : project.status !== "pending" && project.status !== "rejected") && !hasAlreadyDonated && !isOwner;
 
   const name = locale === "vi" && project.nameVi ? project.nameVi : project.name;
   const shortDescription =
@@ -114,6 +115,11 @@ export function ProjectCard({
         </div>
 
         <div className="flex items-center gap-1.5">
+          {isOwner && (
+            <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/30">
+              {locale === "vi" ? "Dự án của bạn" : "Your project"}
+            </Badge>
+          )}
           {hasAlreadyDonated && (
             <Badge variant="accent" className="text-[10px] bg-money/15 text-money border-money/30">
               ✓ {t.donateBox.alreadyDonatedBadge}

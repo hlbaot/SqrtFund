@@ -53,8 +53,12 @@ SqrtFund có **3 vai trò nghiệp vụ: Student, Organizer và Admin**. Quyền
 - **Round Admin:** Quyền quản lý một round cụ thể. Factory cố định `admin = msg.sender` khi tạo round, nên người tạo round là người duyệt project trong round đó.
 - **Guest:** Trạng thái chưa có quyền hoặc chưa kết nối ví, không phải một vai trò được cấp quyền trong quy trình nghiệp vụ.
 
-**Phạm vi quyền cần phân biệt:**
+**Phạm vi quyền & Quy tắc nghiệp vụ:**
 
+- **Chống tự quyên góp (Anti-Self Donation):** Sinh viên tạo dự án không thể tự donate cho dự án của chính mình (`SelfDonationNotAllowed` on-chain).
+- **Giới hạn 1 lượt quyên góp / dự án:** Mỗi sinh viên chỉ được ủng hộ tối đa 1 lần cho mỗi dự án trong một vòng gọi vốn (`hasAlreadyDonated`). Sau khi donate thành công, form quyên góp của dự án đó sẽ khóa lại và hiển thị trạng thái "Đã ủng hộ".
+- **Nhà tổ chức không quyên góp:** Ví mang vai trò Organizer chỉ có quyền nạp matching pool (`depositInitialPool`/`fundPool`) và quản trị vòng; bị chặn hoàn toàn quyền donate vào bất kỳ dự án nào (cả ở round của mình lẫn round khác) để đảm bảo tính khách quan và minh bạch của cơ chế Quadratic Funding.
+- **Khóa cố định vai trò ví:** Sau khi ví kết nối đã chọn vai trò (Student hoặc Organizer), hệ thống khóa chức năng đổi vai trò để ngăn chặn việc tráo đổi danh tính.
 - Admin nền tảng và Organizer **không tự có quyền duyệt project hoặc quản lý round của người khác**.
 - Quyền tạo round không thay thế xác minh Student. Contract vẫn yêu cầu ví có quyền Student để đăng ký project hoặc donate; giao diện Organizer/Admin tập trung vào tác vụ quản trị.
 - Thu hồi Organizer chỉ chặn tạo round mới và nạp quỹ ban đầu vào Factory; **không đổi admin của round đã tạo**, không xóa project hay tiền trên chain. Ví đó vẫn quản lý round cũ và rút được số dư nạp trước chưa sử dụng.
@@ -325,27 +329,65 @@ cd contracts && forge build && cd ..
 
 ### Biến môi trường
 
-Sao chép `.env.example` thành `.env.local` và điền cấu hình phù hợp:
+Tạo file `.env.local` ở thư mục gốc (hoặc sao chép từ `.env.example`) và điền các biến cấu hình:
 
-| Biến | Phạm vi | Mô tả |
-| :--- | :--- | :--- |
-| `NEXT_PUBLIC_CHAIN_ID` | Công khai | `43113` |
-| `NEXT_PUBLIC_RPC_URL` | Công khai | `https://api.avax-test.network/ext/bc/C/rpc` |
-| `NEXT_PUBLIC_EXPLORER_URL` | Công khai | `https://testnet.snowtrace.io` |
-| `NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS` | Công khai | Địa chỉ hợp đồng `StudentRegistry` |
-| `NEXT_PUBLIC_FACTORY_ADDRESS` | Công khai | Địa chỉ hợp đồng `RoundFactory` |
-| `NEXT_PUBLIC_USDC_ADDRESS` | Công khai | Địa chỉ token `MockUSDC` |
-| `ATTESTER_ADDRESS` | Server | Địa chỉ ví attester ký EIP-712 |
-| `ATTESTER_PRIVATE_KEY` | Bí mật | Khóa bí mật của ví attester (chỉ lưu ở server) |
-| `OTP_SECRET` | Bí mật | Khóa bí mật dùng để băm mã OTP |
-| `SUPABASE_URL` | Server | URL dự án Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Bí mật | Khóa service-role Supabase (chỉ dùng ở server) |
-| `EMAIL_PROVIDER` | Server | `smtp` hoặc `resend` |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM` | Server | Cấu hình máy chủ mail SMTP |
-| `SMTP_USER`, `SMTP_PASS` | Bí mật | Thông tin xác thực tài khoản gửi mail |
-| `ALLOWED_EMAIL_DOMAINS` | Server | Danh sách whitelist tên miền (tùy chọn; để trống sẽ chấp nhận mọi đuôi `.edu` và `.edu.vn`) |
+| Biến | Phạm vi | Mô tả | Giá trị mẫu / Mặc định (Fuji) |
+| :--- | :--- | :--- | :--- |
+| `NEXT_PUBLIC_CHAIN_ID` | Công khai | Chain ID mạng blockchain | `43113` (Avalanche Fuji) |
+| `NEXT_PUBLIC_RPC_URL` | Công khai | RPC endpoint kết nối mạng | `https://api.avax-test.network/ext/bc/C/rpc` |
+| `NEXT_PUBLIC_EXPLORER_URL` | Công khai | Trình duyệt khối Snowtrace | `https://testnet.snowtrace.io` |
+| `NEXT_PUBLIC_USDC_ADDRESS` | Công khai | Địa chỉ hợp đồng token MockUSDC | `0xFf56491e29085043DbB11cd01D54cC1449A3d686` |
+| `NEXT_PUBLIC_FACTORY_ADDRESS` | Công khai | Địa chỉ hợp đồng RoundFactory | `0xB2A91fd342d4C81061A97C42A789253d2252D85E` |
+| `NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS` | Công khai | Địa chỉ hợp đồng StudentRegistry | `0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e` |
+| `SUPABASE_URL` | Server | URL dự án Supabase | `https://<project-id>.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Bí mật | Khóa `service_role` của Supabase (chỉ dùng ở server) | Khóa bí mật server |
+| `EMAIL_PROVIDER` | Server | Nhà cung cấp dịch vụ mail | `smtp` hoặc `resend` |
+| `SMTP_HOST` | Server | Địa chỉ máy chủ SMTP | `smtp.gmail.com` |
+| `SMTP_PORT` | Server | Cổng kết nối SMTP | `587` |
+| `SMTP_USER` | Bí mật | Tài khoản gửi mail | Email đăng ký |
+| `SMTP_PASS` | Bí mật | Mật khẩu ứng dụng (App Password) | Mật khẩu tạo từ Google / SMTP |
+| `SMTP_FROM` | Server | Tên hiển thị & địa chỉ mail người gửi | `"SqrtFund <your_email@gmail.com>"` |
+| `OTP_SECRET` | Bí mật | Chuỗi bí mật dùng để băm mã OTP xác thực | Chuỗi hex bí mật 32 bytes |
+| `ATTESTER_PRIVATE_KEY` | Bí mật | Khóa bí mật ví attester ký EIP-712 xác nhận sinh viên | Khóa private key ví attester |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Công khai | Tên Cloudinary cloud name | Tên cloud dashboard |
+| `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Công khai | Unsigned upload preset cho ảnh dự án | `SqrtFund` |
+| `CLOUDINARY_API_KEY` | Server | API Key Cloudinary | API Key từ dashboard |
 
-> **Lưu ý:** Chỉ các biến có tiền tố `NEXT_PUBLIC_` mới được gửi tới trình duyệt. Các giá trị này được nhúng cố định khi build.
+#### Mẫu file `.env.local` hoàn chỉnh:
+```bash
+# --- Avalanche Fuji Network ---
+NEXT_PUBLIC_CHAIN_ID=43113
+NEXT_PUBLIC_RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
+NEXT_PUBLIC_EXPLORER_URL=https://testnet.snowtrace.io
+
+# --- On-chain Contracts ---
+NEXT_PUBLIC_USDC_ADDRESS=0xFf56491e29085043DbB11cd01D54cC1449A3d686
+NEXT_PUBLIC_FACTORY_ADDRESS=0xB2A91fd342d4C81061A97C42A789253d2252D85E
+NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS=0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e
+
+# --- Supabase Database ---
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# --- Email / SMTP Service ---
+EMAIL_PROVIDER=smtp
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+SMTP_FROM="SqrtFund <your_email@gmail.com>"
+
+# --- Cryptographic Secrets ---
+OTP_SECRET=your_32_byte_hex_secret
+ATTESTER_PRIVATE_KEY=your_attester_wallet_private_key
+
+# --- Cloudinary (Image Uploads) ---
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=SqrtFund
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+```
+
+> **Lưu ý:** Chỉ các biến có tiền tố `NEXT_PUBLIC_` mới được gửi tới trình duyệt. Các giá trị này được nhúng cố định khi build. Tuyệt đối không để lộ các biến bí mật (`*_KEY`, `*_PASS`, `*_SECRET`) ra client.
 
 ### Cơ sở dữ liệu
 

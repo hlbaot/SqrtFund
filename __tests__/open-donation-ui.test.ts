@@ -33,19 +33,26 @@ const project = { id: "1", name: "Project", roundId: "round", ownerAddress: "0x3
   status: "approved" as const, category: "technology" as const, shortDescription: "", description: "", contactUrl: "",
   supporterCount: 1, totalDonated: 20, estimatedMatching: 0, sumSqrtRaw: 0n, totalDonatedRaw: 20_000_000n };
 const render = () => renderToStaticMarkup(createElement(DonateBox, { project }));
-beforeEach(() => Object.assign(f, { input: "100", donated: 20_000_000n, legacy: false, balance: 500_000_000n }));
-it("lets an existing supporter contribute above 5 USDC without displaying a fake maximum or round budget", () => {
+beforeEach(() => Object.assign(f, { input: "100", donated: 0n, legacy: false, balance: 500_000_000n }));
+it("lets a supporter contribute above 5 USDC without displaying a fake maximum or round budget, and blocks repeat contributions", () => {
+  f.donated = 0n;
   const html = render();
   const input = html.match(/<input[^>]*id="donation-amount"[^>]*>/)?.[0];
   expect(input).toBeDefined();
   expect(input).toContain('value="100"');
   expect(input).not.toMatch(/\smax=/);
   expect(input).not.toContain('disabled=""');
-  expect(html).toContain(copy.vi.donateBox.previousContribution.replace("{amount}", "20.00 USDC"));
   expect(html).not.toContain(maxUint256.toString());
   expect(html).not.toContain(copy.vi.donateBox.roundBudgetRemaining.split("{remaining}")[0]);
+
+  // Once donated, repeat donations are blocked and alreadyDonated banner is displayed
+  f.donated = 20_000_000n;
+  const donatedHtml = render();
+  expect(donatedHtml).toContain(copy.vi.donateBox.alreadyDonatedTitle);
+  expect(donatedHtml).not.toContain('id="donation-amount"');
 });
 it("accepts micro-USDC and still blocks empty/zero or insufficient-balance contributions", () => {
+  f.donated = 0n;
   f.input = "0.000001";
   expect(render()).not.toContain(copy.vi.donateBox.minMaxError);
   f.input = "0";
