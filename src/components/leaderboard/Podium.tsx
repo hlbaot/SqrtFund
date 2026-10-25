@@ -140,25 +140,15 @@ export function Podium({
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center gap-2">
-                {isDonatable && (
-                  <button
-                    type="button"
-                    onClick={() => setDonatingProject(project)}
-                    className="mono-label flex-1 flex min-h-10 items-center justify-center gap-1.5 border border-primary bg-primary text-white font-bold py-2 px-3 text-xs transition-all hover:bg-primary-hover cursor-pointer active:scale-[0.98] rounded-xs shadow-xs"
-                  >
-                    <Coins className="h-3.5 w-3.5 shrink-0" />
-                    <span>{t.projectCard.donate}</span>
-                  </button>
-                )}
-
-                <Link
-                  href={`/round/${roundId}/project/${project.id}`}
-                  className={`competition-focus ${isDonatable ? "flex-1" : "w-full"} flex min-h-10 items-center justify-center gap-1.5 border border-line-strong bg-surface py-2 px-3 text-xs text-muted transition-all hover:border-line hover:bg-surface-2 hover:text-foreground cursor-pointer active:scale-[0.98] rounded-xs`}
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setDonatingProject(project)}
+                  className="mono-label w-full flex min-h-10 items-center justify-center gap-1.5 border border-money text-money bg-money/5 hover:bg-money/15 py-2 px-3 text-xs font-semibold transition-all cursor-pointer active:scale-[0.98] rounded-xs"
                 >
-                  <span>{t.competition.viewProject}</span>
-                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                </Link>
+                  <Coins className="h-3.5 w-3.5 shrink-0 text-money" />
+                  <span>{t.competition.donateToMe}</span>
+                </button>
               </div>
             </article>
           );

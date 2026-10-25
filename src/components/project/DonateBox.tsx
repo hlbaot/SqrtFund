@@ -17,6 +17,7 @@ import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
 import { useProjects } from "@/hooks/useProjects";
 import { useRole } from "@/hooks/useRole";
+import { useWalletProfile, defaultWalletProfile } from "@/hooks/useWalletProfile";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { tokenMatchesConfigured } from "@/lib/tokenBalance";
 import { useDonate } from "@/hooks/useDonate";
@@ -41,13 +42,16 @@ export interface DonateBoxProps {
 }
 
 export function DonateBox({ project, className = "", roundAddress: customRound }: DonateBoxProps) {
-  const { t } = useLocale();
-  const { address, isConnected } = useAccount();
+  const { t, locale } = useLocale();
+  const { address, isConnected, chainId } = useAccount();
 
   const queryClient = useQueryClient();
   const { roundAddress, token, status: roundStatus, pool, supportsPhase2, isCancelled, minDonation = 1_000_000n, maxPerRound, maxDonation = 5_000_000n, maxMatchBps = 3000n, refetch: refetchRound } = useRound(customRound);
   const { projects, refetch: refetchProjects } = useProjects(roundAddress);
-  const { isStudent, canParticipate } = useRole(customRound);
+  const { isStudent, isOrganizer, isRoundAdmin, canCreateRound, canParticipate } = useRole(customRound);
+  const isOrgRole = isOrganizer || isRoundAdmin || canCreateRound;
+  const { profile } = useWalletProfile(address, chainId, defaultWalletProfile(isOrgRole, isStudent));
+  const isOrganizerUser = isConnected && (profile === "organizer" || (!isStudent && isOrgRole));
   const { donate, step: donationStep, isPending: isDonatePending, activeTxHash, reset: resetDonate } = useDonate(customRound);
 
   const [batchMode, setBatchMode] = useState(false);
@@ -101,7 +105,6 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
     setInputValue(value); const parsed = parseUsdc(value);
     if (parsed.success) setAmount(Number(parsed.amount) / 1_000_000);
   };
-  const handleQuickSelect = (value: number) => handleAmountChange(value.toString());
 
   // Convert all approved round projects to ProjectMathInput format
   const allProjects = useMemo(() => {
@@ -201,7 +204,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
       </div>
 
       {token && !tokenReady && <p role="alert">{t.tokenBalance.tokenMismatch}</p>}
-      {!hasAlreadyDonated && supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
+      {!hasAlreadyDonated && !isOrganizerUser && supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
 
       {/* Round Closed Banner */}
       {isRoundClosed && (
@@ -211,6 +214,23 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
         >
           <AlertCircle className="h-4 w-4 shrink-0 text-primary" />
           <span>{t.donateBox.roundClosedMsg}</span>
+        </div>
+      )}
+
+      {/* Organizer cannot donate guard */}
+      {isOrganizerUser && (
+        <div
+          role="alert"
+          className="my-4 border border-line-strong bg-surface-2 p-3 text-xs text-muted"
+        >
+          <p className="font-semibold text-foreground">
+            {locale === "vi" ? "Tài khoản Nhà tổ chức" : "Organizer Account"}
+          </p>
+          <p className="mt-1 leading-relaxed">
+            {locale === "vi"
+              ? "Vai trò Nhà tổ chức không thể tham gia quyên góp. Chỉ sinh viên đã xác thực mới có thể ủng hộ dự án."
+              : "Organizer accounts cannot make donations. Only verified students can donate to projects."}
+          </p>
         </div>
       )}
 
@@ -224,7 +244,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
         </div>
       )}
 
-      {!hasAlreadyDonated && <StudentVerifyBox />}
+      {!hasAlreadyDonated && !isOrganizerUser && <StudentVerifyBox />}
       {!hasAlreadyDonated && isStudent && !noRoundLimit && <div className="my-4 border border-line bg-bg p-3 text-sm">
         {fmt(t.donateBox.roundBudgetRemaining, { remaining: budgetReady ? formatUsdcFixed(roundRemainingUsdc, { includeSymbol: false }) : "—", max: maxPerRound === undefined ? "—" : formatUsdcFixed(Number(maxPerRound) / 1_000_000, { includeSymbol: false }) })}
       </div>}
@@ -295,44 +315,21 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <input
-                  id="donation-amount"
-                  type="number"
-                  min={minDonationUsdc}
-                  max={noProjectLimit ? undefined : remainingAllowanceUsdc}
-                  step="0.000001"
-                  value={inputValue}
-                  disabled={isDonatePending || isRoundClosed || isOwner || isMaxAllowanceReached || !canParticipate || !budgetReady || roundBudgetExhausted}
-                  onChange={(e) => handleAmountChange(e.target.value)}
-                  className="w-full border border-line-strong bg-bg px-3 py-2 text-base font-bold text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                />
-                <span className="pointer-events-none absolute right-3 top-2.5 text-xs font-bold text-muted">
-                  USDC
-                </span>
-              </div>
-
-              {/* Quick Buttons capped at remaining allowance */}
-              <div className="flex gap-1.5">
-                {[1, 5, 10].map((val) => {
-                  const isDisabled = val < minDonationUsdc || val > Math.min(remainingAllowanceUsdc, roundRemainingUsdc) || isDonatePending || isRoundClosed || isOwner || !canParticipate || !budgetReady || roundBudgetExhausted;
-                  return (
-                    <button
-                      key={val}
-                      type="button"
-                      disabled={isDisabled}
-                      onClick={() => handleQuickSelect(val)}
-                      className={`border border-line px-2.5 py-2 text-xs font-bold transition-all cursor-pointer active:scale-95 ${amount === val && !error
-                        ? "border-primary bg-primary text-foreground"
-                        : "bg-surface-2 text-foreground hover:border-line-strong hover:bg-surface"
-                        } disabled:opacity-30 disabled:cursor-not-allowed`}
-                    >
-                      {val}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="relative">
+              <input
+                id="donation-amount"
+                type="number"
+                min={minDonationUsdc}
+                max={noProjectLimit ? undefined : remainingAllowanceUsdc}
+                step="0.000001"
+                value={inputValue}
+                disabled={isDonatePending || isRoundClosed || isOwner || isOrganizerUser || isMaxAllowanceReached || !canParticipate || !budgetReady || roundBudgetExhausted}
+                onChange={(e) => handleAmountChange(e.target.value)}
+                className="w-full border border-line-strong bg-bg px-3 py-2 text-base font-bold text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+              />
+              <span className="pointer-events-none absolute right-3 top-2.5 text-xs font-bold text-muted">
+                USDC
+              </span>
             </div>
 
             {error && (
@@ -416,6 +413,10 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
             ) : isOwner ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
                 {t.donateBox.ownerBtn}
+              </Button>
+            ) : isOrganizerUser ? (
+              <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
+                {locale === "vi" ? "Nhà tổ chức không thể quyên góp" : "Organizers cannot donate"}
               </Button>
             ) : !isStudent ? (
               <Link href="/verify" className="gradient-border flex justify-center p-3 text-sm font-bold">{t.donateBox.verificationRequired}</Link>

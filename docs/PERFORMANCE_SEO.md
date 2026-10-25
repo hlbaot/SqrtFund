@@ -288,3 +288,14 @@ Tất cả head kiểm tra có canonical, OG image 1200×630, `summary_large_ima
 - `src/views/my.tsx`
 - `src/views/round-detail.tsx`
 - `src/views/verify.tsx`
+
+
+## Round pagination and shared UI contrast (2026-10-25)
+
+- `/round` paginates the filtered, newest-first summaries at 6 cards per page. All existing store subscriptions, reads and receipt fences remain in place: this is presentation pagination, not network pagination.
+- Native History API updates `?page=` through the App Router without a route fetch or resetting the realtime store; preserve unrelated query keys and hash. Page clicks push history; filter reset and out-of-range normalization replace the current entry.
+- Wait for initial discovery reads to settle before normalizing an out-of-range shared URL, so partial snapshots do not discard its requested page. Subsequent realtime changes update the current slice.
+- `useSearchParams` is bounded by Suspense; initial fallback and list loading both render 6 skeletons. Grid: 1 column below 768px, 2 from 768px, 3 from 1024px. Existing canonical and indexing policies are unchanged.
+- Shared `Pagination` bounds the number of controls even for long lists. Admin queues retain 4 items per page. Semantic buttons, current-page announcement, disabled boundaries and visible focus styles support keyboard use.
+- Page changes scroll to the list with smooth motion; reduced-motion uses instant scrolling. No additional polling, API or contract changes.
+- Global contrast tokens also cover modal/toast portals and forms. Hardcoded home-panel colors now reference those tokens; decorative lattice contrast is quieter. See [UI_ACCESSIBILITY.md](UI_ACCESSIBILITY.md) for measured pairs and verification scope.

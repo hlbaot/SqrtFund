@@ -87,18 +87,18 @@ export function MyView() {
     isPending: isClaimPending,
   } = useClaim();
 
-  const [activeTab, setActiveTab] = useState("donations");
+  const [activeTab, setActiveTab] = useState(isOrgMode ? "projects" : "donations");
 
   const { avatar } = useAvatar(address);
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
   const closeAvatarDialog = useCallback(() => setIsAvatarDialogOpen(false), []);
   const handleOpenAvatarDialog = () => setIsAvatarDialogOpen(true);
 
-  // Read donations for all projects via multicall
+  // Read donations for all projects via multicall (skipped for organizers as they do not donate)
   const approvedProjects = useMemo(() => projects.filter(isPublicProject), [projects]);
 
   const donationContracts = useMemo(() => {
-    if (!roundAddress || !address) return [];
+    if (isOrgMode || !roundAddress || !address) return [];
     return approvedProjects.map((p) => ({
       address: roundAddress,
       abi: qfRoundAbi,
@@ -300,261 +300,261 @@ export function MyView() {
 
       {isCancelled && <RoundCancellationPanel projectNames={Object.fromEntries(projects.map(project => [project.id, project.name]))} roundAddress={roundAddress} />}
 
-      {/* Tabs: My Donations & My Projects */}
+      {/* Organizer: Vòng gọi vốn của tôi (Không có tab donate) / Student: Tabs Ủng hộ & Dự án */}
       <div data-aos="fade-up" data-aos-duration="600">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="donations">{t.myActivity.tabDonations}</TabsTrigger>
-            <TabsTrigger value="projects">
-              {isOrgMode ? t.myActivity.tabRounds : t.myActivity.tabProjects}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Tab 1: My Donations */}
-          <TabsContent value="donations">
-            {isCancelled ? <p className="text-sm text-muted">{t.cancellation.banner}</p> : isDonationsLoading ? (
-              <div className="py-8 text-center text-xs text-muted">{t.common.loadingDonations}</div>
-            ) : myDonations.length === 0 ? (
-              <EmptyState
-                title={t.myActivity.donationsEmptyTitle}
-                description={t.myActivity.donationsEmptyDesc}
-                actionLabel={t.myActivity.donationsEmptyCta}
-                onAction={() => router.push("/#projects-list")}
-                icon={<Coins className="h-6 w-6 text-muted" />}
-              />
-            ) : (
-              <div className="border border-line bg-surface p-6 space-y-4">
-                <div className="flex items-center justify-between">
+        {isOrgMode ? (
+          managedRounds.isLoading ? (
+            <div className="py-8 text-center text-xs text-muted">
+              {t.common.loading}
+            </div>
+          ) : managedRounds.rounds.length === 0 ? (
+            <EmptyState
+              title={t.myActivity.roundsEmptyTitle}
+              description={t.myActivity.roundsEmptyDesc}
+              actionLabel={t.myActivity.roundsEmptyCta}
+              onAction={() => router.push("/admin?tab=organizer&action=create")}
+              icon={<Layers className="h-6 w-6 text-muted" />}
+            />
+          ) : (
+            <div className="border border-line bg-surface p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
                   <h2 className="text-base font-bold text-foreground">
-                    {t.myActivity.tabDonations}
+                    {t.myActivity.tabRounds}
                   </h2>
                   <span className="font-mono text-xs text-muted">
-                    {t.common.projectsSupported.replace("{count}", String(myDonations.length))}
+                    {t.common.registered.replace("{count}", String(managedRounds.rounds.length))}
                   </span>
                 </div>
 
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="role-label">{t.myActivity.colProject}</TableHead>
-                      <TableHead className="role-label">{t.myActivity.colAmount}</TableHead>
-                      <TableHead className="role-label">{t.common.projectMatchingTotal}</TableHead>
-                      <TableHead className="text-right role-label">{t.common.projectDetails}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {myDonations.map((item) => (
-                      <TableRow key={item.project.id}>
-                        <TableCell className="font-medium text-foreground">
-                          {item.project.name}
-                        </TableCell>
-                        <TableCell className="font-mono font-bold text-money tabular-nums">
-                          {formatUsdcFixed(item.amountNum)}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted tabular-nums">
-                          +{formatUsdcFixed(item.project.estimatedMatching)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/round/${roundAddress}/project/${item.project.id}`)}
-                            className="h-7 text-xs font-semibold text-primary"
-                          >
-                            {t.common.view}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => router.push("/admin?tab=organizer&action=create")}
+                  className="text-xs font-bold gap-1.5 self-start sm:self-auto"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>{t.myActivity.createRound}</span>
+                </Button>
               </div>
-            )}
-          </TabsContent>
 
-          {/* Tab 2: My Projects (Student) or My Rounds (Organizer) */}
-          <TabsContent value="projects">
-            {isOrgMode ? (
-              managedRounds.isLoading ? (
-                <div className="py-8 text-center text-xs text-muted">
-                  {t.common.loading}
-                </div>
-              ) : managedRounds.rounds.length === 0 ? (
+              <div className="divide-y divide-line">
+                {managedRounds.rounds.map((rnd) => (
+                  <div
+                    key={rnd.address}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5"
+                  >
+                    <div className="space-y-1.5 max-w-md">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-foreground text-base">
+                          {rnd.name || shortAddress(rnd.address)}
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-mono text-muted">
+                        <span>{rnd.address}</span>
+                        <ExplorerLink address={rnd.address} iconOnly />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => router.push(`/round/${rnd.address}`)}
+                        className="text-xs font-semibold gap-1.5"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span>{t.myActivity.viewRound}</span>
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => router.push(`/admin?tab=organizer&round=${rnd.address}`)}
+                        className="text-xs font-bold gap-1.5"
+                      >
+                        <Settings className="h-3.5 w-3.5" />
+                        <span>{t.myActivity.manageRound}</span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="donations">{t.myActivity.tabDonations}</TabsTrigger>
+              <TabsTrigger value="projects">{t.myActivity.tabProjects}</TabsTrigger>
+            </TabsList>
+
+            {/* Tab 1: My Donations */}
+            <TabsContent value="donations">
+              {isCancelled ? <p className="text-sm text-muted">{t.cancellation.banner}</p> : isDonationsLoading ? (
+                <div className="py-8 text-center text-xs text-muted">{t.common.loadingDonations}</div>
+              ) : myDonations.length === 0 ? (
                 <EmptyState
-                  title={t.myActivity.roundsEmptyTitle}
-                  description={t.myActivity.roundsEmptyDesc}
-                  actionLabel={t.myActivity.roundsEmptyCta}
-                  onAction={() => router.push("/admin?tab=organizer&action=create")}
-                  icon={<Layers className="h-6 w-6 text-muted" />}
+                  title={t.myActivity.donationsEmptyTitle}
+                  description={t.myActivity.donationsEmptyDesc}
+                  actionLabel={t.myActivity.donationsEmptyCta}
+                  onAction={() => router.push("/#projects-list")}
+                  icon={<Coins className="h-6 w-6 text-muted" />}
                 />
               ) : (
                 <div className="border border-line bg-surface p-6 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-base font-bold text-foreground">
-                        {t.myActivity.tabRounds}
-                      </h2>
-                      <span className="font-mono text-xs text-muted">
-                        {t.common.registered.replace("{count}", String(managedRounds.rounds.length))}
-                      </span>
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-foreground">
+                      {t.myActivity.tabDonations}
+                    </h2>
+                    <span className="font-mono text-xs text-muted">
+                      {t.common.projectsSupported.replace("{count}", String(myDonations.length))}
+                    </span>
+                  </div>
 
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => router.push("/admin?tab=organizer&action=create")}
-                      className="text-xs font-bold gap-1.5 self-start sm:self-auto"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      <span>{t.myActivity.createRound}</span>
-                    </Button>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="role-label">{t.myActivity.colProject}</TableHead>
+                        <TableHead className="role-label">{t.myActivity.colAmount}</TableHead>
+                        <TableHead className="role-label">{t.common.projectMatchingTotal}</TableHead>
+                        <TableHead className="text-right role-label">{t.common.projectDetails}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {myDonations.map((item) => (
+                        <TableRow key={item.project.id}>
+                          <TableCell className="font-medium text-foreground">
+                            {item.project.name}
+                          </TableCell>
+                          <TableCell className="font-mono font-bold text-money tabular-nums">
+                            {formatUsdcFixed(item.amountNum)}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-muted tabular-nums">
+                            +{formatUsdcFixed(item.project.estimatedMatching)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => router.push(`/round/${roundAddress}/project/${item.project.id}`)}
+                              className="h-7 text-xs font-semibold text-primary"
+                            >
+                              {t.common.view}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Tab 2: My Projects */}
+            <TabsContent value="projects">
+              {myProjects.length === 0 ? (
+                <EmptyState
+                  title={t.myActivity.projectsEmptyTitle}
+                  description={t.myActivity.projectsEmptyDesc}
+                  actionLabel={isCancelled ? undefined : t.myActivity.projectsEmptyCta}
+                  onAction={() => router.push("/register")}
+                  icon={<FolderKanban className="h-6 w-6 text-muted" />}
+                />
+              ) : (
+                <div className="border border-line bg-surface p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-bold text-foreground">
+                      {t.myActivity.tabProjects}
+                    </h2>
+                    <span className="font-mono text-xs text-muted">
+                      {t.common.registered.replace("{count}", String(myProjects.length))}
+                    </span>
                   </div>
 
                   <div className="divide-y divide-line">
-                    {managedRounds.rounds.map((rnd) => (
-                      <div
-                        key={rnd.address}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5"
-                      >
-                        <div className="space-y-1.5 max-w-md">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-foreground text-base">
-                              {rnd.name || shortAddress(rnd.address)}
-                            </h3>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs font-mono text-muted">
-                            <span>{rnd.address}</span>
-                            <ExplorerLink address={rnd.address} iconOnly />
-                          </div>
-                        </div>
+                    {myProjects.map((proj) => {
+                      const projectRound = roundSnapshots[proj.roundId.toLowerCase()]?.fields;
+                      const projectFinalized = projectRound?.results[8]?.result === true;
+                      const projectCancelled = projectRound?.results[15]?.result === true;
+                      const totalPayout = proj.totalDonated + (projectFinalized ? proj.finalMatching ?? 0 : proj.estimatedMatching);
 
-                        <div className="flex items-center gap-2.5">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => router.push(`/round/${rnd.address}`)}
-                            className="text-xs font-semibold gap-1.5"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            <span>{t.myActivity.viewRound}</span>
-                          </Button>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => router.push(`/admin?tab=organizer&round=${rnd.address}`)}
-                            className="text-xs font-bold gap-1.5"
-                          >
-                            <Settings className="h-3.5 w-3.5" />
-                            <span>{t.myActivity.manageRound}</span>
-                          </Button>
+                      return (
+                        <div
+                          key={`${proj.roundId}:${proj.id}`}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5"
+                        >
+                          <div className="space-y-1.5 max-w-md">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-foreground text-base">
+                                {proj.name}
+                              </h3>
+                              <Badge
+                                variant={proj.rejected ? "primary" : proj.approved ? "accent" : "warning"}
+                              >
+                                {proj.rejected ? t.rejection.status : proj.approved
+                                  ? t.myActivity.statusApproved
+                                  : t.myActivity.statusPending}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted line-clamp-1">
+                              {proj.description}
+                            </p>
+                            <div className="flex items-center gap-4 text-xs font-mono text-muted pt-1">
+                              <span>{t.common.supporters_count.replace("{count}", String(proj.supporterCount))}</span>
+                              <span>•</span>
+                              <span>{t.common.raised.replace("{amount}", formatUsdcFixed(proj.totalDonated))}</span>
+                            </div>
+                          </div>
+
+                          {/* Financial payout & claim button */}
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <span className="block role-label text-muted">
+                                {projectFinalized ? (locale === "vi" ? "Khoản nhận đã chốt" : "Final payout") : t.myActivity.estimatedPayout}
+                              </span>
+                              <span className="role-value-md text-money block">
+                                {projectFinalized && proj.finalMatching === undefined ? "—" : formatUsdcFixed(totalPayout)}
+                              </span>
+                            </div>
+
+                            {/* Claim Button */}
+                            <div>
+                              {proj.claimed ? (
+                                <Badge variant="accent" className="px-3 py-1.5 text-xs font-bold">
+                                  <Check className="h-3.5 w-3.5 mr-1" />
+                                  {t.myActivity.claimedBadge}
+                                </Badge>
+                              ) : (
+                                <div className="relative group">
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    disabled={projectCancelled || proj.rejected || !projectFinalized || !proj.approved || isClaimPending}
+                                    isLoading={isClaimPending}
+                                    onClick={() => handleClaim(proj.contractId, proj.roundId as Address)}
+                                    className="font-bold text-xs"
+                                  >
+                                    {t.myActivity.claimButton}
+                                  </Button>
+
+                                  {!projectFinalized && (
+                                    <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block z-20 w-52 border border-line-strong bg-bg p-2 text-center text-xs text-muted">
+                                      {t.myActivity.claimDisabledTooltip}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
-              )
-            ) : myProjects.length === 0 ? (
-              <EmptyState
-                title={t.myActivity.projectsEmptyTitle}
-                description={t.myActivity.projectsEmptyDesc}
-                actionLabel={isCancelled ? undefined : t.myActivity.projectsEmptyCta}
-                onAction={() => router.push("/register")}
-                icon={<FolderKanban className="h-6 w-6 text-muted" />}
-              />
-            ) : (
-              <div className="border border-line bg-surface p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-foreground">
-                    {t.myActivity.tabProjects}
-                  </h2>
-                  <span className="font-mono text-xs text-muted">
-                    {t.common.registered.replace("{count}", String(myProjects.length))}
-                  </span>
-                </div>
-
-                <div className="divide-y divide-line">
-                  {myProjects.map((proj) => {
-                    const projectRound = roundSnapshots[proj.roundId.toLowerCase()]?.fields;
-                    const projectFinalized = projectRound?.results[8]?.result === true;
-                    const projectCancelled = projectRound?.results[15]?.result === true;
-                    const totalPayout = proj.totalDonated + (projectFinalized ? proj.finalMatching ?? 0 : proj.estimatedMatching);
-
-                    return (
-                      <div
-                        key={`${proj.roundId}:${proj.id}`}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5"
-                      >
-                        <div className="space-y-1.5 max-w-md">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-foreground text-base">
-                              {proj.name}
-                            </h3>
-                            <Badge
-                              variant={proj.rejected ? "primary" : proj.approved ? "accent" : "warning"}
-                            >
-                              {proj.rejected ? t.rejection.status : proj.approved
-                                ? t.myActivity.statusApproved
-                                : t.myActivity.statusPending}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted line-clamp-1">
-                            {proj.description}
-                          </p>
-                          <div className="flex items-center gap-4 text-xs font-mono text-muted pt-1">
-                            <span>{t.common.supporters_count.replace("{count}", String(proj.supporterCount))}</span>
-                            <span>•</span>
-                            <span>{t.common.raised.replace("{amount}", formatUsdcFixed(proj.totalDonated))}</span>
-                          </div>
-                        </div>
-
-                        {/* Financial payout & claim button */}
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <span className="block role-label text-muted">
-                              {projectFinalized ? (locale === "vi" ? "Khoản nhận đã chốt" : "Final payout") : t.myActivity.estimatedPayout}
-                            </span>
-                            <span className="role-value-md text-money block">
-                              {projectFinalized && proj.finalMatching === undefined ? "—" : formatUsdcFixed(totalPayout)}
-                            </span>
-                          </div>
-
-                          {/* Claim Button */}
-                          <div>
-                            {proj.claimed ? (
-                              <Badge variant="accent" className="px-3 py-1.5 text-xs font-bold">
-                                <Check className="h-3.5 w-3.5 mr-1" />
-                                {t.myActivity.claimedBadge}
-                              </Badge>
-                            ) : (
-                              <div className="relative group">
-                                <Button
-                                  variant="primary"
-                                  size="sm"
-                                  disabled={projectCancelled || proj.rejected || !projectFinalized || !proj.approved || isClaimPending}
-                                  isLoading={isClaimPending}
-                                  onClick={() => handleClaim(proj.contractId, proj.roundId as Address)}
-                                  className="font-bold text-xs"
-                                >
-                                  {t.myActivity.claimButton}
-                                </Button>
-
-                                {!projectFinalized && (
-                                  <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block z-20 w-52 border border-line-strong bg-bg p-2 text-center text-xs text-muted">
-                                    {t.myActivity.claimDisabledTooltip}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       {isAvatarDialogOpen && address && <AvatarPickerDialog key={address.toLowerCase()} address={address} onClose={closeAvatarDialog} />}

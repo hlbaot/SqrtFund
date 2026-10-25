@@ -140,40 +140,40 @@ export function NetworkStats() {
   return (
     <div ref={containerRef} className="relative w-full">
       {/* Unified "Metrics Bar" container */}
-      <div className="relative rounded-[4px] border border-white/12 bg-[#000000] overflow-hidden text-white shadow-2xl transition-all duration-300">
+      <div className="relative rounded-[4px] border border-white/12 bg-surface overflow-hidden text-white shadow-2xl transition-all duration-300">
         {/* 4 Corner Brackets (8px x 8px Red #E84142) */}
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -top-[1px] -left-[1px] z-30 h-2 w-2 border-t-2 border-l-2 border-[#E84142]"
+          className="pointer-events-none absolute -top-[1px] -left-[1px] z-30 h-2 w-2 border-t-2 border-l-2 border-primary"
         />
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -top-[1px] -right-[1px] z-30 h-2 w-2 border-t-2 border-r-2 border-[#E84142]"
+          className="pointer-events-none absolute -top-[1px] -right-[1px] z-30 h-2 w-2 border-t-2 border-r-2 border-primary"
         />
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-[1px] -left-[1px] z-30 h-2 w-2 border-b-2 border-l-2 border-[#E84142]"
+          className="pointer-events-none absolute -bottom-[1px] -left-[1px] z-30 h-2 w-2 border-b-2 border-l-2 border-primary"
         />
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-[1px] -right-[1px] z-30 h-2 w-2 border-b-2 border-r-2 border-[#E84142]"
+          className="pointer-events-none absolute -bottom-[1px] -right-[1px] z-30 h-2 w-2 border-b-2 border-r-2 border-primary"
         />
 
         {/* 1. TOP BAR (32px high, bg-white/[0.02], border-b border-white/12) */}
-        <div className="relative z-10 flex h-8 items-center justify-between border-b border-white/12 bg-white/[0.02] px-4 font-mono text-[11px]">
+        <div className="relative z-10 flex h-8 items-center justify-between border-b border-white/12 bg-white/[0.02] px-4 font-mono text-xs">
           {/* Left: ● LIVE or ● OFFLINE */}
           <div className="flex items-center gap-2">
             {isOffline ? (
               <>
-                <span className="h-1.5 w-1.5 rounded-full bg-[#E84142] animate-pulse" />
-                <span className="font-semibold tracking-[0.08em] text-[#E84142]">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                <span className="font-semibold tracking-[0.08em] text-primary">
                   {isVi ? "OFFLINE · ĐANG THỬ LẠI" : "OFFLINE · RETRYING"}
                 </span>
               </>
             ) : (
               <>
-                <span className="h-1.5 w-1.5 rounded-full bg-[#22c55e] animate-pulse" />
-                <span className="font-semibold tracking-[0.08em] text-[#A1A1AA]">
+                <span className="h-1.5 w-1.5 rounded-full bg-money animate-pulse" />
+                <span className="font-semibold tracking-[0.08em] text-muted">
                   LIVE
                 </span>
               </>
@@ -181,7 +181,7 @@ export function NetworkStats() {
           </div>
 
           {/* Right: Real update time */}
-          <div className="text-[#71717A] tracking-[0.05em]">
+          <div className="text-muted tracking-[0.05em]">
             <span>
               {isVi ? `CẬP NHẬT ${secondsAgo}S TRƯỚC` : `UPDATED ${secondsAgo}S AGO`}
             </span>
@@ -199,7 +199,7 @@ export function NetworkStats() {
             className="group relative flex flex-col justify-between overflow-hidden p-6 lg:p-8 cursor-pointer transition-all duration-300 hover:bg-white/[0.015]"
           >
             {/* Column hover outline highlight */}
-            <div className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-300 group-hover:border-[#E84142]/60 z-20" />
+            <div className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-300 group-hover:border-primary/60 z-20" />
 
             {/* Giant watermark number behind column */}
             <span
@@ -211,14 +211,14 @@ export function NetworkStats() {
 
             {/* Row 1: Icon + Mono Label + Trend Chip */}
             <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[#A1A1AA]">
-                <Users className="h-4 w-4 text-[#A1A1AA]" />
+              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                <Users className="h-4 w-4 text-muted" />
                 <span>{isVi ? "NGƯỜI ỦNG HỘ" : "SUPPORTERS"}</span>
               </div>
 
               {/* Trend chip: +1 TODAY or ACTIVE */}
               {totalSupporters > 0 && (
-                <span className="font-mono text-[10px] text-[#22c55e] border border-[#22c55e]/40 bg-[#22c55e]/10 px-1.5 py-0.5 rounded-[2px] tracking-wider">
+                <span className="font-mono text-xs text-money border border-money/40 bg-money/10 px-1.5 py-0.5 rounded-[2px] tracking-wider">
                   +1 TODAY
                 </span>
               )}
@@ -232,7 +232,7 @@ export function NetworkStats() {
               >
                 {isLoading ? "—" : formatNumber(animatedSupporters)}
               </div>
-              <p className="mt-2 text-sm text-[#A1A1AA]">
+              <p className="mt-2 text-sm text-muted">
                 {isVi ? "Sinh viên ủng hộ" : "Student supporters"}
               </p>
             </div>
@@ -255,7 +255,7 @@ export function NetworkStats() {
                 })}
               </div>
 
-              <div className="mt-2 font-mono text-[11px] text-[#71717A] flex items-center justify-between">
+              <div className="mt-2 font-mono text-xs text-muted flex items-center justify-between">
                 <span>
                   {totalSupporters === 0
                     ? isVi
@@ -278,7 +278,7 @@ export function NetworkStats() {
             className="group relative flex flex-col justify-between overflow-hidden p-6 lg:p-8 cursor-pointer transition-all duration-300 hover:bg-white/[0.015]"
           >
             {/* Column hover outline highlight */}
-            <div className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-300 group-hover:border-[#E84142]/60 z-20" />
+            <div className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-300 group-hover:border-primary/60 z-20" />
 
             {/* Giant watermark number behind column */}
             <span
@@ -290,13 +290,13 @@ export function NetworkStats() {
 
             {/* Row 1: Icon + Mono Label */}
             <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[#A1A1AA]">
-                <Coins className="h-4 w-4 text-[#A1A1AA]" />
+              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                <Coins className="h-4 w-4 text-muted" />
                 <span>{isVi ? "QUỸ ĐỐI ỨNG" : "MATCHING POOL"}</span>
               </div>
 
               {poolUsdc > 0 && (
-                <span className="font-mono text-[10px] text-[#22c55e] border border-[#22c55e]/40 bg-[#22c55e]/10 px-1.5 py-0.5 rounded-[2px] tracking-wider">
+                <span className="font-mono text-xs text-money border border-money/40 bg-money/10 px-1.5 py-0.5 rounded-[2px] tracking-wider">
                   ACTIVE
                 </span>
               )}
@@ -309,11 +309,11 @@ export function NetworkStats() {
                   }`}
               >
                 <span>{isLoading ? "—" : formatNumber(animatedPool)}</span>
-                <span className="ml-2 font-mono text-lg lg:text-xl font-normal text-[#71717A] tracking-normal">
+                <span className="ml-2 font-mono text-lg lg:text-xl font-normal text-muted tracking-normal">
                   USDC
                 </span>
               </div>
-              <p className="mt-2 text-sm text-[#A1A1AA]">
+              <p className="mt-2 text-sm text-muted">
                 {isVi ? "Quỹ đối ứng USDC" : "USDC matching pool"}
               </p>
             </div>
@@ -329,7 +329,7 @@ export function NetworkStats() {
                     <span
                       key={i}
                       className={`h-1 flex-1 rounded-[1px] transition-all duration-300 ${isFilled
-                          ? "bg-[#E84142] shadow-[0_0_4px_rgba(232,65,66,0.6)]"
+                          ? "bg-primary shadow-[0_0_4px_rgba(232,65,66,0.6)]"
                           : "bg-white/12 group-hover:bg-white/20"
                         }`}
                       style={{ transitionDelay: `${i * 20}ms` }}
@@ -338,13 +338,13 @@ export function NetworkStats() {
                 })}
               </div>
 
-              <div className="mt-2 font-mono text-[11px]">
+              <div className="mt-2 font-mono text-xs">
                 {poolUsdc === 0 ? (
-                  <span className="text-[#E84142]/90 tracking-wide font-medium">
+                  <span className="text-primary tracking-wide font-medium">
                     {isVi ? "CHỜ NẠP TIỀN ĐẦU TIÊN" : "AWAITING FIRST DEPOSIT"}
                   </span>
                 ) : (
-                  <span className="text-[#71717A]">
+                  <span className="text-muted">
                     {formatNumber(poolUsdc)} / 1,000 USDC {isVi ? "mục tiêu" : "target"}
                   </span>
                 )}
@@ -361,7 +361,7 @@ export function NetworkStats() {
             className="group relative flex flex-col justify-between overflow-hidden p-6 lg:p-8 cursor-pointer transition-all duration-300 hover:bg-white/[0.015]"
           >
             {/* Column hover outline highlight */}
-            <div className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-300 group-hover:border-[#E84142]/60 z-20" />
+            <div className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-300 group-hover:border-primary/60 z-20" />
 
             {/* Giant watermark number behind column */}
             <span
@@ -373,13 +373,13 @@ export function NetworkStats() {
 
             {/* Row 1: Icon + Mono Label */}
             <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[#A1A1AA]">
-                <Rocket className="h-4 w-4 text-[#A1A1AA]" />
+              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                <Rocket className="h-4 w-4 text-muted" />
                 <span>{isVi ? "DỰ ÁN" : "PROJECTS"}</span>
               </div>
 
               {approvedProjects.length > 0 && (
-                <span className="font-mono text-[10px] text-[#22c55e] border border-[#22c55e]/40 bg-[#22c55e]/10 px-1.5 py-0.5 rounded-[2px] tracking-wider">
+                <span className="font-mono text-xs text-money border border-money/40 bg-money/10 px-1.5 py-0.5 rounded-[2px] tracking-wider">
                   {approvedProjects.length} ACTIVE
                 </span>
               )}
@@ -393,7 +393,7 @@ export function NetworkStats() {
               >
                 {isLoading ? "—" : formatNumber(animatedProjects)}
               </div>
-              <p className="mt-2 text-sm text-[#A1A1AA]">
+              <p className="mt-2 text-sm text-muted">
                 {isVi ? "Dự án đã duyệt" : "Approved projects"}
               </p>
             </div>
@@ -407,7 +407,7 @@ export function NetworkStats() {
                     <span
                       key={i}
                       className={`h-2.5 w-2.5 rounded-[2px] transition-all duration-300 ${isApproved
-                          ? "border border-[#E84142] bg-[#E84142]/20 shadow-[0_0_6px_rgba(232,65,66,0.3)] group-hover:scale-110"
+                          ? "border border-primary bg-primary/20 shadow-[0_0_6px_rgba(232,65,66,0.3)] group-hover:scale-110"
                           : "border border-dashed border-white/20 bg-transparent group-hover:border-white/40"
                         }`}
                       style={{ transitionDelay: `${i * 40}ms` }}
@@ -416,7 +416,7 @@ export function NetworkStats() {
                 })}
               </div>
 
-              <div className="mt-2 font-mono text-[11px] text-[#71717A]">
+              <div className="mt-2 font-mono text-xs text-muted">
                 {approvedProjects.length} {isVi ? "đã duyệt" : "approved"}
                 <span className="mx-1.5">·</span>
                 {pendingProjectsCount} {isVi ? "đang chờ" : "pending"}
