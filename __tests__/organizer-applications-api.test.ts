@@ -128,7 +128,7 @@ describe("Organizer Applications API", () => {
     expect(json2.error).toBe("APPLICATION_ALREADY_PENDING");
   });
 
-  it("retrieves applications via GET and filters by wallet", async () => {
+  it("does not expose an application to an anonymous caller who knows its wallet", async () => {
     const testWallet = "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc";
     await POST(
       new Request("http://localhost/api/organizer-applications", {
@@ -140,11 +140,11 @@ describe("Organizer Applications API", () => {
 
     const getReq = new Request(`http://localhost/api/organizer-applications?walletAddress=${testWallet}`);
     const getRes = await GET(getReq);
-    expect(getRes.status).toBe(200);
+    expect(getRes.status).toBe(401);
     const getJson = await getRes.json();
-    expect(getJson.ok).toBe(true);
-    expect(Array.isArray(getJson.applications)).toBe(true);
-    expect(getJson.applications.some((a: { walletAddress: string }) => a.walletAddress.toLowerCase() === testWallet.toLowerCase())).toBe(true);
+    expect(getJson.ok).toBe(false);
+    expect(getJson.applications).toBeUndefined();
+    expect(getRes.headers.get("cache-control")).toBe("no-store");
   });
 
   it("updates application status to approved with txHash via PATCH", async () => {

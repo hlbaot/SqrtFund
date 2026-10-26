@@ -1,4 +1,5 @@
 import { markVisitIntroSeen } from "@/lib/visitIntro";
+import { clearOrganizerReadAccess } from "@/lib/store/organizerReadStore";
 import type { QueryClient } from "@tanstack/react-query";
 import { cancelTransactionFlows, txToast } from "@/lib/txToast";
 import type { WalletRole } from "@/hooks/useRole";
@@ -110,6 +111,7 @@ export function reloadWallet(snapshot: WalletSnapshot) {
 export async function logoutWallet(disconnect: () => Promise<unknown>, queryClient: QueryClient) {
   if (navigating) return;
   navigating = true;
+  clearOrganizerReadAccess();
   markWalletLoggedOut();
   cancelTransactionFlows();
   txToast.dismiss();

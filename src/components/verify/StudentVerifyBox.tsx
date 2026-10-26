@@ -1,7 +1,7 @@
 "use client";
 import { api, ApiError } from "@/lib/api";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { useAccount, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
+import { useAccount, useSignMessage, usePublicClient, useSwitchChain, useWriteContract } from "wagmi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Address, Hex } from "viem";
 import { useStudentVerificationEligibility } from "@/hooks/useStudentVerificationEligibility";
@@ -10,6 +10,7 @@ import { useLocale } from "@/lib/context/locale";
 import { useTxFlow } from "@/hooks/useTxFlow";
 import { txToast, type TransactionFlow } from "@/lib/txToast";
 import { studentRegistryAbi } from "@/lib/contracts/abis";
+import { createEmailWalletPermit, emailWalletMessage, type EmailWalletProof } from "@/lib/emailWalletProof";
 import { studentRegistryAddress } from "@/lib/contracts/addresses";
 import { isAllowedEmail, maskEmail, type EmailDomainPolicy } from "@/lib/verify/domain";
 import { Button } from "@/components/ui/Button";
@@ -36,6 +37,8 @@ function VerificationSession({ address, chainId, showVerified }: { address: Addr
   const queryClient = useQueryClient();
   const publicClient = usePublicClient({ chainId: 43113 });
   const { switchChainAsync, isPending: switching } = useSwitchChain();
+  const { signMessageAsync } = useSignMessage();
+  const walletProof = useRef<EmailWalletProof | undefined>(undefined);
   const { writeContractAsync } = useWriteContract();
   const beginFlow = useTxFlow();
   const { isStudent, isConfigured, isLoading, refetch } = useStudentStatus();
@@ -111,7 +114,12 @@ function VerificationSession({ address, chainId, showVerified }: { address: Addr
     busyRef.current = true; setBusy(true);
     let resume: Attestation | undefined;
     try {
-      const result = await flow.wait(() => post<CodeRequest | (Attestation & { code: "ALREADY_VERIFIED" })>("request-otp", { email: target, address }));
+      flow.toast.pending("student-email", t.verification.title, label("Sign to prove wallet ownership…", "Ký để chứng minh quyền sở hữu ví…"));
+      const permit = createEmailWalletPermit("student", target, address, studentRegistryAddress);
+      const credential = { ...permit, signature: await flow.wait(() => signMessageAsync({ account: address, message: emailWalletMessage(permit) })) };
+      if (!mounted.current || flow.cancelled) return;
+      walletProof.current = credential;
+      const result = await flow.wait(() => post<CodeRequest | (Attestation & { code: "ALREADY_VERIFIED" })>("request-otp", { email: target, address, walletProof: credential }));
       if (!mounted.current) return;
       if ("code" in result && result.code === "ALREADY_VERIFIED") {
         setAttestation(result); setSentEmail(target); setOpen(true); resume = result;
@@ -133,7 +141,7 @@ function VerificationSession({ address, chainId, showVerified }: { address: Addr
     busyRef.current = true; setBusy(true);
     try {
       flow.toast.pending("student-email", t.verification.title, label("Checking code…", "Đang kiểm tra mã…"));
-      const proof = saved ?? await flow.wait(() => post<Attestation>("confirm", { requestId: request!.requestId, otp: code }));
+      const proof = saved ?? await flow.wait(() => post<Attestation>("confirm", { requestId: request!.requestId, otp: code, walletProof: walletProof.current }));
       if (!mounted.current) return;
       if (!isConfigured || proof.chainId !== 43113 || proof.registryAddress.toLowerCase() !== studentRegistryAddress.toLowerCase())
         throw new ApiError("REGISTRY_CHANGED");
@@ -164,7 +172,7 @@ function VerificationSession({ address, chainId, showVerified }: { address: Addr
   if (isLoading) return <p role="status" className="p-4 text-sm text-muted">{label("Checking student identity…", "Đang kiểm tra trạng thái sinh viên…")}</p>;
   return <section className="space-y-3 rounded-sm border border-line bg-surface p-4" aria-label={label("Student verification", "Xác thực sinh viên")}>
     <h2 className="font-bold">{label("Verify with your university email", "Xác thực bằng email trường")}</h2>
-    <p className="text-sm text-muted">{label("Verify once. Use your Student identity across rounds.", "Xác thực một lần. Dùng quyền Student cho các round.")}</p>
+    <p className="text-sm text-muted">{label("Sign with your wallet before receiving a code. Verify once to use your Student identity across rounds.", "Ký bằng ví trước khi nhận mã. Xác thực một lần để dùng quyền Student cho các round.")}</p>
     {chainId !== 43113 ? <Button isLoading={switching} onClick={async () => { try { await switchChainAsync({ chainId: 43113 }); } catch (err) { showError(err); } }}>{label("Switch to Avalanche Fuji", "Chuyển sang Avalanche Fuji")}</Button> : <>
       <form noValidate className="flex flex-wrap gap-2" onSubmit={event => { event.preventDefault(); void sendCode(); }}>
         <label className="min-w-0 flex-1 text-sm">{label("University email", "Email trường")}

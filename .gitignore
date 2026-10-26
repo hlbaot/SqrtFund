@@ -54,3 +54,7 @@ docs/previews/
 docs/evidence/
 .next/
 tmp/
+
+# Private production security review artifacts
+/docs/security-review-production-2026-10-26.md
+/docs/security-review-production-2026-10-26.pdf

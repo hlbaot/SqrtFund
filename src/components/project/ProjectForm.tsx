@@ -1,11 +1,12 @@
 "use client";
+import { useProjectImageUpload } from "@/hooks/useProjectImageUpload";
 import { parseEventLogs } from "viem";
 import { projectsStore, projectKey } from "@/lib/store/projectsStore";
 
 import { useRegistrationRounds } from "@/hooks/useRegistrationRounds";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { formDraftKey } from "@/lib/formDrafts";
-import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { factoryAddress, studentRegistryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { shortAddress } from "@/lib/format";
 import { txToast } from "@/lib/txToast";
 import { useTxFlow } from "@/hooks/useTxFlow";
@@ -63,56 +64,35 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
   const setDescription = (value: string) => setField("description", value);
   const setContactUrl = (value: string) => setField("contactUrl", value);
   const setImageUrl = (value: string) => setField("imageUrl", value);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const imageUpload = useProjectImageUpload({
+    scope: `${address}:${chainId}:${draftKey}`,
+    wallet: address,
+    registry: studentRegistryAddress,
+    allowed: Boolean(isConnected && address && chainId === TARGET_CHAIN_ID && isStudent && selectedAddress),
+    onUploaded: url => {
+      draft.setField("imageUrl", url);
+      setErrors(previous => {
+        const next = { ...previous }; delete next.imageUrl; return next;
+      });
+    },
+  });
+  const isUploadingImage = imageUpload.isUploading;
+  const uploadMessages: Record<string, string> = {
+    UPLOAD_TOO_LARGE: t.register.fileTooLarge,
+    UPLOAD_FORBIDDEN: locale === "vi" ? "Cần ví Student đã xác minh trên Fuji." : "A verified Student wallet on Fuji is required.",
+    UPLOAD_QUOTA_EXCEEDED: locale === "vi" ? "Đã đạt giới hạn tải ảnh. Vui lòng thử lại sau." : "Image upload quota reached. Please try again later.",
+    UPLOAD_ALREADY_USED: locale === "vi" ? "Yêu cầu này đã được sử dụng. Hãy chọn ảnh và ký lại." : "This request was already used. Select the image and sign again.",
+    UPLOAD_AUTH_INVALID: locale === "vi" ? "Chữ ký tải ảnh không hợp lệ hoặc hết hạn. Hãy thử lại." : "Upload signature is invalid or expired. Please retry.",
+    WALLET_REJECTED: t.verification.emailErrors.WALLET_REJECTED,
+  };
+  const uploadError = imageUpload.error ? uploadMessages[imageUpload.error] ?? t.register.uploadFailed : null;
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setUploadError(t.register.uploadFailed);
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError(t.register.fileTooLarge);
-      return;
-    }
-
     if (selectedAddress) rememberedRound.setField("roundAddress", selectedAddress);
-    setIsUploadingImage(true);
-    setUploadError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || t.register.uploadFailed);
-      }
-
-      // Upload hoàn tất muộn vẫn ghi về nháp lúc bắt đầu, không đổi Round đang chọn.
-      draft.setField("imageUrl", data.url);
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next.imageUrl;
-        return next;
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t.register.uploadFailed;
-      setUploadError(msg);
-    } finally {
-      setIsUploadingImage(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
+    await imageUpload.upload(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -120,7 +100,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
   const [submittedScope, setSubmittedScope] = useState<string | undefined>();
   const isSubmitted = Boolean(draftKey && submittedScope === draftKey);
   useEffect(() => {
-    setErrors({}); setUploadError(null); setIsSubmitting(false);
+    setErrors({}); setIsSubmitting(false);
   }, [draftKey]);
 
   const validate = () => {
@@ -276,7 +256,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
               setSubmittedScope(undefined);
               draft.clear();
               setErrors({});
-              setUploadError(null);
+              imageUpload.reset();
             }}
           >
             {t.common.submitAnother}
@@ -417,12 +397,13 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
                 {t.register.imageLabel}
               </label>
 
+              <p className="text-xs text-muted">{locale === "vi" ? "Chọn ảnh rồi ký bằng ví Student để tải lên. Hỗ trợ PNG, JPEG, WebP, tối đa 4MB; 5 lần/giờ và 20 lần/ngày." : "Select an image and sign with your Student wallet. PNG, JPEG, WebP up to 4MB; 5 uploads/hour and 20/day."}</p>
               <div className="flex flex-wrap items-center gap-2.5">
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileUpload}
-                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  accept="image/png,image/jpeg,image/webp"
                   className="hidden"
                   id="project-image-file"
                 />
@@ -458,7 +439,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
                       type="button"
                       onClick={() => {
                         setImageUrl("");
-                        setUploadError(null);
+                        imageUpload.reset();
                       }}
                       className="text-muted hover:text-red-400 transition-colors p-0.5 cursor-pointer ml-1.5"
                       title={t.register.removeImage}

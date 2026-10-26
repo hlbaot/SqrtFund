@@ -81,8 +81,8 @@ jobs:
 
   deploy:
     name: Deploy production to Vercel
-    needs: [frontend, contracts]
-    # PR chỉ chạy kiểm tra; chỉ main đã vượt qua cả hai job mới được deploy.
+    needs: [frontend, contracts, database]
+    # PR chỉ chạy kiểm tra; chỉ main đã vượt qua cả ba job mới được deploy.
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -135,6 +135,48 @@ jobs:
           fi
           printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
           printf '### Vercel production\n\n%s\n' "$deployment_url" >> "$GITHUB_STEP_SUMMARY"
+
+  database:
+    name: Database migrations and security checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: sqrtfund_ci
+          POSTGRES_PASSWORD: ci-fixture-only
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sqrtfund_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Apply migrations to isolated fixture database
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$POSTGRES_CONTAINER" mkdir -p /workspace
+          docker cp supabase "$POSTGRES_CONTAINER:/workspace/supabase"
+          docker exec "$POSTGRES_CONTAINER" psql -U postgres -d sqrtfund_ci -v ON_ERROR_STOP=1 -c \
+            'CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;'
+          for migration in supabase/migrations/*.sql; do
+            docker exec "$POSTGRES_CONTAINER" psql -U postgres -d sqrtfund_ci -v ON_ERROR_STOP=1 -f "/workspace/$migration"
+          done
+      - name: Check OTP, identity, recovery and upload quota SQL
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          for fixture in supabase/tests/*.sql; do
+            docker exec "$POSTGRES_CONTAINER" psql -U postgres -d sqrtfund_ci -v ON_ERROR_STOP=1 -f "/workspace/$fixture"
+          done
+      - name: Check concurrent upload quota reservations
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: python3 scripts/check-upload-quota-concurrency.py
 
   contracts:
     name: Contract tests
