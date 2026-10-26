@@ -1,3 +1,4 @@
+import { authorizeEmailWallet } from "@/lib/server/emailWalletAuthorization";
 import { setOtpExpiry } from "@/lib/verify/expiry";
 import { randomUUID } from "node:crypto";
 import { isAddress } from "viem";
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
       || typeof body.otp !== "string" || !/^\d{6}$/.test(body.otp))) return failure("INVALID_REQUEST");
     requireConfig(["OTP_SECRET", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]);
     const wallet = walletAddress.toLowerCase(), email = normalizeContactEmail(contactEmail);
+    await authorizeEmailWallet(request, body.walletProof, email, wallet, "organizer");
     const db = supabaseAdmin();
     const emailHash = await ensureEmailWallet(email, wallet, false, db);
     if (action === "request") {

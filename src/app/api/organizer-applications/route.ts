@@ -1,4 +1,5 @@
 import { authorizeOrganizerReview } from "@/lib/server/organizerReviewAuthorization";
+import { authorizeOrganizerRead } from "@/lib/server/organizerReadAuthorization";
 import { publishNotificationChange } from "@/lib/server/publishNotificationChange";
 import { NextResponse } from "next/server";
 import { isAddress } from "viem";
@@ -13,24 +14,30 @@ import {
 } from "@/lib/server/organizerApplications";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
 export async function GET(request: Request) {
+  const headers = { "Cache-Control": "no-store", Vary: "Authorization" };
   try {
     const { searchParams } = new URL(request.url);
     const walletAddress = searchParams.get("walletAddress") || undefined;
     const status = searchParams.get("status") || undefined;
 
     if (walletAddress && !isAddress(walletAddress)) {
-      return NextResponse.json({ ok: false, error: "INVALID_WALLET_ADDRESS" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "INVALID_WALLET_ADDRESS" }, { status: 400, headers });
     }
 
+    await authorizeOrganizerRead(request, walletAddress);
     const applications = await listOrganizerApplications({ walletAddress, status });
-    return NextResponse.json({ ok: true, applications });
+    return NextResponse.json({ ok: true, applications }, { headers });
   } catch (error) {
-    console.error("[api/organizer-applications] GET error:", error);
-    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+    if (error instanceof VerificationError)
+      return NextResponse.json({ ok: false, error: error.code }, { status: error.status, headers });
+    // Do not log credentials, query strings or application data.
+    console.error("[api/organizer-applications] GET unavailable");
+    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500, headers });
   }
 }
 

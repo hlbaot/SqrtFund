@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/Badge";
 
 import { Dialog } from "@/components/ui/Dialog";
 import { useOrganizerApplicationsAdmin, type OrganizerApplication } from "@/hooks/useOrganizerApplications";
+import { OrganizerReadAccessPrompt } from "@/components/organizer/OrganizerReadAccessPrompt";
 import { txToast } from "@/lib/txToast";
 import {
   Table,
@@ -128,6 +129,8 @@ export function PlatformDashboard({
     applications,
     pendingCount,
     isLoading: isAppsLoading,
+    isError: isAppsError,
+    readAccess,
     approveApplication,
     rejectApplication,
     revokeApplication,
@@ -413,7 +416,9 @@ export function PlatformDashboard({
           </div>
         </div>
 
-        {applications.length === 0 ? (
+        {readAccess?.needsAuth ? <OrganizerReadAccessPrompt access={readAccess} /> : isAppsError ? (
+          <p role="alert" className="text-sm text-primary">{locale === "vi" ? "Không thể đọc đơn đăng ký. Vui lòng thử tải lại; quyền Admin được kiểm tra trên server." : "Applications could not be loaded. Retry; Admin access is verified by the server."}</p>
+        ) : applications.length === 0 ? (
           <p className="text-xs text-muted py-8 text-center">
             {isAppsLoading ? (locale === "vi" ? "Đang tải đơn đăng ký..." : "Loading applications...") : (c.noApplications ?? "No applications found.")}
           </p>

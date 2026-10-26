@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/Badge";
 import { StatusAlert } from "@/components/ui/StatusAlert";
 import { useLocale } from "@/lib/context/locale";
 import { useMyOrganizerApplication } from "@/hooks/useOrganizerApplications";
+import { OrganizerReadAccessPrompt } from "./OrganizerReadAccessPrompt";
 import { useOrganizerEmailOtp } from "@/hooks/useOrganizerEmailOtp";
 import { validContactEmail } from "@/lib/organizerContact";
 import { txToast } from "@/lib/txToast";
@@ -60,10 +61,12 @@ function OrganizerApplicationForm({
     isPending,
     isRevoked,
     isLoading: isApplicationLoading,
+    isError: isApplicationError,
+    readAccess,
     refetch,
   } = useMyOrganizerApplication(walletAddress);
 
-  const draft = useFormDraft(walletAddress && !isApplicationLoading
+  const draft = useFormDraft(walletAddress && !isApplicationLoading && !readAccess?.needsAuth
     ? `sqrt-fund:organizer-application-draft:${TARGET_CHAIN_ID}:${walletAddress.toLowerCase()}` : undefined,
     APPLICATION_DEFAULTS, () => ({ orgName: application?.organizationName ?? "", email: application?.contactEmail ?? "", reason: application?.reason ?? "" }));
   const { orgName, email, reason } = draft.values;
@@ -201,7 +204,10 @@ function OrganizerApplicationForm({
         </div>
 
         {/* State 1: Already Organizer on-chain */}
-        {isApplicationLoading || (walletAddress && !draft.ready) ? (
+        {readAccess?.needsAuth ? <OrganizerReadAccessPrompt access={readAccess} /> : isApplicationError ? (
+          <div className="space-y-3"><p role="alert" className="text-sm text-primary">{vi ? "Không thể tải đơn đăng ký của bạn. Hãy thử lại trước khi gửi đơn." : "Your application could not be loaded. Retry before submitting."}</p>
+            <Button type="button" variant="outline" onClick={() => void refetch()}>{vi ? "Thử lại" : "Retry"}</Button></div>
+        ) : isApplicationLoading || (walletAddress && !draft.ready) ? (
           <p role="status" className="py-4 text-sm text-muted">{t.common.loading}</p>
         ) : isOrganizer ? (
           <div className="space-y-4 py-2">
@@ -405,7 +411,7 @@ function OrganizerApplicationForm({
                   ? t.verification.emailErrors[emailOtp.error as keyof typeof t.verification.emailErrors]
                   : (vi ? "Không thể xác thực email. Vui lòng thử lại." : "Email verification failed. Please retry.")}</p>}
                 {reuseEmail && <p className="text-xs text-muted">{vi ? "Thông tin đơn cũ đã được khôi phục. Ký xác nhận bằng ví để gửi lại, không cần OTP mới." : "Your previous application is restored. Sign with your wallet to reapply without another OTP."}</p>}
-                {!reuseEmail && <p className="text-xs text-muted">{vi ? "Mã có hiệu lực 5 phút. Xác thực email không cấp quyền Organizer và không yêu cầu email trường." : "Codes expire after 5 minutes. Email verification does not grant Organizer access; a university email is not required."}</p>}
+                {!reuseEmail && <p className="text-xs text-muted">{vi ? "Bạn sẽ ký bằng ví để chứng minh quyền sở hữu trước khi nhận mã. Mã có hiệu lực 5 phút. Xác thực email không cấp quyền Organizer và không yêu cầu email trường." : "Sign with your wallet to prove ownership before receiving a code. Codes expire after 5 minutes. Email verification does not grant Organizer access; a university email is not required."}</p>}
               </div>
             </div>
 

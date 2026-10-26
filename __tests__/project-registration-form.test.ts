@@ -38,6 +38,7 @@ vi.mock("react/jsx-dev-runtime", async importOriginal => {
   } };
 });
 vi.mock("wagmi", () => ({
+  useSignMessage: () => ({ signMessageAsync: vi.fn() }),
   useAccount: () => ({ address: `0x${"3".repeat(40)}`, isConnected: f.connected, chainId: f.chainId }),
   usePublicClient: () => ({ waitForTransactionReceipt: f.receipt }),
   useWriteContract: () => ({ writeContractAsync: f.write }),
