@@ -2,7 +2,8 @@ import "server-only";
 import { hashValue, equalHashes } from "@/lib/verify/otp";
 import { normalizeContactEmail } from "@/lib/organizerContact";
 
-const PURPOSE = "organizer-contact-email";
+// Version change invalidates tokens issued before wallet ownership was required.
+const PURPOSE = "organizer-contact-email-wallet-v2";
 export function issueOrganizerEmailProof(email: string, wallet: string, now = Date.now()) {
   const expiresAt = now + 15 * 60_000;
   const payload = Buffer.from(JSON.stringify({ purpose: PURPOSE, email: normalizeContactEmail(email), wallet: wallet.toLowerCase(), expiresAt })).toString("base64url");

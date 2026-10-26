@@ -1,3 +1,4 @@
+import { authorizeEmailWallet } from "@/lib/server/emailWalletAuthorization";
 import { setOtpExpiry } from "@/lib/verify/expiry";
 import { randomUUID } from "node:crypto";
 import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
     const email = normalizeEmail(deliveryEmail);
     if (!isAllowedEmail(deliveryEmail, process.env.ALLOWED_EMAIL_DOMAINS, process.env.BLOCKED_EMAIL_DOMAINS)) return failure("INVALID_DOMAIN");
     const address = body.address.toLowerCase();
+    await authorizeEmailWallet(request, body.walletProof, email, address, "student");
     stage = "registry"; const registry = (await validateRegistry()).toLowerCase();
     const db = supabaseAdmin();
     const emailHash = await ensureEmailWallet(email, address, false, db);

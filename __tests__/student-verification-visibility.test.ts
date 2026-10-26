@@ -10,6 +10,7 @@ const f = vi.hoisted(() => ({
 }));
 vi.mock("wagmi", () => ({
   useAccount: () => ({ address: "0x1234567890123456789012345678901234567890", chainId: 43113, isConnected: f.connected }),
+  useSignMessage: () => ({ signMessageAsync: vi.fn() }),
   usePublicClient: () => ({}), useSwitchChain: () => ({}), useWriteContract: () => ({}),
 }));
 vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ isOrganizer: f.organizer, isPlatformOwner: f.platform, isStudent: f.student, isAuthorizationLoading: f.loading }) }));

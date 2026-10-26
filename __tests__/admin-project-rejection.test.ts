@@ -144,3 +144,7 @@ it("does not expose the platform dashboard to Student or guest accounts", () => 
   expect(html).not.toContain("PlatformMarker");
   expect(html).not.toContain(copy.vi.admin.tabPlatform);
 });
+vi.mock("@/hooks/useOrganizerApplications", () => ({ useMyOrganizerApplication: () => ({
+  application: null, isPending: false, isApproved: false, isRejected: false, isRevoked: false,
+  isLoading: false, isError: false, refetch: vi.fn(),
+}) }));
