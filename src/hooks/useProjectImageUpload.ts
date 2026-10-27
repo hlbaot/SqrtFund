@@ -46,7 +46,7 @@ export function useProjectImageUpload({
   useEffect(() => {
     reset();
     return invalidate;
-  }, [scope, allowed, reset, invalidate]);
+  }, [scope, wallet, registry, allowed, reset, invalidate]);
 
   async function upload(file: File) {
     if (submitting.current) return;

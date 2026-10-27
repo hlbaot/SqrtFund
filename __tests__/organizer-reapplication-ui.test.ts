@@ -4,13 +4,13 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ApplyOrganizerModal } from "@/components/organizer/ApplyOrganizerModal";
 import { ApiError } from "@/lib/api";
-const f = vi.hoisted(() => ({ sign: vi.fn(), post: vi.fn(), reset: vi.fn() }));
+const f = vi.hoisted(() => ({ sign: vi.fn(), post: vi.fn(), reset: vi.fn(), success: vi.fn(), error: vi.fn() }));
 const wallet = `0x${"6".repeat(40)}`;
 const previous = { id: "previous", walletAddress: wallet, organizationName: "CLB BT", contactEmail: "old@example.test",
   reason: "Organize a student funding round", emailVerifiedAt: "2026-10-01T00:00:00Z", updatedAt: "2026-10-25T00:00:00Z", status: "revoked" };
 vi.mock("wagmi", () => ({ useSignMessage: () => ({ signMessageAsync: f.sign }) }));
 vi.mock("@/lib/api", () => ({ api: { post: f.post }, ApiError: class extends Error { constructor(readonly code: string) { super(code); } } }));
-vi.mock("@/lib/txToast", () => ({ txToast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
+vi.mock("@/lib/txToast", () => ({ txToast: { success: f.success, error: f.error, info: vi.fn() } }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
 vi.mock("@/components/ui/Dialog", () => ({ Dialog: ({ children }: { children: ReactNode }) => createElement("div", null, children) }));
 vi.mock("@/hooks/useOrganizerApplications", () => ({ useMyOrganizerApplication: (address?: string) => ({
@@ -70,4 +70,27 @@ it("keeps a reused verified email free of red identity warnings while reporting 
   expect(host.textContent).not.toContain("Ví này đã được liên kết");
   expect(host.textContent).toContain("Email đã xác thực");
   expect(host.querySelector('input[type="email"]')!.getAttribute("aria-invalid")).not.toBe("true");
+});
+
+it("preserves the form and reports an unconfirmed save after database failure", async () => {
+  f.post.mockRejectedValueOnce(new ApiError("SERVICE_UNAVAILABLE"));
+  const reapply=[...host.querySelectorAll("button")].find(button=>button.textContent?.includes("Gửi yêu cầu lại"))!;
+  await act(async()=>reapply.click());
+  const resets=f.reset.mock.calls.length;
+  await act(async()=>host.querySelector("form")!.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true})));
+  expect(host.querySelector("form")).not.toBeNull();
+  expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe(previous.reason);
+  expect(host.querySelector<HTMLInputElement>('input[type="email"]')!.value).toBe(previous.contactEmail);
+  expect(host.textContent).toContain("Chưa nhận được xác nhận lưu đơn");
+  expect(f.success).not.toHaveBeenCalled();expect(f.reset).toHaveBeenCalledTimes(resets);
+  expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
+});
+
+it.each([undefined, {id:"wrong-wallet",walletAddress:`0x${"9".repeat(40)}`,status:"pending"}, {...previous,status:"approved"}])("does not show success for an incomplete or mismatched save acknowledgment", async application => {
+  f.post.mockResolvedValueOnce({data:{ok:true,application}});
+  const reapply=[...host.querySelectorAll("button")].find(button=>button.textContent?.includes("Gửi yêu cầu lại"))!;
+  await act(async()=>reapply.click());
+  await act(async()=>host.querySelector("form")!.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true})));
+  expect(f.success).not.toHaveBeenCalled();expect(host.querySelector("form")).not.toBeNull();
+  expect(host.textContent).toContain("Chưa nhận được xác nhận lưu đơn");
 });

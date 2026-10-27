@@ -23,15 +23,19 @@ let root: Root, state: ReturnType<typeof useProjectImageUpload>;
 function Probe({
   scope = "alice-round1",
   allowed = true,
+  walletAddress = wallet,
+  registryAddress = registry,
 }: {
   scope?: string;
   allowed?: boolean;
+  walletAddress?: `0x${string}`;
+  registryAddress?: `0x${string}`;
 }) {
   const result = useProjectImageUpload({
     scope,
     allowed,
-    wallet,
-    registry,
+    wallet: walletAddress,
+    registry: registryAddress,
     onUploaded: f.uploaded,
   });
   useEffect(() => {
@@ -39,8 +43,17 @@ function Probe({
   });
   return null;
 }
-async function render(scope?: string, allowed?: boolean) {
-  await act(async () => root.render(createElement(Probe, { scope, allowed })));
+async function render(
+  scope?: string,
+  allowed?: boolean,
+  walletAddress?: `0x${string}`,
+  registryAddress?: `0x${string}`,
+) {
+  await act(async () =>
+    root.render(
+      createElement(Probe, { scope, allowed, walletAddress, registryAddress }),
+    ),
+  );
 }
 beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -177,5 +190,98 @@ it("reset cancels a pending signature so removing the image cannot restore it la
     await pending;
   });
   expect(f.fetch).not.toHaveBeenCalled();
+  expect(state.isUploading).toBe(false);
+});
+
+it.each(["wallet", "registry"])(
+  "invalidates a pending signature when only %s changes without a new scope string",
+  async (field) => {
+    let finish!: (signature: string) => void;
+    f.sign.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    let pending!: Promise<void>;
+    await act(async () => {
+      pending = state.upload(file);
+    });
+    await render(
+      undefined,
+      true,
+      field === "wallet" ? `0x${"3".repeat(40)}` : wallet,
+      field === "registry" ? `0x${"4".repeat(40)}` : registry,
+    );
+    await act(async () => {
+      finish(`0x${"a".repeat(130)}`);
+      await pending;
+    });
+    expect(f.fetch).not.toHaveBeenCalled();
+    expect(f.uploaded).not.toHaveBeenCalled();
+  },
+);
+
+it("does not sign when identity changes while the file digest is being calculated", async () => {
+  let finish!: (permit: unknown) => void;
+  f.permit.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  let pending!: Promise<void>;
+  await act(async () => {
+    pending = state.upload(file);
+  });
+  await render("bob-round2");
+  await act(async () => {
+    finish({});
+    await pending;
+  });
+  expect(f.sign).not.toHaveBeenCalled();
+  expect(f.fetch).not.toHaveBeenCalled();
+  expect(f.uploaded).not.toHaveBeenCalled();
+});
+it("an old response cannot unlock a newer upload after a scope change", async () => {
+  let finishOld!: (response: unknown) => void;
+  let finishNew!: (signature: string) => void;
+  f.fetch.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishOld = resolve;
+      }),
+  );
+  let old!: Promise<void>;
+  let next!: Promise<void>;
+  await act(async () => {
+    old = state.upload(file);
+  });
+  await render("bob-round2");
+  f.sign.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishNew = resolve;
+      }),
+  );
+  await act(async () => {
+    next = state.upload(file);
+  });
+  await act(async () => {
+    finishOld({
+      ok: true,
+      json: async () => ({ url: "https://res.cloudinary.com/fixture/old.png" }),
+    });
+    await old;
+  });
+  expect(state.isUploading).toBe(true);
+  expect(f.uploaded).not.toHaveBeenCalled();
+  await act(async () => state.upload(file));
+  expect(f.sign).toHaveBeenCalledTimes(2);
+  await act(async () => {
+    finishNew(`0x${"a".repeat(130)}`);
+    await next;
+  });
+  expect(f.uploaded).toHaveBeenCalledTimes(1);
   expect(state.isUploading).toBe(false);
 });

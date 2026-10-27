@@ -74,7 +74,7 @@ export function ProjectCard({
   const isDonatable =
     (canDonate !== undefined
       ? canDonate && project.status !== "pending" && project.status !== "rejected"
-      : project.status !== "pending" && project.status !== "rejected") && !hasAlreadyDonated && !isOwner;
+      : project.status !== "pending" && project.status !== "rejected") && !isOwner;
 
   const name = locale === "vi" && project.nameVi ? project.nameVi : project.name;
   const shortDescription =
@@ -207,7 +207,7 @@ export function ProjectCard({
             className="mono-label flex-1 flex min-h-10 items-center justify-center gap-1.5 border border-primary bg-primary text-white font-bold py-2 px-3 text-xs transition-all hover:bg-primary-hover cursor-pointer active:scale-[0.98] focus:outline-none rounded-xs shadow-xs"
           >
             <Coins className="h-3.5 w-3.5 shrink-0" />
-            <span>{t.projectCard.donate}</span>
+            <span>{hasAlreadyDonated ? t.donateBox.donateAgain : t.projectCard.donate}</span>
           </button>
         )}
       </div>

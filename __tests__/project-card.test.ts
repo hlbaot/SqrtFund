@@ -73,7 +73,7 @@ describe("ProjectCard", () => {
     expect(html).not.toContain("Ủng hộ");
   });
 
-  it("omits Donate button and displays already supported badge when user has already donated", () => {
+  it("offers another donation alongside the already supported badge", () => {
     mockDonationAmount = 1000000n;
     const html = renderToStaticMarkup(
       createElement(ProjectCard, {
@@ -84,7 +84,7 @@ describe("ProjectCard", () => {
     );
 
     expect(html).toContain("Chi tiết");
-    expect(html).not.toContain("Ủng hộ");
+    expect(html).toContain("Ủng hộ thêm");
     expect(html).toContain("Đã ủng hộ");
     mockDonationAmount = 0n;
   });

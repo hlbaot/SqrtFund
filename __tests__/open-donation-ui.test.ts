@@ -49,7 +49,7 @@ it("requires wallet connection before showing donation controls even with cached
   f.donated = 0n;
   expect(render()).toContain('id="donation-amount"');
 });
-it("lets a supporter contribute above 5 USDC without displaying a fake maximum or round budget, and blocks repeat contributions", () => {
+it("lets a supporter contribute above 5 USDC without displaying a fake maximum or round budget, and permits cumulative contributions", () => {
   f.donated = 0n;
   const html = render();
   const input = html.match(/<input[^>]*id="donation-amount"[^>]*>/)?.[0];
@@ -60,11 +60,11 @@ it("lets a supporter contribute above 5 USDC without displaying a fake maximum o
   expect(html).not.toContain(maxUint256.toString());
   expect(html).not.toContain(copy.vi.donateBox.roundBudgetRemaining.split("{remaining}")[0]);
 
-  // Once donated, repeat donations are blocked and alreadyDonated banner is displayed
+  // Prior contributions remain visible while the form permits a top-up.
   f.donated = 20_000_000n;
   const donatedHtml = render();
   expect(donatedHtml).toContain(copy.vi.donateBox.alreadyDonatedTitle);
-  expect(donatedHtml).not.toContain('id="donation-amount"');
+  expect(donatedHtml).toContain('id="donation-amount"');
 });
 it("accepts micro-USDC and still blocks empty/zero or insufficient-balance contributions", () => {
   f.donated = 0n;
@@ -83,16 +83,23 @@ it("retains the actual deployed bounds when opening an old round", () => {
   expect(input).toContain('max="5"');
 });
 
-it("never offers another donation and avoids a duplicate success card once the contribution is recorded", () => {
+it("offers an explicit new donation after success without repeating the old success card in the form", () => {
   f.step = "success";
+  f.donated = 1_000_000n;
   const success = render();
   expect(success).toContain(copy.vi.donateBox.txSuccess);
-  expect(success).not.toContain(copy.vi.donateBox.donateAgain);
+  expect(success).toContain(copy.vi.donateBox.donateAgain);
   expect(success).not.toContain('id="donation-amount"');
-  f.donated = 1_000_000n;
+  f.step = "idle";
   const recorded = render();
   expect(recorded).toContain(copy.vi.donateBox.alreadyDonatedTitle);
   expect(recorded).not.toContain(copy.vi.donateBox.txSuccess);
-  expect(recorded).not.toContain(copy.vi.donateBox.donateAgain);
-  expect(recorded).not.toContain('id="donation-amount"');
+  expect(recorded).toContain('id="donation-amount"');
+});
+it("enforces the remaining cumulative project cap for a returning donor", () => {
+  f.legacy = true; f.donated = 4_000_000n; f.input = "2";
+  expect(render()).toContain(copy.vi.donateBox.exceedsLimit.replace("{remaining}", "1"));
+  f.donated = 5_000_000n;
+  expect(render()).toContain(copy.vi.donateBox.maxReachedTitle);
+  expect(render().match(/<input[^>]*id="donation-amount"[^>]*>/)?.[0]).toContain('disabled=""');
 });

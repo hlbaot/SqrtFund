@@ -60,15 +60,18 @@ describe("request OTP boundary", () => {
     expect(Date.parse(data.expiresAt) - Date.now()).toBeLessThanOrEqual(300_000);
     expect(f.operations).toContainEqual({ table: "otp_requests", method: "update", value: { expires_at: data.expiresAt } });
   });
-  it.each([undefined, "", "   "])("allows open-edu requests when allowlist is %s", async domains => {
-    vi.stubEnv("ALLOWED_EMAIL_DOMAINS", domains); result(); result();
+  it.each([undefined, "", "   "])("does not send OTP or sign when domain policy is missing: %s", async domains => {
+    vi.stubEnv("ALLOWED_EMAIL_DOMAINS", domains);
     const response = await requestOtp(req({ email: "a@student.hcmus.edu.vn", address }));
-    expect(response.status).toBe(200); expect(f.send).toHaveBeenCalledOnce();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: "STUDENT_DOMAIN_POLICY_UNCONFIGURED" });
+    expect(f.send).not.toHaveBeenCalled(); expect(f.sign).not.toHaveBeenCalled();
+    expect(f.from).not.toHaveBeenCalled(); expect(f.reserve).not.toHaveBeenCalled();
   });
-  it.each([undefined, ""])("exposes public open-edu configuration without secrets (%s)", async domains => {
+  it.each([undefined, ""])("exposes an unconfigured policy without opening verification: %s", async domains => {
     vi.stubEnv("ALLOWED_EMAIL_DOMAINS", domains);
     const response = await domainConfig(); expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ mode: "open-edu", allowedDomains: [], blockedDomains: [] });
+    expect(await response.json()).toEqual({ mode: "unconfigured", allowedDomains: [], blockedDomains: [] });
     expect(f.from).not.toHaveBeenCalled(); expect(f.validate).not.toHaveBeenCalled();
   });
   it("exposes normalized allowlist and blocklist for the shared UI validator", async () => {
@@ -76,13 +79,13 @@ describe("request OTP boundary", () => {
     vi.stubEnv("BLOCKED_EMAIL_DOMAINS", " STUDENT.HUST.EDU.VN ");
     expect(await (await domainConfig()).json()).toEqual({ mode: "allowlist", allowedDomains: ["hust.edu.vn", "ox.ac.uk"], blockedDomains: ["student.hust.edu.vn"] });
   });
-  it.each(["", "hust.edu.vn"])("rejects blocked domains before RPC, database or mail (%s)", async domains => {
+  it.each(["student.hust.edu.vn", "hust.edu.vn,student.hust.edu.vn"])("rejects blocked domains before RPC, database or mail (%s)", async domains => {
     vi.stubEnv("ALLOWED_EMAIL_DOMAINS", domains); vi.stubEnv("BLOCKED_EMAIL_DOMAINS", " HUST.EDU.VN ");
     const response = await requestOtp(req({ email: "a@student.hust.edu.vn", address }));
     expect((await response.json()).code).toBe("INVALID_DOMAIN"); expect(f.validate).not.toHaveBeenCalled(); expect(f.from).not.toHaveBeenCalled(); expect(f.send).not.toHaveBeenCalled();
   });
   it("accepts a non-edu school only through explicit allowlisting", async () => {
-    vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "");
+    vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "hust.edu.vn");
     expect((await (await requestOtp(req({ email: "a@ox.ac.uk", address }))).json()).code).toBe("INVALID_DOMAIN");
     vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "ox.ac.uk"); result(); result();
     expect((await requestOtp(req({ email: "a@ox.ac.uk", address }))).status).toBe(200);
@@ -94,7 +97,7 @@ describe("request OTP boundary", () => {
     expect(f.send).not.toHaveBeenCalled(); expect(f.sign).toHaveBeenCalledOnce();
   });
   it("reports missing variable names without configuration values", async () => {
-    vi.stubEnv("ALLOWED_EMAIL_DOMAINS", ""); vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
     const response = await requestOtp(req({ email: "a@hust.edu.vn", address }));
     expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ code: "CONFIG_MISSING", missing: ["SUPABASE_SERVICE_ROLE_KEY"] });
     expect(f.from).not.toHaveBeenCalled();
@@ -226,4 +229,27 @@ it("does not sign a challenge whose ID differs from its email binding", async ()
   vi.mocked(ensureEmailWallet).mockResolvedValueOnce(`0x${"b".repeat(64)}`);
   const response = await confirm(req({ requestId: id, otp: "123456" }));
   expect(response.status).toBe(503); expect(f.sign).not.toHaveBeenCalled();
+});
+
+it("rejects unapproved edu mail before signature, RPC, storage or delivery", async () => {
+  const response = await requestOtp(req({ email: "fixture@untrusted-school.edu.vn", address }));
+  expect(response.status).toBe(400); expect(await response.json()).toMatchObject({ code: "INVALID_DOMAIN" });
+  expect(f.from).not.toHaveBeenCalled(); expect(f.reserve).not.toHaveBeenCalled(); expect(f.send).not.toHaveBeenCalled(); expect(f.sign).not.toHaveBeenCalled();
+});
+it("rechecks current policy at confirm before consuming a previously issued OTP", async () => {
+  result({ ...row, email: "fixture@untrusted-school.edu.vn", email_domain: "untrusted-school.edu.vn" });
+  const response = await confirm(req({ requestId: id, otp: "123456" }));
+  expect(response.status).toBe(400); expect(await response.json()).toMatchObject({ code: "INVALID_DOMAIN" });
+  expect(f.rpc).not.toHaveBeenCalled(); expect(f.sign).not.toHaveBeenCalled(); expect(ensureEmailWallet).not.toHaveBeenCalled();
+});
+it("does not resume a previously verified identity when its domain is no longer approved", async () => {
+  f.reserve.mockResolvedValue({ status: "ALREADY_VERIFIED" });
+  const response = await requestOtp(req({ email: "fixture@untrusted-school.edu.vn", address }));
+  expect(response.status).toBe(400); expect(f.reserve).not.toHaveBeenCalled(); expect(f.sign).not.toHaveBeenCalled();
+});
+it("does not confirm an old OTP if trusted-domain configuration is removed", async () => {
+  result(row); vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "");
+  const response = await confirm(req({ requestId: id, otp: "123456" }));
+  expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ code: "STUDENT_DOMAIN_POLICY_UNCONFIGURED" });
+  expect(f.rpc).not.toHaveBeenCalled(); expect(f.sign).not.toHaveBeenCalled();
 });

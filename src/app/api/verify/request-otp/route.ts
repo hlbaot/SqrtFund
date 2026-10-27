@@ -1,10 +1,11 @@
+import { requireApprovedStudentEmail } from "@/lib/server/studentEmailPolicy";
 import { authorizeEmailWallet } from "@/lib/server/emailWalletAuthorization";
 import { setOtpExpiry } from "@/lib/verify/expiry";
 import { randomUUID } from "node:crypto";
 import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { isAddress } from "viem";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
-import { emailDomainPolicy, emailDomain, isAllowedEmail, normalizeEmail } from "@/lib/verify/domain";
+import { emailDomainPolicy, emailDomain, normalizeEmail } from "@/lib/verify/domain";
 import { forwardedIp, generateOtp, hashOtp, hashValue } from "@/lib/verify/otp";
 import { reserveOtp } from "@/lib/verify/rateLimit";
 import { sendOtp } from "@/lib/verify/mailer";
@@ -24,11 +25,11 @@ export async function POST(request: Request) {
     let body: Record<string, unknown>;
     try { body = await readBody(request); } catch { return failure("INVALID_REQUEST"); }
     if (typeof body.email !== "string" || typeof body.address !== "string" || !isAddress(body.address)) return failure("INVALID_REQUEST");
-    verificationConfig(true);
     // Validate the raw address too, so normalization cannot conceal malformed aliases.
     const deliveryEmail = body.email.trim().toLowerCase();
     const email = normalizeEmail(deliveryEmail);
-    if (!isAllowedEmail(deliveryEmail, process.env.ALLOWED_EMAIL_DOMAINS, process.env.BLOCKED_EMAIL_DOMAINS)) return failure("INVALID_DOMAIN");
+    requireApprovedStudentEmail(deliveryEmail);
+    verificationConfig(true);
     const address = body.address.toLowerCase();
     await authorizeEmailWallet(request, body.walletProof, email, address, "student");
     stage = "registry"; const registry = (await validateRegistry()).toLowerCase();
