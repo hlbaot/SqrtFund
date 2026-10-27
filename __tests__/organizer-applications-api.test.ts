@@ -1,4 +1,32 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+// An isolated test database adapter. Production code has no in-memory storage.
+const dbFixture = vi.hoisted(() => ({ rows: new Map<string, Record<string, unknown>>(), revision: 0 }));
+vi.mock("@/lib/verify/supabaseAdmin", () => ({ supabaseAdmin: () => ({
+  from: () => {
+    let inserted: Record<string, unknown> | undefined;
+    const filters: [string, unknown][] = [];
+    const query = {
+      insert: (row: Record<string, unknown>) => { inserted = row; return query; },
+      select: () => query, order: () => query,
+      ilike: (key: string, value: string) => { filters.push([key,value.toLowerCase()]);return query; },
+      eq: (key: string, value: unknown) => { filters.push([key,value]);return query; },
+      single: async () => {
+        if (!inserted) return {data:null,error:{code:"FIXTURE_ERROR"}};
+        dbFixture.rows.set(String(inserted.id),inserted);return {data:inserted,error:null};
+      },
+      then: (resolve: (r: unknown) => unknown) => Promise.resolve({data:[...dbFixture.rows.values()]
+        .filter(row => filters.every(([key,value]) => typeof row[key] === "string" && typeof value === "string" ? String(row[key]).toLowerCase() === value.toLowerCase() : row[key] === value)),error:null}).then(resolve),
+    };return query;
+  },
+  rpc: async (_name: string, params: Record<string, unknown>) => {
+    const previous=dbFixture.rows.get(String(params.p_id));
+    if(!previous || previous.updated_at !== params.p_expected_updated_at || (params.p_status === "revoked" && previous.status !== "approved"))return {data:{status:"CHANGED"},error:null};
+    const patch={status:params.p_status,tx_hash:params.p_tx_hash,revocation_reason:params.p_revocation_reason,reviewed_by:params.p_reviewed_by,updated_at:new Date(Date.now()+(++dbFixture.revision)).toISOString()};
+    const next={...previous,...patch};dbFixture.rows.set(String(params.p_id),next);
+    return {data:{status:"OK",application:next},error:null};
+  },
+}) }));
+
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/publishNotificationChange", () => ({ publishNotificationChange: vi.fn().mockResolvedValue(undefined) }));
@@ -11,7 +39,7 @@ import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
 import { VerificationError } from "@/lib/verify/errors";
 import { issueOrganizerEmailProof } from "@/lib/server/organizerEmailProof";
 
-beforeEach(() => { vi.stubEnv("OTP_SECRET", "o".repeat(32)); vi.mocked(publishNotificationChange).mockClear(); });
+beforeEach(() => { dbFixture.rows.clear(); dbFixture.revision = 0; vi.stubEnv("OTP_SECRET", "o".repeat(32)); vi.mocked(publishNotificationChange).mockClear(); });
 afterEach(() => vi.unstubAllEnvs());
 
 import { GET, POST, PATCH } from "@/app/api/organizer-applications/route";
@@ -159,7 +187,7 @@ describe("Organizer Applications API", () => {
     const createJson = await createRes.json();
     const appId = createJson.application.id;
 
-    const dummyTx = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+    const dummyTx = `0x${"ab".repeat(32)}`;
     const reviewer = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
     const patchReq = new Request("http://localhost/api/organizer-applications", {
@@ -167,6 +195,7 @@ describe("Organizer Applications API", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: appId,
+        expectedUpdatedAt: createJson.application.updatedAt,
         status: "approved",
         txHash: dummyTx,
         reviewedBy: reviewer,
@@ -195,7 +224,7 @@ describe("Organizer Applications API", () => {
     const createJson = await createRes.json();
     const appId = createJson.application.id;
 
-    const dummyTx = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+    const dummyTx = `0x${"cd".repeat(32)}`;
     const reviewer = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
     // Attempt revoke while still pending -> should fail 409 because only approved can be revoked
@@ -204,6 +233,7 @@ describe("Organizer Applications API", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: appId,
+        expectedUpdatedAt: createJson.application.updatedAt,
         status: "revoked",
         txHash: dummyTx,
         reviewedBy: reviewer,
@@ -219,6 +249,7 @@ describe("Organizer Applications API", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: appId,
+        expectedUpdatedAt: createJson.application.updatedAt,
         status: "approved",
         txHash: dummyTx,
         reviewedBy: reviewer,
@@ -226,6 +257,7 @@ describe("Organizer Applications API", () => {
     });
     const approveRes = await PATCH(approveReq);
     expect(approveRes.status).toBe(200);
+    const approvedJson = await approveRes.json();
 
     // Attempt revoke without reason -> should fail 400
     const failReq = new Request("http://localhost/api/organizer-applications", {
@@ -233,6 +265,7 @@ describe("Organizer Applications API", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: appId,
+        expectedUpdatedAt: createJson.application.updatedAt,
         status: "revoked",
         txHash: dummyTx,
         reviewedBy: reviewer,
@@ -249,6 +282,7 @@ describe("Organizer Applications API", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: appId,
+        expectedUpdatedAt: approvedJson.application.updatedAt,
         status: "revoked",
         txHash: dummyTx,
         reviewedBy: reviewer,

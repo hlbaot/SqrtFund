@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, afterEach, expect, it, vi } from "vitest";
 import sharp from "sharp";
 import { createHash } from "node:crypto";
 import { privateKeyToAccount } from "viem/accounts";
+import * as imageValidation from "@/lib/server/uploadImage";
 import { POST } from "@/app/api/upload/route";
 import {
   UPLOAD_TTL_MS,
@@ -97,8 +98,10 @@ async function denied(r: Request, status: number) {
 it("anonymous requests do not parse bodies, read chain, reserve quota or call provider", async () => {
   const r = await req();
   const parse = vi.spyOn(r, "formData");
+  const readBody = vi.spyOn(r.body!, "getReader");
   await denied(r, 401);
   expect(parse).not.toHaveBeenCalled();
+  expect(readBody).not.toHaveBeenCalled();
   expect(f.read).not.toHaveBeenCalled();
   expect(f.quota).not.toHaveBeenCalled();
 });
@@ -247,9 +250,9 @@ it("rejects a signed fake PNG that has the correct magic bytes but cannot decode
   p.size = data.length;
   p.digest = createHash("sha256").update(data).digest("hex");
   await denied(await req(await token(p), data), 400);
-  expect(f.quota).not.toHaveBeenCalled();
+  expect(f.quota).toHaveBeenCalledOnce();
 });
-it("rejects images exceeding decoded pixel limits before quota/provider", async () => {
+it("rejects images exceeding decoded pixel limits before provider, after charging the attempt", async () => {
   const data = await sharp({
     create: { width: 8193, height: 1, channels: 3, background: "white" },
   })
@@ -259,7 +262,7 @@ it("rejects images exceeding decoded pixel limits before quota/provider", async 
   p.size = data.length;
   p.digest = createHash("sha256").update(data).digest("hex");
   await denied(await req(await token(p), data), 400);
-  expect(f.quota).not.toHaveBeenCalled();
+  expect(f.quota).toHaveBeenCalledOnce();
 });
 
 it("rejects truncated image data even when metadata can be read", async () => {
@@ -274,7 +277,7 @@ it("rejects truncated image data even when metadata can be read", async () => {
   p.size = data.length;
   p.digest = createHash("sha256").update(data).digest("hex");
   await denied(await req(await token(p), data), 400);
-  expect(f.quota).not.toHaveBeenCalled();
+  expect(f.quota).toHaveBeenCalledOnce();
 });
 it.each(["jpeg", "webp"] as const)(
   "accepts a real decodable %s file",
@@ -293,3 +296,110 @@ it.each(["jpeg", "webp"] as const)(
     expect(f.provider).toHaveBeenCalledOnce();
   },
 );
+
+it("rejects a multi-frame WebP before provider, after charging the attempt", async () => {
+  const raw = Buffer.from([
+    255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 0, 0, 255, 0, 0, 255, 0, 0, 255,
+    0, 0, 255,
+  ]);
+  const data = await sharp(raw, {
+    raw: { width: 2, height: 4, channels: 3, pageHeight: 2 },
+  })
+    .webp({ delay: [100, 100], loop: 0 })
+    .toBuffer();
+  expect((await sharp(data).metadata()).pages).toBe(2);
+  const p = permit();
+  p.mime = "image/webp";
+  p.size = data.length;
+  p.digest = createHash("sha256").update(data).digest("hex");
+  await denied(await req(await token(p), data, p.mime), 400);
+  expect(f.quota).toHaveBeenCalledOnce();
+});
+it("rejects an image over the total pixel cap even with individually allowed dimensions", async () => {
+  const data = await sharp({
+    create: { width: 4001, height: 4001, channels: 3, background: "white" },
+  })
+    .png()
+    .toBuffer();
+  expect(data.length).toBeLessThan(MAX_UPLOAD_BYTES);
+  const p = permit();
+  p.size = data.length;
+  p.digest = createHash("sha256").update(data).digest("hex");
+  await denied(await req(await token(p), data), 400);
+  expect(f.quota).toHaveBeenCalledOnce();
+});
+it("rejects duplicate multipart file fields before quota and provider", async () => {
+  const form = new FormData();
+  form.append(
+    "file",
+    new Blob([Uint8Array.from(bytes)], { type: "image/png" }),
+    "one.png",
+  );
+  form.append(
+    "file",
+    new Blob([Uint8Array.from(bytes)], { type: "image/png" }),
+    "two.png",
+  );
+  const r = new Request("https://sqrt.test/api/upload", {
+    method: "POST",
+    headers: { Authorization: await token() },
+    body: form,
+  });
+  await denied(r, 400);
+  expect(f.quota).not.toHaveBeenCalled();
+});
+it("rejects a matching expired permit signed by the correct wallet", async () => {
+  const p = permit();
+  p.issuedAt = Date.now() - UPLOAD_TTL_MS - 1000;
+  p.expiresAt = p.issuedAt + UPLOAD_TTL_MS;
+  await denied(await req(await token(p)), 401);
+  expect(f.read).not.toHaveBeenCalled();
+  expect(f.quota).not.toHaveBeenCalled();
+});
+it("a provider timeout is attempted once and does not refund or repeat quota", async () => {
+  f.provider.mockRejectedValueOnce(
+    new DOMException("fixture timeout", "TimeoutError"),
+  );
+  const response = await POST(await req(await token()));
+  expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({ error: "UPLOAD_UNAVAILABLE" });
+  expect(f.provider).toHaveBeenCalledOnce();
+  expect(f.quota).toHaveBeenCalledOnce();
+});
+
+it.each(["REPLAY", "RATE_LIMITED"])(
+  "%s does not run an expensive full image decode",
+  async (status) => {
+    const decode = vi.spyOn(imageValidation, "validateUploadImage");
+    try {
+      f.quota.mockResolvedValue({ data: { status, retryAfter: 3600 } });
+      await denied(await req(await token()), status === "REPLAY" ? 409 : 429);
+      expect(decode).not.toHaveBeenCalled();
+    } finally {
+      decode.mockRestore();
+    }
+  },
+);
+
+it("an invalid image consumes its nonce so replay cannot decode it again", async () => {
+  const data = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0]);
+  const p = permit();
+  p.size = data.length;
+  p.digest = createHash("sha256").update(data).digest("hex");
+  const authorization = await token(p);
+  f.quota
+    .mockResolvedValueOnce({ data: { status: "OK" } })
+    .mockResolvedValueOnce({ data: { status: "REPLAY" } });
+  const decode = vi.spyOn(imageValidation, "validateUploadImage");
+  try {
+    await denied(await req(authorization, data), 400);
+    expect(decode).toHaveBeenCalledOnce();
+    decode.mockClear();
+    await denied(await req(authorization, data), 409);
+    expect(decode).not.toHaveBeenCalled();
+    expect(f.provider).not.toHaveBeenCalled();
+    expect(f.quota).toHaveBeenCalledTimes(2);
+  } finally {
+    decode.mockRestore();
+  }
+});

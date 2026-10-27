@@ -144,7 +144,12 @@ function OrganizerApplicationForm({
       });
       if (!data.ok) throw new ApiError(data.error || "Submission failed");
 
-      if (data.application) organizerStore.getState().upsert({ id: data.application.walletAddress, application: data.application });
+      const savedApplication = data.application;
+      if (!savedApplication || typeof savedApplication.id !== "string" || !savedApplication.id
+        || typeof savedApplication.walletAddress !== "string"
+        || savedApplication.walletAddress.toLowerCase() !== walletAddress.trim().toLowerCase()
+        || savedApplication.status !== "pending") throw new ApiError("SERVICE_UNAVAILABLE");
+      organizerStore.getState().upsert({ id: savedApplication.walletAddress, application: savedApplication });
       setSubmitSuccess(true);
       txToast.success("apply-org-success", c.successTitle, c.successDesc, undefined, 4000);
       void queryClient.invalidateQueries({ queryKey: ["organizer-application"] });
@@ -152,6 +157,14 @@ function OrganizerApplicationForm({
       void refetch();
     } catch (err) {
       if (err instanceof ApiError) {
+        if (["SERVICE_UNAVAILABLE", "DB_SCHEMA_MISMATCH", "INTERNAL_ERROR"].includes(err.code)) {
+          const message = err.code === "DB_SCHEMA_MISMATCH" ? t.verification.emailErrors.DB_SCHEMA_MISMATCH
+            : (vi ? "Chưa nhận được xác nhận lưu đơn. Nội dung vẫn được giữ; hãy kiểm tra lại trạng thái trước khi thử lại."
+              : "Could not confirm your application was saved. Your input is preserved; check its status before retrying.");
+          setSubmitError(message);
+          txToast.error("apply-org-error", vi ? "Chưa xác nhận lưu đơn" : "Application save not confirmed", message);
+          return;
+        }
         if (reuseEmail && ["EMAIL_NOT_VERIFIED", "EMAIL_ALREADY_USED", "WALLET_ALREADY_VERIFIED"].includes(err.code)) {
           setFieldErrors({});
           setSubmitError(vi ? "Chưa gửi được yêu cầu. Vui lòng thử lại." : "Could not resubmit your application. Please retry.");

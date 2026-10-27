@@ -4,6 +4,7 @@ import {
   computeRawMatching,
   sqrtBigInt,
   simulateDonationImpact,
+  simulateDonationBatch,
   SCALE,
 } from "../src/lib/qf";
 
@@ -142,3 +143,14 @@ describe("qf math (BigInt mirror of smart contracts)", () => {
     expect(simulated.newPayout).toBeLessThanOrEqual(smallPool);
   });
 });
+
+ it("repeated contributions by one wallet never create another supporter in matching previews", () => {
+   const initial = [{id:"1", sumSqrt:sqrtBigInt(3_000_000n * SCALE), totalDonated:3_000_000n}];
+   const batch = simulateDonationBatch(initial, {"1":3_000_000n}, [{id:"1",amount:1_000_000n},{id:"1",amount:1_000_000n}],100_000_000n,10000n);
+   const combined = simulateDonationBatch(initial,{"1":3_000_000n},[{id:"1",amount:2_000_000n}],100_000_000n,10000n);
+   expect(batch).toEqual(combined);
+   expect(batch[0].raw).toBe(0n);
+   const single = simulateDonationImpact({projectId:"1",currentSumSqrt:initial[0].sumSqrt,currentTotalDonated:3_000_000n,donorCurrentTotal:3_000_000n,donationAmount:2_000_000n,allProjects:initial,pool:100_000_000n,maxMatchBps:10000n});
+   expect(single.newPayout).toBe(0n);
+   expect(single.totalRaw).toBe(0n);
+ });

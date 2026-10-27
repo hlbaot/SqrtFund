@@ -24,7 +24,7 @@ Lỗi 503 ban đầu xảy ra trước bước SMTP: log do người dùng cung 
 | `src/lib/contracts/addresses.ts` | Địa chỉ registry công khai, kiểm tra cấu hình |
 | `supabase/migrations/0001_verification.sql` | Migration sạch duy nhất, bảng global, RPC nguyên tử, unique hai chiều, RLS/REVOKE; SQL reset trong comment |
 | `src/lib/verify/config.ts` | Phân biệt cấu hình thiếu/sai, Gmail From/App Password |
-| `src/lib/verify/domain.ts` | Mặc định open-edu, allowlist tùy chọn, blocklist ưu tiên chặn; trim/lowercase/bỏ +tag khi định danh |
+| `src/lib/verify/domain.ts` | Allowlist bắt buộc, khớp chính xác domain; thiếu/sai cấu hình thì chặn xác minh; blocklist ưu tiên chặn; trim/lowercase/bỏ +tag khi định danh |
 | `src/lib/verify/otp.ts` | OTP crypto/HMAC gắn request, helper thời hạn/lỗi/IP |
 | `src/lib/verify/rateLimit.ts` | Reserve nguyên tử theo registry và đủ trạng thái |
 | `src/lib/verify/supabaseAdmin.ts` | Client service role chỉ server |
@@ -122,8 +122,12 @@ Lỗi 503 ban đầu xảy ra trước bước SMTP: log do người dùng cung 
 
 ## Cập nhật policy email nhiều trường
 
-ALLOWED_EMAIL_DOMAINS và BLOCKED_EMAIL_DOMAINS đều tùy chọn. Không đặt allowlist sẽ dùng chế độ open-edu, chỉ kiểm tra đuôi .edu hoặc .edu.vn; không xác minh cơ quan cấp mail. Blocklist chặn cả subdomain và ưu tiên hơn allowlist. GET công khai chỉ trả mode/allowedDomains/blockedDomains để UI dùng cùng quy tắc với POST. Có allowlist thì .ac.uk cũng được chấp nhận nếu liệt kê tường minh. Email thiếu/nhiều @, khoảng trắng bên trong, tên miền giả mạo và edu.vn trần bị từ chối; khoảng trắng bao ngoài được trim.
+ALLOWED_EMAIL_DOMAINS là bắt buộc để xác minh Student; chỉ domain được duyệt chính xác mới được chấp nhận, không tự mở quyền cho subdomain. Thiếu/sai cấu hình thì mode=unconfigured và API không gửi OTP/cấp attestation. BLOCKED_EMAIL_DOMAINS vẫn tùy chọn, chặn cả subdomain và ưu tiên hơn allowlist. Request OTP, confirm OTP và resume attestation đều kiểm tra chính sách hiện hành. GET công khai chỉ trả mode/allowedDomains/blockedDomains cho UI. Đuôi .edu/.edu.vn, bản ghi DNS/MX hoặc OTP thành công không tự chứng minh đang là sinh viên. Cần duyệt namespace sinh viên cùng trường; muốn xác minh tình trạng đang học cần đối chiếu roster hoặc xác nhận từ trường. Xem docs/student-domain-policy.md.
 
 ## Cập nhật lỗi danh sách /round
 
 Chẩn đoán đầy đủ, từng kết quả cast, file/dòng trước sửa, số getter và lệnh vận hành hiện có trong `docs/round-loading-fuji.md`. Loader nhận diện legacy, multicall allowFailure, lỗi từng thẻ, batch/retry/fallback. ABI QFRound/RoundFactory khớp artifacts đã compile; không thay contract hay ABI cho sửa lỗi UI này. Manifest đã có thay đổi trước lượt sửa này và được giữ nguyên.
+
+## SF-04 — lưu đơn bền vững
+
+Organizer repository chỉ trả dữ liệu đã được database xác nhận; đã bỏ global process-memory fallback ở create/list/resubmit/update. Lỗi DB 503, revision conflict 409; thông báo realtime và UI success chỉ sau acknowledgment hợp lệ. Thu hồi nhiều đơn approved cùng ví dùng transaction trong migration 0009_organizer_review_atomic.sql. Cần chạy migration trước khi triển khai; chưa chạy production. Xem [báo cáo SF-04](sf04-durable-organizer-applications.md).

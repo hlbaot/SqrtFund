@@ -101,14 +101,14 @@ function VerificationSession({ address, chainId, showVerified }: { address: Addr
     } else if (err instanceof Error && /reject|denied|4001/i.test(err.message)) {
       code = "WALLET_REJECTED";
     }
-    const message = code === "INVALID_DOMAIN" && config?.mode === "open-edu"
-      ? t.verification.openDomainError : messages[code];
+    const message = messages[code];
     txToast.error("student-verification-error", t.verification.title, message + attempts);
   }
   async function sendCode(resend = false) {
     if (busyRef.current || resendLeft > 0) return;
     const target = (resend ? sentEmail : email).trim().toLowerCase();
-    if (!config || !isAllowedEmail(target, config.allowedDomains, config.blockedDomains)) { showError(new ApiError("INVALID_DOMAIN")); return; }
+    if (config?.mode !== "allowlist") { showError(new ApiError("STUDENT_DOMAIN_POLICY_UNCONFIGURED")); return; }
+    if (!isAllowedEmail(target, config.allowedDomains, config.blockedDomains)) { showError(new ApiError("INVALID_DOMAIN")); return; }
     const flow = beginFlow("email-verification");
     activeFlow.current = flow;
     busyRef.current = true; setBusy(true);
@@ -180,10 +180,10 @@ function VerificationSession({ address, chainId, showVerified }: { address: Addr
             onChange={event => { setEmail(event.target.value); }} aria-invalid={invalidDomain}
             aria-describedby={domainHintId} className="mt-1 block w-full rounded-sm border border-line bg-bg p-2" placeholder="student@university.edu.vn" />
         </label>
-        <Button type="submit" className="self-end" disabled={!config || resendLeft > 0} isLoading={busy}>{label("Send code", "Gửi mã")}{resendLeft > 0 ? ` (${resendLeft}s)` : ""}</Button>
+        <Button type="submit" className="self-end" disabled={config?.mode !== "allowlist" || resendLeft > 0} isLoading={busy}>{label("Send code", "Gửi mã")}{resendLeft > 0 ? ` (${resendLeft}s)` : ""}</Button>
       </form>
       <p id={domainHintId} className={`text-xs ${invalidDomain ? "text-primary" : "text-muted"}`}>
-        {config ? config.mode === "open-edu" ? t.verification.openDomainHint : `${label("Accepted: ", "Chấp nhận: ")}${config.allowedDomains.join(", ") + label(" and subdomains", " và subdomain")}` : configError ? "" : label("Loading accepted domains…", "Đang tải domain được chấp nhận…")}
+        {config ? config.mode === "unconfigured" ? t.verification.emailErrors.STUDENT_DOMAIN_POLICY_UNCONFIGURED : `${label("Accepted: ", "Chấp nhận: ")}${config.allowedDomains.join(", ")}` : configError ? "" : label("Loading accepted domains…", "Đang tải domain được chấp nhận…")}
       </p>
       {request && <button className="text-sm underline" onClick={() => setOpen(true)}>{label("Enter code / retry transaction", "Nhập mã / thử lại giao dịch")}</button>}
     </>}

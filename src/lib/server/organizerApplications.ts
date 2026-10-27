@@ -1,7 +1,7 @@
 import "server-only";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
 import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
-import { VerificationError } from "@/lib/verify/errors";
+import { VerificationError, databaseError } from "@/lib/verify/errors";
 
 export interface OrganizerApplication {
   id: string;
@@ -27,185 +27,155 @@ export interface ApplicationInput {
   reason: string;
 }
 
-// Fallback in-memory store in case migration has not been applied to Supabase yet
-const fallbackStore: Map<string, OrganizerApplication> =
-  (globalThis as unknown as { __organizerAppsFallback?: Map<string, OrganizerApplication> }).__organizerAppsFallback ??
-  new Map<string, OrganizerApplication>();
-
-(globalThis as unknown as { __organizerAppsFallback?: Map<string, OrganizerApplication> }).__organizerAppsFallback = fallbackStore;
-
-function mapRow(row: Record<string, unknown>): OrganizerApplication {
-  return {
-    id: String(row.id),
-    walletAddress: String(row.wallet_address),
-    organizationName: String(row.organization_name),
-    contactEmail: String(row.contact_email),
-    emailVerifiedAt: row.email_verified_at ? String(row.email_verified_at) : null,
-    reason: String(row.reason),
-    status: (row.status as "pending" | "approved" | "rejected" | "revoked") || "pending",
-    txHash: row.tx_hash ? String(row.tx_hash) : null,
-    revocationReason: row.revocation_reason ? String(row.revocation_reason) : null,
-    reviewedBy: row.reviewed_by ? String(row.reviewed_by) : null,
-    reviewedAt: row.reviewed_at ? String(row.reviewed_at) : null,
-    createdAt: String(row.created_at || new Date().toISOString()),
-    updatedAt: String(row.updated_at || new Date().toISOString()),
-  };
+/** A database failure must never produce a local substitute for a persisted application. */
+async function withDatabase<T>(
+  work: (db: ReturnType<typeof supabaseAdmin>) => Promise<T>,
+): Promise<T> {
+  try {
+    return await work(supabaseAdmin());
+  } catch (error) {
+    if (error instanceof VerificationError) throw error;
+    throw databaseError(error);
+  }
 }
 
-export async function createOrganizerApplication(input: ApplicationInput): Promise<OrganizerApplication> {
-  const wallet = input.walletAddress.trim().toLowerCase();
-  const orgName = input.organizationName.trim();
-  const email = input.contactEmail.trim().toLowerCase();
-  const reason = input.reason.trim();
+function mapRow(value: unknown): OrganizerApplication {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new VerificationError("SERVICE_UNAVAILABLE", 503);
+  const row = value as Record<string, unknown>;
+  for (const field of [
+    "id",
+    "wallet_address",
+    "organization_name",
+    "contact_email",
+    "reason",
+    "created_at",
+    "updated_at",
+  ])
+    if (typeof row[field] !== "string" || !row[field])
+      throw new VerificationError("SERVICE_UNAVAILABLE", 503);
+  if (
+    !["pending", "approved", "rejected", "revoked"].includes(
+      String(row.status),
+    ) ||
+    !Number.isFinite(Date.parse(row.created_at as string)) ||
+    !Number.isFinite(Date.parse(row.updated_at as string))
+  )
+    throw new VerificationError("SERVICE_UNAVAILABLE", 503);
+  return {
+    id: row.id as string,
+    walletAddress: row.wallet_address as string,
+    organizationName: row.organization_name as string,
+    contactEmail: row.contact_email as string,
+    emailVerifiedAt: nullableText(row.email_verified_at),
+    reason: row.reason as string,
+    status: row.status as OrganizerApplication["status"],
+    txHash: nullableText(row.tx_hash),
+    revocationReason: nullableText(row.revocation_reason),
+    reviewedBy: nullableText(row.reviewed_by),
+    reviewedAt: nullableText(row.reviewed_at),
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+function nullableText(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value !== "string")
+    throw new VerificationError("SERVICE_UNAVAILABLE", 503);
+  return value;
+}
 
-  const now = new Date().toISOString();
-  const id = crypto.randomUUID();
-
-  // Không cho token cũ hoặc lỗi database lách ràng buộc email qua fallback memory.
-  await ensureEmailWallet(email, wallet, true);
-
-  try {
-    const db = supabaseAdmin();
+export async function createOrganizerApplication(
+  input: ApplicationInput,
+): Promise<OrganizerApplication> {
+  return withDatabase(async (db) => {
+    const wallet = input.walletAddress.trim().toLowerCase();
+    const email = input.contactEmail.trim().toLowerCase();
+    // The caller validates the v2 email token; the persisted identity remains authoritative.
+    await ensureEmailWallet(email, wallet, true, db);
+    const now = new Date().toISOString();
     const { data, error } = await db
       .from("organizer_applications")
       .insert({
-        id,
+        id: crypto.randomUUID(),
         wallet_address: wallet,
-        organization_name: orgName,
+        organization_name: input.organizationName.trim(),
         contact_email: email,
         email_verified_at: input.emailVerifiedAt,
-        reason,
+        reason: input.reason.trim(),
         status: "pending",
         created_at: now,
         updated_at: now,
       })
       .select()
       .single();
-
-    if (error) {
-      // If table doesn't exist yet, fall back gracefully to memory store
-      console.warn("[organizerApplications] Supabase insert failed, using fallback:", error.message);
-      const fallbackApp: OrganizerApplication = {
-        id,
-        walletAddress: wallet,
-        organizationName: orgName,
-        contactEmail: email,
-        emailVerifiedAt: input.emailVerifiedAt,
-        reason,
-        status: "pending",
-        createdAt: now,
-        updatedAt: now,
-      };
-      fallbackStore.set(id, fallbackApp);
-      return fallbackApp;
-    }
-
-    return mapRow(data as Record<string, unknown>);
-  } catch (err) {
-    console.warn("[organizerApplications] Supabase unavailable, using fallback:", err);
-    const fallbackApp: OrganizerApplication = {
-      id,
-      walletAddress: wallet,
-      organizationName: orgName,
-      contactEmail: email,
-      emailVerifiedAt: input.emailVerifiedAt,
-      reason,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
-    };
-    fallbackStore.set(id, fallbackApp);
-    return fallbackApp;
-  }
+    if (error) throw databaseError(error);
+    return mapRow(data);
+  });
 }
 
 export async function listOrganizerApplications(options?: {
   walletAddress?: string;
   status?: string;
 }): Promise<OrganizerApplication[]> {
-  const filterWallet = options?.walletAddress ? options.walletAddress.trim().toLowerCase() : undefined;
-  const filterStatus = options?.status?.trim().toLowerCase();
-
-  try {
-    const db = supabaseAdmin();
-    let query = db.from("organizer_applications").select("*").order("created_at", { ascending: false });
-
-    if (filterWallet) {
-      query = query.ilike("wallet_address", filterWallet);
-    }
-    if (filterStatus && filterStatus !== "all") {
-      if (filterStatus === "revoked") {
-        query = query.eq("status", "revoked");
-      } else {
-        query = query.eq("status", filterStatus);
-      }
-    }
-
+  return withDatabase(async (db) => {
+    let query = db
+      .from("organizer_applications")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (options?.walletAddress)
+      query = query.ilike(
+        "wallet_address",
+        options.walletAddress.trim().toLowerCase(),
+      );
+    const status = options?.status?.trim().toLowerCase();
+    if (status && status !== "all") query = query.eq("status", status);
     const { data, error } = await query;
-    if (error) {
-      console.warn("[organizerApplications] Supabase list failed, reading fallback:", error.message);
-      return getFallbackApplications(filterWallet, filterStatus);
-    }
-
-    const dbApps = ((data || []) as Record<string, unknown>[]).map(mapRow);
-    // Combine with any fallback entries created during local dev
-    const combined = [...dbApps];
-    for (const app of fallbackStore.values()) {
-      if (!combined.some(c => c.id === app.id)) {
-        if (filterWallet && app.walletAddress.toLowerCase() !== filterWallet) continue;
-        if (filterStatus && filterStatus !== "all" && app.status !== filterStatus) continue;
-        combined.push(app);
-      }
-    }
-    return combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  } catch {
-    return getFallbackApplications(filterWallet, filterStatus);
-  }
+    if (error) throw databaseError(error);
+    if (!Array.isArray(data))
+      throw new VerificationError("SERVICE_UNAVAILABLE", 503);
+    return data.map(mapRow);
+  });
 }
 
-function getFallbackApplications(wallet?: string, status?: string): OrganizerApplication[] {
-  let list = Array.from(fallbackStore.values());
-  if (wallet) {
-    list = list.filter(a => a.walletAddress.toLowerCase() === wallet);
-  }
-  if (status && status !== "all") {
-    list = list.filter(a => a.status === status);
-  }
-  return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-}
-
-/** Reopen the signed, previously verified application without creating a new email binding. */
-export async function resubmitOrganizerApplication(previous: OrganizerApplication, input: ApplicationInput): Promise<OrganizerApplication> {
-  if (!previous.emailVerifiedAt || !["revoked", "rejected"].includes(previous.status)
-    || previous.walletAddress.toLowerCase() !== input.walletAddress.toLowerCase()
-    || previous.contactEmail.trim().toLowerCase() !== input.contactEmail.trim().toLowerCase()) {
+/** Reopen only the signed database revision, without creating another email binding. */
+export async function resubmitOrganizerApplication(
+  previous: OrganizerApplication,
+  input: ApplicationInput,
+): Promise<OrganizerApplication> {
+  if (
+    !previous.emailVerifiedAt ||
+    !["revoked", "rejected"].includes(previous.status) ||
+    previous.walletAddress.toLowerCase() !==
+      input.walletAddress.toLowerCase() ||
+    previous.contactEmail.trim().toLowerCase() !==
+      input.contactEmail.trim().toLowerCase()
+  ) {
     throw new VerificationError("APPLICATION_CHANGED", 409);
   }
-  const now = new Date().toISOString();
-  const patch = {
-    organization_name: input.organizationName.trim(), reason: input.reason.trim(), status: "pending",
-    tx_hash: null, revocation_reason: null, reviewed_by: null, reviewed_at: null, updated_at: now,
-  };
-  // Only entries already held in the development fallback may be reopened there.
-  const fallback = fallbackStore.get(previous.id);
-  if (fallback) {
-    if (fallback.updatedAt !== previous.updatedAt || fallback.status !== previous.status) throw new VerificationError("APPLICATION_CHANGED", 409);
-    const application: OrganizerApplication = { ...fallback, organizationName: patch.organization_name, reason: patch.reason,
-      status: "pending", txHash: null, revocationReason: null, reviewedBy: null, reviewedAt: null, updatedAt: now };
-    fallbackStore.set(previous.id, application);
-    return application;
-  }
-  try {
-    const { data, error } = await supabaseAdmin().from("organizer_applications").update(patch)
-      .eq("id", previous.id).eq("wallet_address", previous.walletAddress)
-      .eq("status", previous.status).eq("updated_at", previous.updatedAt).select().maybeSingle();
-    if (error) throw new VerificationError("SERVICE_UNAVAILABLE", 503);
+  return withDatabase(async (db) => {
+    const { data, error } = await db
+      .from("organizer_applications")
+      .update({
+        organization_name: input.organizationName.trim(),
+        reason: input.reason.trim(),
+        status: "pending",
+        tx_hash: null,
+        revocation_reason: null,
+        reviewed_by: null,
+        reviewed_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", previous.id)
+      .eq("wallet_address", previous.walletAddress)
+      .eq("status", previous.status)
+      .eq("updated_at", previous.updatedAt)
+      .select()
+      .maybeSingle();
+    if (error) throw databaseError(error);
     if (!data) throw new VerificationError("APPLICATION_CHANGED", 409);
-    return mapRow(data as Record<string, unknown>);
-  } catch (error) {
-    if (error instanceof VerificationError) throw error;
-    throw new VerificationError("SERVICE_UNAVAILABLE", 503);
-  }
+    return mapRow(data);
+  });
 }
 
 export async function updateOrganizerApplicationStatus(
@@ -214,81 +184,24 @@ export async function updateOrganizerApplicationStatus(
     status: "approved" | "rejected" | "revoked";
     txHash?: string | null;
     revocationReason?: string | null;
-    reviewedBy?: string | null;
-    expectedUpdatedAt?: string;
-  }
+    reviewedBy: string;
+    expectedUpdatedAt: string;
+  },
 ): Promise<OrganizerApplication | null> {
-  const now = new Date().toISOString();
-
-  try {
-    const db = supabaseAdmin();
-    let query = db
-      .from("organizer_applications")
-      .update({
-        status: updates.status,
-        tx_hash: updates.txHash || null,
-        revocation_reason: updates.revocationReason || null,
-        reviewed_by: updates.reviewedBy?.toLowerCase() || null,
-        reviewed_at: now,
-        updated_at: now,
-      })
-      .eq("id", id);
-    if (updates.status === "revoked") query = query.eq("status", "approved");
-    if (updates.expectedUpdatedAt) query = query.eq("updated_at", updates.expectedUpdatedAt);
-    const { data, error } = await query.select().maybeSingle();
-
-    if (error) {
-      console.warn("[organizerApplications] Supabase update failed, updating fallback:", error.message);
-      const app = fallbackStore.get(id);
-      if (app && (!updates.expectedUpdatedAt || app.updatedAt === updates.expectedUpdatedAt)) {
-        if (updates.status === "revoked" && app.status !== "approved") return null;
-        app.status = updates.status;
-        app.txHash = updates.txHash || null;
-        app.revocationReason = updates.revocationReason || null;
-        app.reviewedBy = updates.reviewedBy?.toLowerCase() || null;
-        app.reviewedAt = now;
-        app.updatedAt = now;
-        return app;
-      }
-      return null;
-    }
-
-    if (data) {
-      if (updates.status === "revoked") {
-        const wallet = String((data as Record<string, unknown>).wallet_address);
-        if (wallet) {
-          await db
-            .from("organizer_applications")
-            .update({
-              status: "revoked",
-              tx_hash: updates.txHash || null,
-              revocation_reason: updates.revocationReason || null,
-              reviewed_by: updates.reviewedBy?.toLowerCase() || null,
-              reviewed_at: now,
-              updated_at: now,
-            })
-            .ilike("wallet_address", wallet)
-            .eq("status", "approved");
-        }
-      }
-      return mapRow(data as Record<string, unknown>);
-    }
-    if (updates.expectedUpdatedAt) return null;
-  } catch {
-    // ignore
-  }
-
-  const app = fallbackStore.get(id);
-  if (app && (!updates.expectedUpdatedAt || app.updatedAt === updates.expectedUpdatedAt)) {
-    if (updates.status === "revoked" && app.status !== "approved") return null;
-    app.status = updates.status;
-    app.txHash = updates.txHash || null;
-    app.revocationReason = updates.revocationReason || null;
-    app.reviewedBy = updates.reviewedBy?.toLowerCase() || null;
-    app.reviewedAt = now;
-    app.updatedAt = now;
-    return app;
-  }
-
-  return null;
+  return withDatabase(async (db) => {
+    // CAS and wallet-wide revocation are one database transaction, not two HTTP writes.
+    const { data, error } = await db.rpc("review_organizer_application", {
+      p_id: id,
+      p_status: updates.status,
+      p_reviewed_by: updates.reviewedBy.toLowerCase(),
+      p_expected_updated_at: updates.expectedUpdatedAt,
+      p_tx_hash: updates.txHash ?? null,
+      p_revocation_reason: updates.revocationReason ?? null,
+    });
+    if (error) throw databaseError(error);
+    if (data?.status === "CHANGED") return null;
+    if (data?.status !== "OK")
+      throw new VerificationError("SERVICE_UNAVAILABLE", 503);
+    return mapRow(data.application);
+  });
 }
