@@ -1,39 +1,33 @@
-# Chính sách domain khi xác minh Student
+# Chính sách email Student — MVP open-edu
 
-## Nguyên nhân
+## Quyết định hiện hành
 
-Chế độ open-edu trước đây nhận mọi địa chỉ hợp lệ có đuôi .edu/.edu.vn. OTP chỉ chứng minh người dùng đọc được hộp thư; ký ví chỉ chứng minh họ điều khiển ví. Cả hai điều kiện này không chứng minh hộp thư do trường được SqrtFund tin cậy cấp cho sinh viên đang học.
+Ngày 27/10/2026, người dùng chọn giữ `open-edu` cho MVP. Bản strict-domain đã merge trước đó trả `unconfigured` khi chưa có allowlist, làm khóa xác minh Student mới; thay đổi hiện tại khôi phục open-edu khi danh sách trống.
 
-Kiểm tra chỉ đọc production ngày 27/10/2026 xác nhận API public dùng mode=open-edu, allowlist/blocklist trống. Với đúng trường hợp người dùng báo, có bản ghi xác minh và quyền Student on-chain khớp identity; người dùng xác nhận có nhận và nhập OTP. Không tìm thấy bằng chứng bypass OTP từ trường hợp này. Không lưu email, ví, OTP, hash, chữ ký hoặc response riêng tư trong báo cáo.
+- `ALLOWED_EMAIL_DOMAINS` trống hoặc chưa đặt: `mode=open-edu`, nhận địa chỉ hợp lệ có domain kết thúc bằng `.edu` hoặc `.edu.vn`. Không nhận domain gốc `edu.vn`, địa chỉ lỗi hoặc domain giả dạng như `school.edu.vn.evil.com`.
+- Nếu có allowlist hợp lệ: `mode=allowlist`, chỉ nhận domain khớp chính xác; subdomain cần liệt kê riêng. Giữ cơ chế này để có thể giới hạn pilot sau này.
+- Nếu cấu hình domain không hợp lệ: `mode=unconfigured`, khóa gửi mã và trả `STUDENT_DOMAIN_POLICY_UNCONFIGURED` (503). Không tự mở rộng điều kiện khi cấu hình sai.
+- `BLOCKED_EMAIL_DOMAINS` ưu tiên chặn domain và các subdomain, áp dụng cho cả hai chế độ.
+- API request OTP, confirm OTP và resume attestation đều kiểm tra chính sách hiện hành. UI dùng cùng validator và hiển thị chế độ open-edu rõ ràng.
 
-## Thay đổi code local
+## Những kiểm tra vẫn bắt buộc
 
-- Loại bỏ fallback dựa trên hậu tố .edu/.edu.vn. ALLOWED_EMAIL_DOMAINS bắt buộc là danh sách domain email sinh viên đã được quản trị duyệt.
-- So khớp domain chính xác sau trim/lowercase. Duyệt school.example.edu không tự duyệt student.school.example.edu, alumni.school.example.edu hoặc tên gần giống. Mỗi namespace cần được ghi rõ.
-- Thiếu allowlist hoặc có cấu hình domain không hợp lệ: GET trả mode=unconfigured; UI hiển thị chưa cấu hình và khóa gửi mã. POST trả STUDENT_DOMAIN_POLICY_UNCONFIGURED (503), không gửi mail/truy vấn identity/cấp attestation.
-- Domain không nằm trong danh sách: INVALID_DOMAIN (400) trước khi ghi dữ liệu hoặc gửi mail.
-- Confirm OTP kiểm tra lại chính sách hiện hành trước khi consume OTP, claim email–ví hoặc ký attestation. Vì vậy OTP được gửi theo chính sách cũ không vượt qua chính sách mới khi xác nhận.
-- Resume ALREADY_VERIFIED cũng phải vượt qua domain policy trước khi cấp chữ ký mới.
-- Blocklist vẫn ưu tiên chặn domain và các subdomain của nó. Không thay cơ chế email liên hệ Organizer, vì email liên hệ không cấp Student.
+Chữ ký ví đúng identity, origin và deployment; OTP đúng/hợp lệ/chưa dùng; ràng buộc email–ví và uniqueness; rate limit; kiểm tra registry. Không thay đổi quyền đọc Organizer, upload auth/quota, lưu trữ Organizer hoặc cơ chế góp cộng dồn. Không cần migration mới, không sửa smart contract.
 
-## Cấu hình khi triển khai
+OTP chứng minh quyền đọc hộp thư, chữ ký chứng minh quyền điều khiển ví. Open-edu không xác nhận trường phát hành hộp thư hay người dùng thực sự đang học. Do đó trường hợp người dùng kiểm soát một mailbox có hậu tố giáo dục vẫn có thể đáp ứng chính sách MVP; đây là giới hạn nghiệp vụ được giữ theo yêu cầu.
 
-Đặt ALLOWED_EMAIL_DOMAINS ở server/Vercel Production bằng các domain do trường xác nhận, phân cách dấu phẩy. Liệt kê riêng domain cấp cho sinh viên thay vì tự tin cậy mọi mailbox của trường. Không tự thêm một trường vào danh sách chỉ vì có DNS/MX hoặc tên miền trông giống giáo dục.
+## Cấu hình
 
-Hiện đang chờ người quản trị cung cấp tên trường và danh sách domain hợp lệ. Không đặt danh sách giả định trong .env hoặc production; cấu hình thiếu sẽ khóa xác minh mới theo thiết kế. Cần deploy code mới và cấu hình danh sách để thay đổi có hiệu lực trên production. Không có migration SQL mới.
-
-Allowlist + OTP vẫn chỉ là chính sách đủ điều kiện dựa trên email đã được duyệt. Nếu yêu cầu là xác minh thực sự đang theo học, cần trường đối chiếu danh sách sinh viên/SSO hoặc duyệt danh tính; không nên tuyên bố OTP đã chứng minh tình trạng đang học. Staff/alumni có thể vẫn giữ mailbox thuộc domain trường nếu chính sách chọn domain quá rộng.
-
-## Quyền đã cấp
-
-Thay đổi này ngăn cấp chữ ký mới cho email không được duyệt; không tự thu hồi attestation đã ký còn hạn hoặc quyền Student đã ghi lên chain. StudentRegistry hiện không có hàm revoke/expiry cho quyền isStudent. Chỉ xóa DB hoặc chặn domain không làm isStudent=false.
-
-Không tự sửa liên kết thật, xoay attester, triển khai registry mới hay gửi giao dịch quản trị trong tác vụ này. Thu hồi quyền đã cấp cần quyết định riêng về thiết kế contract và xử lý quyền cũ, đồng thời tính cả các round đang trỏ tới registry hiện hành.
+Để dùng open-edu, để trống ALLOWED_EMAIL_DOMAINS; blocklist có thể để trống hoặc chứa domain muốn loại. Khi pilot cần allowlist, đặt danh sách domain chính xác, cách nhau bằng dấu phẩy. Không đưa secret/email/ví người thật vào tài liệu.
 
 ## Kiểm thử
 
-Thay test cũ vốn khẳng định open-edu là hành vi mong muốn bằng test fail-closed và allowlist chính xác. Bao phủ domain giáo dục không được duyệt, subdomain chưa duyệt, cấu hình rỗng/sai, blocklist, OTP cũ/domain bị loại, resume bị chặn, UI chưa cấu hình và trường hợp có chữ ký EOA thật nhưng domain không đủ điều kiện. Các trường hợp bị chặn không gửi mail, consume OTP, claim identity hoặc ký attestation.
+Test validator gồm open-edu, hậu tố giả dạng, địa chỉ sai, blocklist, allowlist chính xác và cấu hình sai. Test API gồm request/confirm open-edu, OTP lỗi và proof ví sai/thiếu; test UI xác nhận form mở khi allowlist trống và khóa khi cấu hình lỗi. Các test dương tính dùng DB/mail/registry fixture; không gửi OTP thật trong kiểm thử production.
 
-Không push, deploy, chạy workflow từ xa, gửi OTP thật hoặc thay đổi quyền on-chain khi sửa code local này.
+## Kết quả triển khai 27/10/2026
 
-Kết quả local: 912 test ứng dụng qua, 13 integration test bỏ qua theo cấu hình; typecheck và webpack production build qua; lint các file thay đổi không có lỗi. Đây không phải kết quả kiểm tra phiên bản mới trên production.
+- 972 test ứng dụng đạt; 13 integration test bỏ qua theo cấu hình. Typecheck, lint các file sửa và build snapshot production đạt. Không thay Solidity nên không chạy lại test contract trong thay đổi này.
+- Deployment `dpl_FYT3yLCy1JYCswyE3J3MyFfzKcgU` READY, alias https://www.sqrtfund.tech . Snapshot source tại /tmp/sqrtfund-openedu-deploy, không có env/secret.
+- Kiểm tra live lúc 13:46 (UTC+7): API public trả mode=open-edu; trang chủ 200; thiếu/giả proof Student và Organizer bị chặn 401; request OTP fixture không tồn tại trả OTP_EXPIRED; đọc đơn anonymous và upload anonymous vẫn 401. Nội dung góp cộng dồn B-01 vẫn có trên live.
+- Không gửi OTP/email thật, không tạo binding hoặc cấp quyền on-chain để thử trên production. Dương tính request/confirm được kiểm tra qua fixture local.
+- Chưa commit/push, chưa chạy workflow từ xa. Cần đưa thay đổi hiện tại lên Git để lần auto-deploy sau giữ cùng chính sách; main từ lần merge trước vẫn là strict-domain.

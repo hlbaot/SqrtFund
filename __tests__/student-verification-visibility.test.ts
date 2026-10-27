@@ -6,7 +6,7 @@ import { StudentAccessGate } from "@/components/verify/StudentAccessGate";
 
 const f = vi.hoisted(() => ({
   organizer: false, platform: false, student: false, loading: false, connected: true,
-  profile: null as "student" | "organizer" | null, domainConfigured: true,
+  profile: null as "student" | "organizer" | null, domainConfigured: true, openEdu: false,
 }));
 vi.mock("wagmi", () => ({
   useAccount: () => ({ address: "0x1234567890123456789012345678901234567890", chainId: 43113, isConnected: f.connected }),
@@ -17,14 +17,14 @@ vi.mock("@/hooks/useRole", () => ({ useRole: () => ({ isOrganizer: f.organizer, 
 vi.mock("@/hooks/useWalletProfile", () => ({ defaultWalletProfile: () => null, useWalletProfile: () => ({ profile: f.profile }) }));
 vi.mock("@/hooks/useStudentStatus", () => ({ useStudentStatus: () => ({ isStudent: f.student, isConfigured: true }) }));
 vi.mock("@/hooks/useTxFlow", () => ({ useTxFlow: () => vi.fn() }));
-vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}), useQuery: () => ({ data: { mode: f.domainConfigured ? "allowlist" : "unconfigured", allowedDomains: f.domainConfigured ? ["school.edu.vn"] : [], blockedDomains: [] } }) }));
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}), useQuery: () => ({ data: { mode: f.openEdu ? "open-edu" : f.domainConfigured ? "allowlist" : "unconfigured", allowedDomains: f.domainConfigured ? ["school.edu.vn"] : [], blockedDomains: [] } }) }));
 vi.mock("@/lib/context/locale", async () => {
   const { copy } = await import("@/lib/copy");
   return { useLocale: () => ({ t: copy.vi, locale: "vi" }) };
 });
 beforeEach(() => {
   f.organizer = false; f.platform = false; f.student = false;
-  f.loading = false; f.connected = true; f.profile = null; f.domainConfigured = true;
+  f.loading = false; f.connected = true; f.profile = null; f.domainConfigured = true; f.openEdu = false;
 });
 const box = () => renderToStaticMarkup(createElement(StudentVerifyBox));
 const gate = () => renderToStaticMarkup(createElement(StudentAccessGate));
@@ -60,9 +60,16 @@ it("does not flash a Student form while Organizer authority is being checked", (
   expect(box()).toBe("");
 });
 
-it("disables OTP submission and explains when no approved university domains are configured", () => {
+it("disables OTP submission and explains when domain configuration is invalid", () => {
   f.domainConfigured = false;
   const html = box();
-  expect(html).toContain("Chưa cấu hình domain email trường được duyệt");
+  expect(html).toContain("Cấu hình domain email không hợp lệ");
   expect(html.match(/<button[^>]*type="submit"[^>]*>/)?.[0]).toContain('disabled=""');
+});
+
+it("keeps OTP submission available and explains open-edu with an empty allowlist", () => {
+  f.domainConfigured = false; f.openEdu = true;
+  const html = box();
+  expect(html).toContain("Chấp nhận email .edu và .edu.vn");
+  expect(html.match(/<button[^>]*type="submit"[^>]*>/)?.[0]).not.toContain('disabled=""');
 });

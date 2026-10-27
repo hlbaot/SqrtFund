@@ -107,7 +107,7 @@ function VerificationSession({ address, chainId, showVerified }: { address: Addr
   async function sendCode(resend = false) {
     if (busyRef.current || resendLeft > 0) return;
     const target = (resend ? sentEmail : email).trim().toLowerCase();
-    if (config?.mode !== "allowlist") { showError(new ApiError("STUDENT_DOMAIN_POLICY_UNCONFIGURED")); return; }
+    if (!config || config.mode === "unconfigured") { showError(new ApiError("STUDENT_DOMAIN_POLICY_UNCONFIGURED")); return; }
     if (!isAllowedEmail(target, config.allowedDomains, config.blockedDomains)) { showError(new ApiError("INVALID_DOMAIN")); return; }
     const flow = beginFlow("email-verification");
     activeFlow.current = flow;
@@ -180,10 +180,10 @@ function VerificationSession({ address, chainId, showVerified }: { address: Addr
             onChange={event => { setEmail(event.target.value); }} aria-invalid={invalidDomain}
             aria-describedby={domainHintId} className="mt-1 block w-full rounded-sm border border-line bg-bg p-2" placeholder="student@university.edu.vn" />
         </label>
-        <Button type="submit" className="self-end" disabled={config?.mode !== "allowlist" || resendLeft > 0} isLoading={busy}>{label("Send code", "Gửi mã")}{resendLeft > 0 ? ` (${resendLeft}s)` : ""}</Button>
+        <Button type="submit" className="self-end" disabled={!config || config.mode === "unconfigured" || resendLeft > 0} isLoading={busy}>{label("Send code", "Gửi mã")}{resendLeft > 0 ? ` (${resendLeft}s)` : ""}</Button>
       </form>
       <p id={domainHintId} className={`text-xs ${invalidDomain ? "text-primary" : "text-muted"}`}>
-        {config ? config.mode === "unconfigured" ? t.verification.emailErrors.STUDENT_DOMAIN_POLICY_UNCONFIGURED : `${label("Accepted: ", "Chấp nhận: ")}${config.allowedDomains.join(", ")}` : configError ? "" : label("Loading accepted domains…", "Đang tải domain được chấp nhận…")}
+        {config ? config.mode === "open-edu" ? label("Accepts .edu and .edu.vn email addresses; OTP and a wallet signature are required.", "Chấp nhận email .edu và .edu.vn; vẫn cần OTP và chữ ký ví.") : config.mode === "unconfigured" ? t.verification.emailErrors.STUDENT_DOMAIN_POLICY_UNCONFIGURED : `${label("Accepted: ", "Chấp nhận: ")}${config.allowedDomains.join(", ")}` : configError ? "" : label("Loading accepted domains…", "Đang tải domain được chấp nhận…")}
       </p>
       {request && <button className="text-sm underline" onClick={() => setOpen(true)}>{label("Enter code / retry transaction", "Nhập mã / thử lại giao dịch")}</button>}
     </>}

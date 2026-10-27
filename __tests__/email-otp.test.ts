@@ -15,11 +15,17 @@ describe("approved academic email policy", () => {
     expect(isAllowedEmail("a@student.hcmus.edu.vn", "student.hcmus.edu.vn")).toBe(true);
     expect(isAllowedEmail("a@evilhcmus.edu.vn", "hcmus.edu.vn")).toBe(false);
   });
-  it.each([undefined, "", "   ", "*.edu.vn", "edu.vn", "school.edu.vn,broken domain", "school.edu.vn,https://other.edu.vn"])("disables verification when policy is missing or invalid: %s", domains => {
+  it.each(["*.edu.vn", "edu.vn", "school.edu.vn,broken domain", "school.edu.vn,https://other.edu.vn"])("disables verification when explicit policy is invalid: %s", domains => {
     expect(emailDomainPolicy(domains).mode).toBe("unconfigured");
     for (const email of ["a@hust.edu.vn", "a@student.hcmus.edu.vn", "a@mit.edu", "a@untrusted-school.edu.vn"]) {
       expect(isAllowedEmail(email, domains)).toBe(false);
     }
+  });
+  it.each([undefined, "", "   "])("uses open-edu when no allowlist is configured: %s", domains => {
+    expect(emailDomainPolicy(domains).mode).toBe("open-edu");
+    for (const email of ["a@school.edu.vn", "a@school.edu", "a@student.school.edu.vn"]) expect(isAllowedEmail(email, domains)).toBe(true);
+    for (const email of ["a@edu.vn", "a@gmail.com", "a@school.edu.vn.evil.com", "a@evil-edu.vn", "a@school..edu.vn", "a@@school.edu.vn"]) expect(isAllowedEmail(email, domains)).toBe(false);
+    expect(isAllowedEmail("a@student.blocked.edu.vn", domains, "blocked.edu.vn")).toBe(false);
   });
   it("accepts non-edu schools only when their exact domain is approved", () => {
     expect(isAllowedEmail("a@ox.ac.uk", "ox.ac.uk")).toBe(true);
