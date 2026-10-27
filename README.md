@@ -1,506 +1,276 @@
-# SqrtFund — Democratic Quadratic Funding for Student Initiatives
+<p align="center">
+  <img src="public/brand/npower-horizontal.png" alt="Logo N-Power" width="480" />
+</p>
 
-> **Topic 6: Avalanche Hackathon (Team1 Vietnam)**  
-> **Team:** 43xTSD  
-> **Network:** Avalanche Fuji Testnet (Chain ID: `43113`)  
-> **Live Web Application:** [https://www.sqrtfund.tech/](https://www.sqrtfund.tech/)  
-> **Demo Video:** [Điền link YouTube/Loom demo video tại đây]  
-> **Pitch Deck / Slides:** [Điền link Google Slides / PDF pitch deck tại đây]  
+<h1 align="center">N-Power</h1>
 
----
+<p align="center">Nền tảng Quadratic Funding cho câu lạc bộ và dự án sinh viên trên Avalanche.</p>
 
-## Tóm tắt
+<p align="center">
+  <a href="https://www.sqrtfund.tech/">Ứng dụng</a> ·
+  <a href="https://www.canva.com/design/DAHYhkwRwHU/_L6w-_FjVNtWDEsDq29LGw/edit">Slide giới thiệu</a> ·
+  <a href="#cài-đặt-và-chạy-local">Cài đặt</a> ·
+  <a href="#tài-liệu">Tài liệu</a>
+</p>
 
-**SqrtFund** là nền tảng gây quỹ cho câu lạc bộ và dự án sinh viên, dùng cơ chế **Quadratic Funding (QF)** trên **Avalanche Fuji**.
-
-* **Vấn đề:** Quỹ hoạt động sinh viên thường được chia theo quan hệ hoặc theo người "nói to nhất". Dự án được nhiều bạn quan tâm nhưng không có người bảo trợ thì không nhận được gì.
-* **Giải pháp:** Nhà tài trợ nạp một quỹ đối ứng. Sinh viên đã xác minh bằng email trường góp những khoản nhỏ (1–5 USDC) cho dự án mình thích. Quỹ đối ứng được phân bổ theo công thức QF, khuyến khích **nhiều người cùng ủng hộ** thay vì chỉ dựa vào tổng tiền góp. Ví dụ: 100 ví góp 1 USDC nhận matching thô gấp khoảng **5,2 lần** so với 20 ví góp 5 USDC, dù cùng tổng 100 USDC.
-* **Điểm chính:** Công thức QF chạy hoàn toàn on-chain; xác minh sinh viên một lần bằng email trường + OTP + chữ ký EIP-712 và dùng chung cho mọi vòng; hỗ trợ quyên góp theo lô (`donateMany`), hủy vòng khẩn cấp và hoàn tiền 100% cho người góp.
-
----
-
-## 1. Dự án làm gì
-
-### Vấn đề
-
-Câu lạc bộ sinh viên và các nhóm nghiên cứu nhỏ rất khó xin được kinh phí:
-
-1. **Phân bổ theo quan hệ:** Quỹ về tay người có quan hệ hoặc người thuyết trình "to tiếng" nhất.
-2. **Người giàu quyết định:** Trong gây quỹ thông thường, vài khoản góp lớn chi phối toàn bộ kết quả.
-3. **Thiếu minh bạch:** Tiền đi qua tài khoản ngân hàng riêng, không có dấu vết hay lịch sử công khai trên sổ cái.
-
-### Giải pháp: Quadratic Funding
-
-Nhà tài trợ cung cấp một quỹ đối ứng (Matching Pool). Sinh viên đã xác minh góp những khoản nhỏ cho dự án mình quan tâm. Khi vòng kết thúc, quỹ được chia theo công thức QF — công thức này thưởng cho **số người ủng hộ** thay vì số tiền:
-
-$$\text{Match}_j \propto \left(\sum_{i} \sqrt{d_{i,j}}\right)^2 - \sum_{i} d_{i,j}$$
-
-trong đó $d_{i,j}$ là khoản sinh viên $i$ góp cho dự án $j$. Dự án có nhiều sinh viên ủng hộ nhận matching cao hơn nhiều so với dự án chỉ có một người góp lớn.
-
-### Ba vai trò chính trong hệ thống
+**N-Power** giúp sinh viên gây quỹ cho ý tưởng của mình và cùng quyết định những dự án nên nhận thêm tài trợ. Nhà tổ chức cung cấp một quỹ đối ứng, sinh viên đóng góp cho dự án quan tâm, còn hợp đồng thông minh tính khoản tài trợ bổ sung theo cơ chế **Quadratic Funding (QF)**.
 
-SqrtFund có **3 vai trò nghiệp vụ: Student, Organizer và Admin**. Quyền thực tế được kiểm tra trên smart contract; chọn hồ sơ trong menu ví không tự cấp quyền.
-
-| Vai trò | Có thể làm gì | Nguồn xác định quyền |
-| :--- | :--- | :--- |
-| **Student — Sinh viên** | Xác minh email trường một lần; chọn vòng tài trợ và đăng ký dự án/CLB; đóng góp cho dự án đã được duyệt; theo dõi dự án, khoản góp và matching; nhận tiền dự án sau khi vòng được chốt hoặc hoàn lại khoản góp nếu vòng bị hủy. | `StudentRegistry.isStudent(wallet)` trên registry dùng chung. |
-| **Organizer — Nhà tổ chức** | Xác thực email liên hệ và nộp đơn xin quyền. Sau khi được Admin cấp quyền: nạp quỹ ban đầu, tạo round và quản lý **round do ví mình tạo** — duyệt/từ chối project, bổ sung quỹ, chốt hoặc hủy vòng. Khi bị thu hồi quyền, có thể xem lý do và nộp lại đơn. | `RoundFactory.authorizedOrganizers(wallet)` cho quyền tạo round; `QFRound.admin()` cho quyền quản lý từng round. |
-| **Admin — Quản trị nền tảng (Platform Owner)** | Có quyền nạp quỹ và tạo round như Organizer mà không cần tự nộp đơn; quản lý round mình tạo. Ngoài ra, xem đơn Organizer, cấp quyền on-chain, từ chối đơn và thu hồi quyền kèm lý do. | `RoundFactory.owner()`; quản lý round vẫn yêu cầu ví trùng `QFRound.admin()`. |
-
-**Các tên gọi khác không phải vai trò nghiệp vụ riêng:**
-
-- **Chủ dự án / Project Owner:** Student sở hữu project đã đăng ký. Không cần một tài khoản hay vai trò thứ tư; ví sở hữu project gọi `claim(projectId)` để nhận tiền.
-- **Round Admin:** Quyền quản lý một round cụ thể. Factory cố định `admin = msg.sender` khi tạo round, nên người tạo round là người duyệt project trong round đó.
-- **Guest:** Trạng thái chưa có quyền hoặc chưa kết nối ví, không phải một vai trò được cấp quyền trong quy trình nghiệp vụ.
-
-**Phạm vi quyền & Quy tắc nghiệp vụ:**
-
-- **Chống tự quyên góp (Anti-Self Donation):** Sinh viên tạo dự án không thể tự donate cho dự án của chính mình (`SelfDonationNotAllowed` on-chain).
-- **Đóng góp cộng dồn:** Sinh viên có thể góp thêm vào cùng dự án trong trần `maxDonation` và ngân sách `maxPerRound`. `donationOf` lưu tổng theo ví/dự án; mỗi ví chỉ tính một supporter. QF lấy căn của tổng đã góp, không tính mỗi lần chuyển tiền là một danh tính mới.
-- **Nhà tổ chức không quyên góp:** Ví mang vai trò Organizer chỉ có quyền nạp matching pool (`depositInitialPool`/`fundPool`) và quản trị vòng; bị chặn hoàn toàn quyền donate vào bất kỳ dự án nào (cả ở round của mình lẫn round khác) để đảm bảo tính khách quan và minh bạch của cơ chế Quadratic Funding.
-- **Khóa cố định vai trò ví:** Sau khi ví kết nối đã chọn vai trò (Student hoặc Organizer), hệ thống khóa chức năng đổi vai trò để ngăn chặn việc tráo đổi danh tính.
-- Admin nền tảng và Organizer **không tự có quyền duyệt project hoặc quản lý round của người khác**.
-- Quyền tạo round không thay thế xác minh Student. Contract vẫn yêu cầu ví có quyền Student để đăng ký project hoặc donate; giao diện Organizer/Admin tập trung vào tác vụ quản trị.
-- Thu hồi Organizer chỉ chặn tạo round mới và nạp quỹ ban đầu vào Factory; **không đổi admin của round đã tạo**, không xóa project hay tiền trên chain. Ví đó vẫn quản lý round cũ và rút được số dư nạp trước chưa sử dụng.
-- Menu của Admin ẩn “Đăng ký dự án” và “Hoạt động của tôi” trên thanh điều hướng; dropdown ví có “Tạo round”, “Cấp quyền Organizer” và lối vào hoạt động cá nhân. Menu của các hồ sơ khác giữ luồng tương ứng.
-
-### Tính năng
-
-* **Xác minh sinh viên:** Email trường (`.edu`, `.edu.vn`) + OTP + attestation EIP-712, lưu một lần trong `StudentRegistry` dùng chung và có hiệu lực cho các vòng sử dụng registry đó.
-* **Đăng ký và Quản trị Organizer:**
-  * Người dùng chọn hồ sơ Organizer, xác thực OTP email liên hệ và nộp đơn; không bắt buộc xác minh Student trước khi xin quyền Organizer.
-  * Ràng buộc **1 email ↔ 1 ví** cố định; khi bị thu hồi quyền email vẫn gắn với ví ban đầu để bảo vệ danh tính và hỗ trợ nộp lại (Re-apply).
-  * **Platform Dashboard:** Platform Owner quản lý đơn theo tab (*Tất cả, Chờ duyệt, Đã duyệt, Từ chối, Đã thu hồi*).
-  * **Quy tắc thu hồi quyền:** **Chỉ những đơn đã được phê duyệt thành công (`status = "approved"`) mới có thể thực hiện thao tác thu hồi quyền.**
-  * **Modal thu hồi quyền:** Platform Owner xác nhận địa chỉ ví, thông tin tổ chức và bắt buộc nhập lí do thu hồi (tối thiểu 3 ký tự). Giao dịch gọi `setOrganizer(wallet, false)` on-chain và lưu lý do vào cơ sở dữ liệu.
-  * **Giao diện khi bị thu hồi (Organizer View):** Dropdown ví có một banner “Quyền Organizer đã bị thu hồi” và một lối vào “Xem chi tiết & Gửi yêu cầu lại”. Lý do thu hồi và thao tác chỉnh hồ sơ/nộp lại nằm trong modal chi tiết, không lặp trong dropdown.
-* **Prefunded Factory (Nạp quỹ trước khi tạo vòng):** Organizer hoặc Admin approve MockUSDC cho Factory nếu cần → gọi `depositInitialPool(token, amount)` → đợi xác nhận → gọi `createFundedRound(...)`. Factory trừ số dư đã nạp và chuyển quỹ vào round mới trong cùng giao dịch tạo vòng. `depositPool(amount)` là hàm khác, dùng để bổ sung quỹ cho **round đã tồn tại** và chỉ admin của round đó được gọi. Giao diện đọc lại số dư đã nạp trước khi tạo vòng; nếu giao dịch tạo vòng thất bại, thay đổi số dư và chuyển tiền được hoàn tác.
-* **Factory nhiều vòng:** Mỗi vòng là một contract `QFRound` riêng, có thời gian, giới hạn góp, ngân sách và trần matching riêng.
-* **Chọn vòng và đăng ký dự án:** `/register` có dropdown các vòng còn nhận đăng ký và dùng registry chung; hỗ trợ `/register?round=0x...` để chọn sẵn vòng từ trang chi tiết. Khi chưa có vòng phù hợp, hiển thị trạng thái trống thay vì báo nhầm lỗi xác minh Student. Vòng được yêu cầu đã đóng/không hợp lệ thì phải chọn lại, không tự chuyển sang vòng khác.
-* **Danh sách round:** `/round` hiển thị tối đa 6 thẻ/trang, mới nhất trước, lọc trước khi phân trang. Đổi tab về trang 1; `?page=2` chia sẻ được và giữ khi quay lại. Mobile 1 cột, tablet (`md`) 2 cột, desktop (`lg`) 3 cột; skeleton 6 thẻ. Thanh phân trang dùng chung với danh sách duyệt dự án và đơn Organizer (giữ 4 mục/trang).
-* **Giao diện đen–đỏ:** màu nền, thẻ, chữ, nhấn và nút tập trung tại `src/app/globals.css`; tăng sáng chữ phụ, nhãn tối thiểu 12px, focus ring rõ và tôn trọng reduced motion. Chạy `node scripts/check-ui-contrast.mjs` để kiểm tra các cặp màu AA; xem bảng trước/sau tại `docs/UI_ACCESSIBILITY.md`.
-* **Duyệt dự án:** Student nộp project vào đúng round đã chọn; chỉ ví tạo round đó được duyệt hoặc từ chối. Danh sách duyệt project và danh sách đơn Organizer đều phân trang tối đa **4 mục/trang**, mới nhất trước.
-* **Góp đơn lẻ và theo lô:** `donate` cho một dự án hoặc `donateMany` để chia ngân sách cho nhiều dự án trong một giao dịch duy nhất (cần approve ERC-20 nếu allowance chưa đủ).
-* **Đếm người ủng hộ:** `donorCount` được lưu on-chain theo từng project; một ví donate nhiều lần cho cùng project không bị đếm lặp.
-* **Bộ máy QF on-chain:** Tính bằng số nguyên với độ chính xác $\text{SCALE} = 10^{12}$, kèm tính toán mô phỏng matching dự kiến ngay trên giao diện khi sinh viên nhập số tiền.
-* **Chống thiếu quỹ:** Nếu tổng nhu cầu matching vượt quá quỹ, các khoản chi được giảm theo tỷ lệ tương ứng.
-* **Trần matching mỗi dự án:** `maxMatchBps` giới hạn phần trăm tối đa của quỹ mà một dự án được nhận.
-* **Quyền chốt vòng theo thời gian:** Sau `endTime`, chỉ admin của round được chốt trong 24 giờ đầu; hết thời gian ân hạn thì bất kỳ ai cũng có thể gọi `finalize`. Mỗi vòng chỉ chốt một lần.
-* **Nhận tiền trực tiếp:** Chủ dự án nhận tiền góp cộng matching thẳng từ contract của vòng.
-* **Hủy vòng và hoàn tiền:** Admin có thể hủy vòng trước khi chốt; người góp sau đó nhận lại 100% số đã góp (`refund` / `refundMany`), và admin chỉ rút lại phần quỹ do chính mình nạp.
-
----
-
-## 2. Cách hoạt động
-
-### Xác minh sinh viên (Student Verification)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Student as Sinh viên
-    participant UI as Giao diện
-    participant API as Next.js API + Supabase
-    participant SMTP as Máy chủ SMTP
-    participant Registry as StudentRegistry (Contract)
-
-    Student->>UI: Kết nối ví Fuji, chọn Student và nhập email trường
-    UI->>API: POST /api/verify/request-otp (email, address)
-    API->>API: Kiểm tra tên miền, giới hạn tần suất và khóa advisory
-    API->>SMTP: Gửi OTP 6 chữ số
-    SMTP-->>Student: OTP vào hộp thư sinh viên
-    Student->>UI: Nhập mã OTP
-    UI->>API: POST /api/verify/confirm (requestId, otp)
-    API->>API: Kiểm tra OTP, ký attestation EIP-712
-    API-->>UI: Trả về { emailHash, expiry, signature }
-    UI->>Registry: verifyStudent(emailHash, expiry, signature)
-    Registry->>Registry: Kiểm tra chữ ký attester và ràng buộc 1 email ↔ 1 ví
-    Registry-->>UI: Sự kiện StudentVerified
-    UI-->>Student: Xác minh thành công!
-```
-
-> **Lưu ý:** Attestation do khóa attester ở backend ký, còn contract tự kiểm tra chữ ký, thời hạn và ràng buộc một email một ví. Đây không phải là email zero-knowledge (ZK-Email).
-
-### Cấp quyền Organizer
-
-1. Người dùng chọn hồ sơ **Organizer**, nhập tổ chức/CLB, email liên hệ và kế hoạch tổ chức vòng tài trợ.
-2. Xác thực email liên hệ bằng OTP qua `/api/organizer-applications/email`, rồi gửi đơn qua `POST /api/organizer-applications`. Xác thực email **chưa cấp quyền Organizer**.
-3. **Admin nền tảng** vào `/admin?tab=platform` để xét đơn:
-   - **Duyệt:** gửi giao dịch `setOrganizer(wallet, true)` → đợi giao dịch thành công → ký thông điệp quyết định → API cập nhật đơn thành `approved`.
-   - **Từ chối:** ký thông điệp quyết định và cập nhật đơn thành `rejected`; không có giao dịch cấp quyền.
-   - **Thu hồi:** chỉ áp dụng với đơn `approved`; nhập lý do → `setOrganizer(wallet, false)` → xác nhận giao dịch → ký thông điệp → API lưu trạng thái `revoked` và lý do.
-4. Organizer bị thu hồi xem lý do trong modal chi tiết và có thể chỉnh hồ sơ để nộp lại. Các round đã tạo vẫn thuộc quyền quản lý của ví tạo round.
-
-Backend xác thực chữ ký bằng owner hiện tại của Factory, ràng buộc chain/Factory/phiên bản đơn. Nếu người duyệt hủy bước ký sau khi giao dịch cấp hoặc thu hồi quyền đã thành công, quyền on-chain đã đổi nhưng trạng thái đơn chưa hoàn tất cập nhật. Xem [chi tiết phân quyền và ký quyết định](docs/platform-admin-access.md).
-
-Admin nền tảng có thể tạo round ngay, không cần đi qua quy trình xin quyền Organizer.
-
-### Vòng đời một vòng gọi vốn (Round Lifecycle)
-
-```mermaid
-flowchart TD
-    A["Organizer đã được cấp quyền<br/>hoặc Admin nền tảng"] --> B["Approve MockUSDC cho Factory nếu cần<br/>Nạp quỹ: depositInitialPool"]
-    B --> C["Đợi giao dịch nạp thành công<br/>Tạo round: createFundedRound"]
-    C --> D["Factory chuyển quỹ vào round mới<br/>Ví tạo round trở thành admin của round"]
-    D --> E["Student xác minh email trường<br/>và ghi danh vào StudentRegistry dùng chung"]
-    E --> F["Student chọn round tại /register<br/>Nộp project: registerProject"]
-    F --> G{"Người tạo round<br/>xét duyệt project"}
-    G -- "Từ chối" --> R["Project bị từ chối vĩnh viễn<br/>vẫn tính vào giới hạn đăng ký"]
-    G -- "Duyệt" --> H["Trong thời gian nhận đóng góp<br/>Student donate hoặc donateMany"]
-    H --> I["Hết endTime: finalize một lần<br/>Admin của round trong 24h đầu<br/>sau đó bất kỳ ai cũng được gọi"]
-    I --> J["Student sở hữu project<br/>nhận tiền góp + matching: claim"]
-    I --> K["Admin của round rút quỹ dư<br/>withdrawLeftover"]
-    D -. "Người tạo round hủy trước finalize" .-> L["cancelRound"]
-    H -. "Người tạo round hủy trước finalize" .-> L
-    L --> M["Student nhận lại khoản đã góp<br/>refund hoặc refundMany"]
-    L --> N["Admin của round rút quỹ đối ứng<br/>withdrawPoolIfCancelled"]
-```
-
-**Các mốc thời gian và giới hạn:**
-
-- Xác minh Student độc lập với việc tạo round; sơ đồ trên biểu diễn các bước cần có, không bắt buộc Student chờ tạo round mới được xác minh.
-- Đăng ký và duyệt project có thể diễn ra **trước `startTime`**, nhưng phải trước `endTime`. Giao diện không cho đăng ký/duyệt khi vòng đã chốt hoặc bị hủy.
-- Donate chỉ diễn ra trong khoảng `startTime <= thời gian hiện tại < endTime`, với project đã duyệt. Chủ project không được donate cho chính project của mình.
-- Mỗi ví đăng ký tối đa **2 project/round**, toàn round tối đa **50 project**; project bị từ chối vẫn chiếm hạn mức. Khoản góp tuân theo `minDonation`, tổng góp mỗi project không vượt `maxDonation`, và tổng ngân sách mỗi ví không vượt `maxPerRound`.
-- “1–5 USDC” là cấu hình minh họa của luồng demo; giới hạn thực tế lấy từ contract của từng round.
-- Chưa có vòng trên Factory mới thì Student vẫn xác minh được, nhưng chưa thể nộp project. Cần Admin hoặc Organizer tạo vòng đầu tiên.
-
-### Dữ liệu nằm ở đâu và ứng dụng gọi như thế nào?
-
-| Thành phần | Dữ liệu / tác vụ |
-| :--- | :--- |
-| **Avalanche Fuji — smart contract** | `RoundFactory` lưu danh sách round, quyền tạo round và số dư nạp trước; mỗi `QFRound` lưu project, trạng thái duyệt/từ chối, khoản góp, matching, payout và hoàn tiền; `StudentRegistry` lưu trạng thái ví Student và ràng buộc hash email. |
-| **Next.js API + Supabase** | OTP, dữ liệu xác minh email, định danh email–ví, hồ sơ/đơn Organizer, quyết định xét đơn, hash giao dịch và lý do thu hồi. Hồ sơ trên DB không thay thế quyền trên contract. |
-| **Zustand** | Đẩy dữ liệu giao diện tức thì qua store round, project theo round và quyền/đơn Organizer theo ví; component danh sách đọc từ store. |
-| **Axios + TanStack Query** | Axios gọi API của ứng dụng; TanStack Query lấy và xác nhận dữ liệu, quản lý cache, loading/error và tải lại. Axios client chung ở `src/lib/api.ts`. |
-| **Polling / realtime** | Đồng bộ giữa hai máy: polling mỗi 5 giây khi tab hiển thị; tín hiệu realtime yêu cầu đọc lại dữ liệu, polling là phương án dự phòng. |
-| **wagmi + viem** | Đọc dữ liệu contract qua RPC Fuji; gửi giao dịch có chữ ký ví khi tạo vòng, đăng ký/duyệt project, donate hoặc nhận tiền. Các thao tác này không phải API REST ghi round/project vào Supabase. |
-
-Khi tải trang, dữ liệu từ TanStack Query/API được nạp vào Zustand; sau receipt thành công, giao diện cập nhật lạc quan bằng dữ liệu đã biết rồi đọc lại chain tại block xác nhận để ghi đè. Nếu bước xác nhận lỗi, patch được hoàn tác và polling thử đồng bộ lại; quyền thực tế vẫn do contract quyết định, store chỉ phản ánh dữ liệu. Xem [hướng dẫn thử bằng hai trình duyệt và kết quả kiểm tra](docs/UI-SYNC-TESTING.md).
-
-Luồng API chính: `POST /api/verify/request-otp` → `POST /api/verify/confirm` cho Student; `POST /api/organizer-applications/email` cho OTP liên hệ; `GET`/`POST`/`PATCH /api/organizer-applications` để đọc/nộp/xét đơn Organizer. API trả dữ liệu xác minh/quyết định; quyền on-chain chỉ thay đổi sau giao dịch tương ứng.
-
----
-
-## 3. Toán học của Quadratic Funding
-
-Với các dự án đã duyệt $j = 1 \dots M$ và các khoản góp $d_{i,j}$ của sinh viên đã xác minh $i$:
-
-1. **Tổng căn bậc hai:**  
-   $$S_j = \sum_i \sqrt{d_{i,j}}$$
-2. **Matching thô:**  
-   $$\text{raw}_j = \max\left(0,\ \dfrac{S_j^2}{\text{SCALE}} - \sum_i d_{i,j}\right)$$
-3. **Khớp với quỹ đối ứng:**  
-   Nếu $\sum_j \text{raw}_j > \text{Pool}$ thì:
-   $$\text{base}_j = \left\lfloor \dfrac{\text{Pool} \cdot \text{raw}_j}{\sum_j \text{raw}_j} \right\rfloor$$
-   Ngược lại:
-   $$\text{base}_j = \text{raw}_j$$
-4. **Trần mỗi dự án:**  
-   $$\text{cap} = \left\lfloor \dfrac{\text{Pool} \cdot \text{maxMatchBps}}{10000} \right\rfloor \quad \text{và} \quad \text{payout}_j = \min(\text{base}_j, \text{cap})$$
-5. **Phần dư:**  
-   $$\text{Remainder} = \text{Pool} - \sum_j \text{payout}_j \quad \text{(rút về cho admin)}$$
-
-### Ví dụ so sánh
-
-So sánh trường hợp 100 ví góp 1 USDC mỗi ví với 20 ví góp 5 USDC mỗi ví. Cả hai dự án đều nhận được cùng 100 USDC tiền góp trực tiếp:
-
-| Kịch bản | Tiền góp trực tiếp | Matching thô |
-| :--- | :---: | :---: |
-| **100 ví × 1 USDC** | 100 USDC | **9.900 USDC** |
-| **20 ví × 5 USDC** | 100 USDC | **1.900 USDC** |
-
-Tỷ lệ matching thô chênh lệch khoảng **5,2 lần**. Với quỹ 10.000 USDC, tổng nhu cầu ($11.800$) vượt quỹ nên các khoản chi được giảm theo tỷ lệ xuống còn khoảng $8.390$ và $1.610$ USDC. Nếu có trần $30\%$, dự án thứ nhất bị giới hạn ở $3.000$ USDC.
-
-> Tỷ lệ thô không phải là tỷ lệ nhận tiền thực tế: số tiền thật còn phụ thuộc vào quy mô quỹ và trần áp dụng.
-
-### Tham số của vòng
-
-| Tham số | Ý nghĩa |
-| :--- | :--- |
-| `minDonation` / `maxDonation` | Khoản góp nhỏ nhất một lần và tổng nhiều nhất một sinh viên được góp cho một dự án (ví dụ: 1 và 5 USDC). |
-| `maxPerRound` | Tổng số tiền một sinh viên được chi cho mọi dự án trong một vòng (ví dụ: 10 USDC). |
-| `maxMatchBps` | Trần matching mỗi dự án, tính theo điểm cơ bản (bps, $100\text{ bps} = 1\%$) của quỹ đối ứng. |
-| `MAX_PROJECTS = 50` | Số dự án tối đa mỗi vòng, để hàm `finalize` luôn chạy trong $O(N)$ có giới hạn gas. |
-| `MAX_PROJECTS_PER_OWNER = 2` | Hạn chế một địa chỉ ví đăng ký quá nhiều dự án. |
-
-`finalize` lặp qua tối đa 50 dự án. Một kiểm thử Foundry cục bộ với 50 dự án đo được khoảng 1,58 triệu gas cho lệnh gọi này.
-
----
-
-## 4. Chống lạm dụng
-
-QF chỉ công bằng khi mỗi ví đại diện cho một con người thực. SqrtFund thiết lập nhiều lớp bảo vệ:
-
-| Lớp bảo vệ | Thực thi bởi | Mục đích ngăn chặn |
-| :--- | :--- | :--- |
-| **Chỉ email trường** | Backend kiểm tra tên miền (`.edu`, `.edu.vn`) | Bot sử dụng email rác hoặc email dùng một lần. |
-| **Một email ↔ một ví** | `StudentRegistry` (`emailOwner`, `walletEmail`) | Một email xác minh nhiều ví, hoặc một ví liên tục đổi email. |
-| **Ngân sách mỗi sinh viên** | `spentInRound[donor] <= maxPerRound` on-chain | Giới hạn thiệt hại nếu kẻ tấn công sở hữu nhiều danh tính. |
-| **Cộng dồn trước khi lấy căn** | `donationOf` cộng dồn theo ví và dự án | Việc chia 5 USDC thành 5 lần 1 USDC không thể tăng thêm matching. |
-| **Giới hạn tần suất và khóa** | Khóa advisory của Supabase, sliding window rate limit | Tấn công tranh chấp đồng thời (race condition) và spam gửi mail OTP. |
-| **Duyệt dự án** | Admin duyệt hoặc từ chối từng dự án | Dự án rác, spam hoặc lừa đảo. |
-
----
-
-## 5. Giả định tin cậy và giới hạn đã biết
-
-1. **Khóa attester:** Backend giữ `ATTESTER_PRIVATE_KEY` và ký attestation cho sinh viên. Nếu khóa bị lộ, kẻ tấn công có thể giả mạo attestation cho đến khi owner đổi khóa bằng `setAttester`. Khóa attester nên là một ví riêng biệt, tách biệt với admin của vòng.
-2. **Phạm vi của Supabase:** Cơ sở dữ liệu phục vụ xác minh email, định danh email–ví và quy trình đơn Organizer, bao gồm lý do thu hồi quyền. Dữ liệu round, project, khoản góp, matching và payout nằm on-chain. Module đơn Organizer hiện có fallback bộ nhớ khi không truy cập được DB; fallback này không bền vững qua lần khởi động lại và không thay thế cấu hình Supabase cho môi trường triển khai.
-3. **Quyền của người tạo round:** Ví tạo round là admin của round đó, có quyền duyệt hoặc từ chối dự án, chốt vòng trong 24 giờ ân hạn, và có thể hủy vòng bất kỳ lúc nào trước khi chốt, kể cả sau `endTime`. Khi hủy, người góp luôn nhận lại đủ 100% số đã góp và admin chỉ rút lại phần quỹ do mình nạp, nhưng các dự án sẽ mất phần matching.
-4. **Nạp quỹ:** Nạp trước vào Factory (`depositInitialPool`) dành cho Organizer được cấp quyền hoặc Admin nền tảng; bổ sung vào round đã tạo (`depositPool`) chỉ dành cho admin của round. Nhà tài trợ bên ngoài cung cấp nguồn quỹ thông qua bên tổ chức, chưa có luồng nạp trực tiếp công khai cho mọi ví. Số dư nạp trước chưa dùng có thể rút bằng `withdrawInitialPool`, kể cả sau khi quyền Organizer bị thu hồi.
-5. **Kiểm duyệt dự án:** Quyết định từ chối là vĩnh viễn trên chain, phát ra sự kiện `ProjectRejected(id)`, không lưu trữ lý do và không có cơ chế kháng nghị on-chain. Dự án bị từ chối vẫn tính vào giới hạn 50 dự án và giới hạn mỗi chủ ví.
-6. **Danh tính qua email:** Hộp thư dùng chung hoặc địa chỉ email cựu sinh viên được trường cấp lại có thể tạo thêm danh tính.
-7. **Thông đồng (Collusion):** QF thuần túy dễ bị mua chuộc (trả tiền để người khác góp hộ). Cơ chế Pairwise matching nằm trong lộ trình phát triển.
-8. **Chưa kiểm toán:** Hợp đồng thông minh chưa qua kiểm toán an mật độc lập từ bên thứ ba.
-9. **Store giao diện:** Zustand là bản phản chiếu tạm thời trong bộ nhớ; giữa hai thiết bị, đồng bộ dựa vào polling/realtime nên có thể trễ vài giây và phụ thuộc RPC/API.
-
----
-
-## 6. Lý do thiết kế
-
-### Vì sao on-chain?
-Hội đồng xét duyệt truyền thống và bảng tính Excel thiếu tính minh bạch và chậm trễ. Khi triển khai on-chain:
-* Công thức matching không thể bị chỉnh sửa hồi tố.
-* Mỗi khoản góp là một giao dịch công khai, không thể làm giả.
-* Chủ dự án nhận tiền trực tiếp từ smart contract theo quy tắc toán học đã chốt.
-
-### Vì sao Avalanche?
-Các khoản góp sinh viên rất nhỏ (1–5 USDC), do đó phí giao dịch là yếu tố sống còn:
-* **Avalanche C-Chain** có mức phí cực thấp và tốc độ xác thực (finality) gần như tức thì.
-* Sử dụng bộ công cụ EVM tiêu chuẩn, tương thích mượt mà với **Core Wallet**.
-* Hàm `donateMany` cho phép sinh viên phân bổ ngân sách cho nhiều dự án trong 1 giao dịch, tối ưu tối đa chi phí gas.
-
-### Tiền matching đến từ đâu?
-Không đến từ lợi suất đầu cơ hay lạm phát token. Quỹ matching có thể do nhà trường, mạng lưới cựu sinh viên hoặc doanh nghiệp đối tác cung cấp cho bên tổ chức. Trong luồng hiện tại, Organizer/Admin nạp quỹ vào Factory bằng `depositInitialPool` trước khi tạo vòng; người tạo round có thể bổ sung quỹ qua `depositPool` trên round đó. Trong bản demo testnet này, token thử nghiệm là MockUSDC; việc nhà tài trợ nạp quỹ là kịch bản vận hành thực tế.
-
-### Lưu ý pháp lý (Việt Nam)
-SqrtFund vận hành thử nghiệm trên mạng Avalanche Fuji với MockUSDC (không có giá trị tiền tệ thực). Đây là công cụ công nghệ phân bổ quỹ tài trợ nghiên cứu/hoạt động, không cấu thành sản phẩm tài chính hoặc đầu tư. Nếu triển khai thực tế với tài sản thật, dự án cần tuân thủ đầy đủ quy định pháp luật Việt Nam về tài sản số và trung gian thanh toán.
-
----
-
-## 7. Triển khai (Fuji)
-
-Địa chỉ lấy từ `contracts/deployments/fuji.json`:
-
-| Contract | Địa chỉ | Explorer |
-| :--- | :--- | :--- |
-| **StudentRegistry** | `0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e` | [Snowtrace](https://testnet.snowtrace.io/address/0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e) |
-| **RoundFactory** | `0xB2A91fd342d4C81061A97C42A789253d2252D85E` | [Snowtrace](https://testnet.snowtrace.io/address/0xB2A91fd342d4C81061A97C42A789253d2252D85E) |
-| **MockUSDC** | `0xFf56491e29085043DbB11cd01D54cC1449A3d686` | [Snowtrace](https://testnet.snowtrace.io/address/0xFf56491e29085043DbB11cd01D54cC1449A3d686) |
-
-Bạn có thể kiểm tra trực tiếp các hợp đồng đã triển khai bằng lệnh `cast` của Foundry:
+Ở cùng tổng tiền đóng góp, một dự án có nhiều người ủng hộ có thể nhận mức đối ứng cao hơn dự án chỉ nhận vài khoản góp lớn. Các khoản góp và kết quả phân bổ được ghi nhận trên blockchain để người tham gia có thể đối chiếu.
+
+| Thông tin | Chi tiết |
+| --- | --- |
+| Nhóm phát triển | **43xTSD** |
+| Chủ đề | Topic 6 — Avalanche Hackathon (Team1 Vietnam) |
+| Mạng thử nghiệm | Avalanche Fuji C-Chain, chain ID `43113` |
+| Token dùng thử | MockUSDC, 6 chữ số thập phân |
+| Tên repository | `SqrtFund` — tên cũ còn được giữ trong package, script và một số thông điệp ký |
+
+> Repository chứa phiên bản thử nghiệm trên Fuji với MockUSDC. Hợp đồng chưa được kiểm toán bảo mật độc lập. Địa chỉ triển khai bên dưới lấy từ repository, không phải xác nhận rằng website luôn chạy cùng phiên bản mã nguồn.
+
+## Vấn đề và giải pháp
+
+Các nhóm sinh viên cần kinh phí cho hoạt động câu lạc bộ, nghiên cứu và sản phẩm thử nghiệm. Nếu chỉ xét tổng tiền gây quỹ, một số khoản góp lớn có thể lấn át sự quan tâm của nhiều sinh viên đóng góp ít hơn. Việc theo dõi cách phân bổ quỹ cũng khó khăn khi dữ liệu nằm rải rác.
+
+N-Power tổ chức việc gây quỹ thành từng **vòng tài trợ** với thời gian, ngân sách và giới hạn đóng góp cụ thể. Sinh viên đã xác minh chọn dự án để ủng hộ. Khi vòng kết thúc, hệ thống tính phần quỹ đối ứng theo quy tắc đã thiết lập.
+
+### Chức năng hiện có trong mã nguồn
+
+- **Xác minh sinh viên:** xác thực email trường bằng OTP, chứng minh quyền sở hữu ví và ghi danh vào `StudentRegistry` bằng attestation EIP-712. Registry dùng chung cho nhiều vòng.
+- **Quản lý nhà tổ chức:** xác thực email liên hệ, gửi đơn, xét duyệt, thu hồi quyền kèm lý do và nộp lại đơn.
+- **Nhiều vòng tài trợ:** nhà tổ chức nạp quỹ trước vào Factory rồi tạo một contract riêng cho mỗi vòng.
+- **Đăng ký và duyệt dự án:** sinh viên chọn vòng để nộp dự án, người tạo vòng xét duyệt hoặc từ chối.
+- **Đóng góp đơn lẻ hoặc theo lô:** `donate` và `donateMany`, cộng dồn khoản góp theo ví/dự án và đếm người ủng hộ không trùng trong từng dự án.
+- **Phân bổ quỹ on-chain:** xem matching dự kiến, chốt kết quả, nhận tiền góp cùng khoản đối ứng và rút phần quỹ dư.
+- **Hủy vòng và hoàn tiền:** người tạo vòng hủy trước khi chốt. Người góp yêu cầu hoàn lại khoản đã góp qua `refund` hoặc `refundMany`.
+- **Theo dõi hoạt động:** danh sách vòng, dự án, bảng xếp hạng, hoạt động cá nhân và thông báo qua Socket.IO kết hợp tải lại dữ liệu.
+
+## Quadratic Funding hoạt động thế nào?
+
+Với dự án $j$, gọi $d_{i,j}$ là **tổng** tiền sinh viên $i$ đã góp cho dự án đó. Nhu cầu đối ứng thô được tính theo:
+
+$$
+M_j = \left(\sum_i \sqrt{d_{i,j}}\right)^2 - \sum_i d_{i,j}
+$$
+
+Ví dụ minh họa với hai dự án cùng nhận tổng cộng **100 USDC**:
+
+| Cách đóng góp | Tiền góp trực tiếp | Nhu cầu đối ứng thô |
+| --- | ---: | ---: |
+| 100 người, mỗi người 1 USDC | 100 USDC | 9.900 USDC |
+| 20 người, mỗi người 5 USDC | 100 USDC | 1.900 USDC |
+
+Các con số trên minh họa công thức, chưa áp dụng giới hạn riêng của vòng. Chúng **không phải số tiền tài trợ được bảo đảm**. Contract tính khoản đối ứng cuối cùng như sau:
+
+1. Tính nhu cầu thô của các dự án đã duyệt.
+2. Nếu tổng nhu cầu vượt quỹ, giảm các khoản theo tỷ lệ tương ứng. Nếu quỹ đủ, giữ mức nhu cầu thô.
+3. Áp dụng trần `maxMatchBps` cho khoản đối ứng của từng dự án. Trần này không giới hạn tiền góp trực tiếp.
+4. Giữ phần dư do trần hoặc làm tròn, không phân phối lại. Admin của vòng có thể rút phần dư sau khi chốt.
+
+Chủ dự án nhận **tiền góp trực tiếp + khoản đối ứng cuối cùng**. Một ví góp nhiều lần cho cùng dự án vẫn chỉ tính là một người ủng hộ, và công thức lấy căn của tổng đã góp. Xem cách tính trong [`QFRound.sol`](contracts/src/QFRound.sol) và [`qf.ts`](src/lib/qf.ts).
+
+## Vai trò và quy trình sử dụng
+
+| Vai trò | Trách nhiệm | Quyền được xác định bởi |
+| --- | --- | --- |
+| **Student — Sinh viên** | Xác minh email trường, đăng ký dự án, đóng góp, nhận kinh phí hoặc yêu cầu hoàn tiền khi vòng bị hủy | `StudentRegistry.isStudent(wallet)` |
+| **Organizer — Nhà tổ chức** | Xin quyền, nạp quỹ, tạo vòng và quản lý các vòng do chính ví mình tạo | Quyền trên `RoundFactory` và `QFRound.admin()` |
+| **Admin — Quản trị nền tảng** | Xét đơn và cấp/thu hồi quyền Organizer, đồng thời có thể tạo vòng | `RoundFactory.owner()` |
+
+**Chủ dự án** là sinh viên sở hữu dự án, không phải một vai trò riêng. **Admin của vòng** là ví đã tạo vòng đó. Admin nền tảng và Organizer không tự có quyền quản lý vòng của ví khác. Việc chọn hồ sơ trên giao diện không cấp quyền trên blockchain.
+
+### Luồng trải nghiệm
+
+1. **Chuẩn bị ví:** kết nối ví EVM với Avalanche Fuji, có AVAX testnet để trả phí và MockUSDC để thử nạp quỹ hoặc đóng góp.
+2. **Cấp quyền nhà tổ chức:** Organizer xác thực email liên hệ và gửi đơn. Admin nền tảng duyệt bằng giao dịch cấp quyền, sau đó ký quyết định để cập nhật hồ sơ.
+3. **Tạo vòng:** Organizer/Admin cho phép Factory sử dụng token nếu cần, gọi `depositInitialPool`, đợi xác nhận rồi gọi `createFundedRound`. Quỹ được chuyển vào vòng mới trong giao dịch tạo vòng.
+4. **Xác minh và nộp dự án:** sinh viên xác thực email tại `/verify`, hoàn tất giao dịch ghi danh, sau đó chọn vòng tại `/register` để nộp dự án. Chỉ nhận OTP chưa đủ để có quyền Student on-chain.
+5. **Duyệt và đóng góp:** người tạo vòng duyệt dự án. Trong thời gian nhận đóng góp, sinh viên góp cho các dự án đã duyệt của người khác.
+6. **Chốt và nhận tiền:** sau `endTime`, admin của vòng có quyền chốt độc quyền trong 24 giờ đầu. Hết khoảng thời gian này, bất kỳ ví nào cũng có thể gọi `finalize`. Chủ dự án dùng `claim` để nhận kinh phí.
+
+Nếu vòng bị hủy trước khi chốt, người góp có thể nhận lại toàn bộ **số token đã góp**. Phí gas của các giao dịch không nằm trong khoản hoàn này.
+
+### Các quy tắc cần biết
+
+- Mỗi vòng tối đa **50 dự án**, mỗi ví đăng ký tối đa **2 dự án/vòng**. Dự án bị từ chối vẫn tính vào giới hạn và không thể được duyệt lại trên chain.
+- Có thể đăng ký và duyệt trước giờ mở đóng góp, nhưng phải trước khi vòng kết thúc và khi vòng chưa chốt hoặc bị hủy.
+- Đóng góp chỉ diễn ra trong khoảng `startTime <= thời gian hiện tại < endTime`. Chủ dự án không được tự góp cho dự án của mình.
+- `minDonation`, `maxDonation` và `maxPerRound` giới hạn khoản góp tối thiểu, tổng góp theo dự án và tổng chi của một ví trong vòng. Mức **1–5 USDC** chỉ là ví dụ cấu hình.
+- Giao diện hồ sơ Organizer tập trung vào tài trợ và quản lý vòng, không mở thao tác quyên góp. Điều kiện đóng góp trên contract vẫn dựa vào quyền Student và các ràng buộc của vòng.
+- Thu hồi quyền Organizer chặn tạo vòng mới, không đổi admin của vòng đã tạo. Ví vẫn có thể rút số dư nạp trước chưa sử dụng của chính mình.
+
+## Kiến trúc
+
+| Thành phần | Công nghệ | Phạm vi |
+| --- | --- | --- |
+| Giao diện | Next.js App Router, React, TypeScript, Tailwind CSS | Khám phá dự án, quản lý vòng, biểu mẫu và giao diện tiếng Việt/Anh |
+| Kết nối blockchain | wagmi, viem | Đọc contract, ký và gửi giao dịch qua ví |
+| Dữ liệu giao diện | TanStack Query, Axios, Zustand | Truy vấn API, cache và phản chiếu trạng thái giao diện |
+| Hợp đồng thông minh | Solidity, OpenZeppelin, Foundry | Danh tính Student, quyền tạo vòng, quỹ, đóng góp và phân bổ QF |
+| API và database | Next.js API, Supabase/PostgreSQL | OTP, liên kết email–ví, hồ sơ Organizer và quyết định xét duyệt |
+| Email | SMTP hoặc Resend | Gửi OTP xác thực |
+| Hình ảnh dự án | Cloudinary | Upload có chữ ký ví, kiểm tra ảnh và quota phía server |
+| Thông báo | Socket.IO service riêng | Báo thay đổi để client đọc lại dữ liệu từ nguồn |
+| Tác vụ chốt vòng | Node.js keeper hoặc GitHub Actions | Gọi `finalize` sau thời gian ân hạn khi được cấu hình |
+
+**Dữ liệu round, project, khoản góp và kết quả phân bổ nằm on-chain.** Supabase lưu dữ liệu xác minh và hồ sơ Organizer. Zustand, cache và thông báo không thay thế nguồn dữ liệu hoặc kiểm tra quyền trên contract.
+
+### Các contract chính
+
+| Contract | Chức năng |
+| --- | --- |
+| [`StudentRegistry`](contracts/src/StudentRegistry.sol) | Xác minh ví Student qua attestation EIP-712, ràng buộc hash email với ví |
+| [`RoundFactory`](contracts/src/RoundFactory.sol) | Phân quyền Organizer, quản lý số dư nạp trước và tạo vòng |
+| [`QFRound`](contracts/src/QFRound.sol) | Đăng ký/duyệt dự án, đóng góp, tính QF, chốt, nhận tiền, hủy và hoàn tiền |
+| [`PrefundedQFRound`](contracts/src/PrefundedQFRound.sol) | Kế thừa vòng QF và nhận quỹ ban đầu từ Factory |
+| [`MockUSDC`](contracts/src/MockUSDC.sol) | Token ERC-20 dùng cho thử nghiệm, có hàm faucet |
+
+## Cài đặt và chạy local
+
+### Yêu cầu
+
+- **Node.js 24** để đồng bộ với môi trường CI.
+- **pnpm** theo phiên bản `packageManager` trong [`package.json`](package.json).
+- **Foundry** nếu cần build, kiểm thử hoặc triển khai contract.
+- Supabase, dịch vụ email và ví Fuji để sử dụng đầy đủ luồng xác minh. Upload ảnh cần thêm Cloudinary.
+
+### 1. Lấy mã nguồn và cài dependencies
 
 ```bash
-# 1. Kiểm tra Attester đã đăng ký trong StudentRegistry
-cast call 0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e "attester()(address)" \
-  --rpc-url https://api.avax-test.network/ext/bc/C/rpc
-# Kỳ vọng: 0x5C2001c91aEFFaEDf9ef438cA50Bcddd23ce6181
-
-# 2. Kiểm tra RoundFactory gắn với đúng StudentRegistry
-cast call 0xB2A91fd342d4C81061A97C42A789253d2252D85E "studentRegistry()(address)" \
-  --rpc-url https://api.avax-test.network/ext/bc/C/rpc
-# Kỳ vọng: 0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e
-
-# 3. Kiểm tra thông tin MockUSDC
-cast call 0xFf56491e29085043DbB11cd01D54cC1449A3d686 "symbol()(string)" \
-  --rpc-url https://api.avax-test.network/ext/bc/C/rpc
-# Kỳ vọng: "USDC"
-```
-
-Mỗi vòng gọi vốn là một contract `QFRound` riêng do factory tạo ra. Để kiểm tra một vòng có dùng đúng StudentRegistry hay không, hãy gọi `studentRegistry()` trên địa chỉ contract của vòng đó.
-
----
-
-## 8. Bắt đầu
-
-### Yêu cầu tiên quyết
-* **Node.js** 20+ và **pnpm**
-* **Foundry** (`forge`, `cast`)
-* Ví trình duyệt (khuyến nghị **Core Wallet**) kết nối mạng Avalanche Fuji, có một lượng nhỏ AVAX testnet làm gas.
-
-### Cài đặt
-
-```bash
-git clone https://github.com/hlbaot/SqrtFund.git
+git clone --recurse-submodules https://github.com/hlbaot/SqrtFund.git
 cd SqrtFund
-pnpm install
-cd contracts && forge build && cd ..
+pnpm install --frozen-lockfile
+cp .env.example .env.local
 ```
 
-### Biến môi trường
+Nếu đã clone mà chưa có thư viện contract, chạy `git submodule update --init --recursive`.
 
-Tạo file `.env.local` ở thư mục gốc (hoặc sao chép từ `.env.example`) và điền các biến cấu hình:
+### 2. Cấu hình môi trường
 
-| Biến | Phạm vi | Mô tả | Giá trị mẫu / Mặc định (Fuji) |
-| :--- | :--- | :--- | :--- |
-| `NEXT_PUBLIC_CHAIN_ID` | Công khai | Chain ID mạng blockchain | `43113` (Avalanche Fuji) |
-| `NEXT_PUBLIC_RPC_URL` | Công khai | RPC endpoint kết nối mạng | `https://api.avax-test.network/ext/bc/C/rpc` |
-| `NEXT_PUBLIC_EXPLORER_URL` | Công khai | Trình duyệt khối Snowtrace | `https://testnet.snowtrace.io` |
-| `NEXT_PUBLIC_USDC_ADDRESS` | Công khai | Địa chỉ hợp đồng token MockUSDC | `0xFf56491e29085043DbB11cd01D54cC1449A3d686` |
-| `NEXT_PUBLIC_FACTORY_ADDRESS` | Công khai | Địa chỉ hợp đồng RoundFactory | `0xB2A91fd342d4C81061A97C42A789253d2252D85E` |
-| `NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS` | Công khai | Địa chỉ hợp đồng StudentRegistry | `0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e` |
-| `SUPABASE_URL` | Server | URL dự án Supabase | `https://<project-id>.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Bí mật | Khóa `service_role` của Supabase (chỉ dùng ở server) | Khóa bí mật server |
-| `EMAIL_PROVIDER` | Server | Nhà cung cấp dịch vụ mail | `smtp` hoặc `resend` |
-| `SMTP_HOST` | Server | Địa chỉ máy chủ SMTP | `smtp.gmail.com` |
-| `SMTP_PORT` | Server | Cổng kết nối SMTP | `587` |
-| `SMTP_USER` | Bí mật | Tài khoản gửi mail | Email đăng ký |
-| `SMTP_PASS` | Bí mật | Mật khẩu ứng dụng (App Password) | Mật khẩu tạo từ Google / SMTP |
-| `SMTP_FROM` | Server | Tên hiển thị & địa chỉ mail người gửi | `"SqrtFund <your_email@gmail.com>"` |
-| `OTP_SECRET` | Bí mật | Chuỗi bí mật dùng để băm mã OTP xác thực | Chuỗi hex bí mật 32 bytes |
-| `ATTESTER_PRIVATE_KEY` | Bí mật | Khóa bí mật ví attester ký EIP-712 xác nhận sinh viên | Khóa private key ví attester |
-| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Công khai | Tên Cloudinary cloud name | Tên cloud dashboard |
-| `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Công khai | Unsigned upload preset cho ảnh dự án | `SqrtFund` |
-| `CLOUDINARY_API_KEY` | Server | API Key Cloudinary | API Key từ dashboard |
+Điền giá trị trong `.env.local` theo [`.env.example`](.env.example). File mẫu là danh sách cấu hình đầy đủ, gồm:
 
-#### Mẫu file `.env.local` hoàn chỉnh:
-```bash
-# --- Avalanche Fuji Network ---
-NEXT_PUBLIC_CHAIN_ID=43113
-NEXT_PUBLIC_RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
-NEXT_PUBLIC_EXPLORER_URL=https://testnet.snowtrace.io
+| Nhóm | Biến chính | Mục đích |
+| --- | --- | --- |
+| Mạng và contract | `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_RPC_URL`, `NEXT_PUBLIC_EXPLORER_URL`, `NEXT_PUBLIC_FACTORY_ADDRESS`, `NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS`, `NEXT_PUBLIC_USDC_ADDRESS` | Kết nối Fuji và đúng bộ contract |
+| Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Lưu dữ liệu xác minh, hồ sơ và quota |
+| Xác minh | `OTP_SECRET`, `ATTESTER_PRIVATE_KEY` | Băm OTP và ký bằng khóa tương ứng với attester trên registry |
+| Chính sách email | `ALLOWED_EMAIL_DOMAINS`, `BLOCKED_EMAIL_DOMAINS` | Cho phép tên miền cụ thể và chặn tên miền không phù hợp |
+| Email | `EMAIL_PROVIDER`, các biến `SMTP_*` hoặc `RESEND_API_KEY` | Gửi OTP qua SMTP hoặc Resend |
+| Upload ảnh | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Upload có chữ ký phía server. Unsigned preset cũ không thay thế cấu hình này |
+| Realtime, tùy chọn | `NEXT_PUBLIC_SOCKET_URL`, `SOCKET_SERVER_URL`, `SOCKET_PUBLISH_SECRET`, `SOCKET_ALLOWED_ORIGINS` | Kết nối và publish thông báo qua Socket.IO |
+| Keeper, tùy chọn | `KEEPER_PRIVATE_KEY`, `KEEPER_RPC_URL` | Chạy tác vụ chốt vòng bằng ví riêng |
 
-# --- On-chain Contracts ---
-NEXT_PUBLIC_USDC_ADDRESS=0xFf56491e29085043DbB11cd01D54cC1449A3d686
-NEXT_PUBLIC_FACTORY_ADDRESS=0xB2A91fd342d4C81061A97C42A789253d2252D85E
-NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS=0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e
+Chỉ các biến `NEXT_PUBLIC_*` được đưa vào trình duyệt và được nhúng khi build. Giữ khóa ký, khóa Supabase, mật khẩu email và Cloudinary secret ở phía server. Không commit file môi trường chứa giá trị thật.
 
-# --- Supabase Database ---
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+Khi `ALLOWED_EMAIL_DOMAINS` để trống, chính sách MVP chấp nhận hậu tố `.edu`/`.edu.vn`. Khi cấu hình danh sách cho phép, tên miền phải khớp chính xác, kể cả tên miền con. Xem [chính sách email sinh viên](docs/student-domain-policy.md).
 
-# --- Email / SMTP Service ---
-EMAIL_PROVIDER=smtp
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_app_password
-SMTP_FROM="SqrtFund <your_email@gmail.com>"
+### 3. Khởi tạo cơ sở dữ liệu
 
-# --- Cryptographic Secrets ---
-OTP_SECRET=your_32_byte_hex_secret
-ATTESTER_PRIVATE_KEY=your_attester_wallet_private_key
+Chạy các file SQL trong [`supabase/migrations/`](supabase/migrations/) theo thứ tự **0001 đến 0009** trên Supabase project của bạn. Các migration bao gồm xác minh email, đơn Organizer, OTP liên hệ, liên kết email–ví, lý do thu hồi, thời hạn OTP, quota upload và transaction xét duyệt.
 
-# --- Cloudinary (Image Uploads) ---
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=SqrtFund
-CLOUDINARY_API_KEY=your_cloudinary_api_key
-```
+Đơn Organizer sử dụng database làm nguồn dữ liệu duy nhất. Thiếu cấu hình hoặc migration có thể khiến API trả lỗi dịch vụ, không tự chuyển sang lưu đơn trong bộ nhớ. Không chạy các SQL fixture trong `supabase/tests/` trên database production.
 
-> **Lưu ý:** Chỉ các biến có tiền tố `NEXT_PUBLIC_` mới được gửi tới trình duyệt. Các giá trị này được nhúng cố định khi build. Tuyệt đối không để lộ các biến bí mật (`*_KEY`, `*_PASS`, `*_SECRET`) ra client.
-
-### Cơ sở dữ liệu
-
-Thực thi lần lượt các file migration trong thư mục `supabase/migrations/` trong SQL Editor của Supabase:
-
-1. `0001_verification.sql`: Khởi tạo bảng `otp_requests`, `verifications`, chỉ mục và hàm khóa advisory chống race-condition khi xác minh sinh viên.
-2. `0002_organizer_applications.sql`: Tạo bảng `organizer_applications` lưu trữ hồ sơ đăng ký Organizer của các câu lạc bộ/tổ chức.
-3. `0003_organizer_contact_otps.sql`: Bảng `organizer_contact_otps` phục vụ xác thực OTP qua email liên hệ của người nộp đơn Organizer.
-4. `0004_email_wallet_identity.sql`: Bảng `email_wallet_bindings` và hàm `enforce_email_wallet` thiết lập ràng buộc định danh **1 email ↔ 1 ví** cố định chống tấn công Sybil.
-5. `0005_revocation_reason.sql`: Mở rộng trạng thái `revoked`, bổ sung cột `revocation_reason` và chỉ mục phục vụ quy trình thu hồi quyền và kháng nghị/nộp lại của Organizer.
-
-### Chạy và kiểm thử
+### 4. Chạy ứng dụng
 
 ```bash
-# 1. Chạy ứng dụng Next.js ở chế độ phát triển (port 3000)
 pnpm dev
+```
 
-# 2. Chạy test smart contract (đơn vị, fuzz và invariant)
-cd contracts && forge test && cd ..
+Mở **http://localhost:3000**. Để kiểm tra Factory đã cấu hình, chạy:
 
-# 3. Chạy test frontend và backend API
+```bash
+pnpm check:factory
+```
+
+Lệnh này chỉ đọc cấu hình/contract. Nếu cần realtime, cấu hình biến Socket.IO rồi chạy `pnpm realtime` ở terminal riêng. Xem [hướng dẫn realtime](docs/realtime-notifications.md) và [keeper chốt vòng](docs/finalize-keeper.md) cho các dịch vụ tùy chọn.
+
+## Kiểm thử và triển khai
+
+### Kiểm tra ứng dụng
+
+```bash
 pnpm test
-
-# 4. Build kiểm tra bản production
+pnpm lint
+pnpm typecheck
 pnpm build
 ```
 
-### Tự triển khai contract
-
-Với luồng **nạp USDC trước → tạo round**, dùng [hướng dẫn triển khai Prefunded Factory](docs/prefunded-factory-deployment.md). Kiểm tra Factory đang cấu hình bằng `pnpm check:factory` trước khi sử dụng; Factory chỉ có phân quyền Organizer có thể chưa có API nạp/rút trước khi tạo vòng.
+### Kiểm tra contract
 
 ```bash
 cd contracts
-export NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS=<địa_chỉ_registry>
-forge script script/DeployFactory.s.sol:DeployFactory \
-  --rpc-url https://api.avax-test.network/ext/bc/C/rpc \
-  --account <keystore_của_bạn> --broadcast
+forge build
+forge test --gas-report
 ```
 
-Sau khi deploy, cập nhật các biến `NEXT_PUBLIC_*` và file `contracts/deployments/fuji.json`, sau đó tạo vòng mới từ giao diện trang Admin.
+Các integration test cần RPC hoặc Supabase riêng phải được bật và cấu hình theo từng bộ test. Không dùng khóa hoặc dữ liệu production cho test fixture.
 
----
+### Cấu hình triển khai Fuji
 
-## 9. Dùng thử ứng dụng theo ba vai trò
+Địa chỉ dưới đây lấy từ [`contracts/deployments/fuji.json`](contracts/deployments/fuji.json):
 
-### Chuẩn bị chung
+| Contract | Địa chỉ trên Fuji |
+| --- | --- |
+| StudentRegistry | [`0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e`](https://testnet.snowtrace.io/address/0xbA0b756Ac2830743Cc56Fb42E504ED4d374Fe58e) |
+| RoundFactory | [`0xB2A91fd342d4C81061A97C42A789253d2252D85E`](https://testnet.snowtrace.io/address/0xB2A91fd342d4C81061A97C42A789253d2252D85E) |
+| MockUSDC | [`0xFf56491e29085043DbB11cd01D54cC1449A3d686`](https://testnet.snowtrace.io/address/0xFf56491e29085043DbB11cd01D54cC1449A3d686) |
 
-- Kết nối Core Wallet hoặc ví EVM tương thích vào Avalanche Fuji (`43113`), có AVAX testnet để trả gas và MockUSDC cho thao tác nạp quỹ/donate. Có thể nhận AVAX từ [Avalanche Faucet](https://core.app/tools/testnet-faucet/); MockUSDC có tính năng faucet trên giao diện hoặc gọi contract theo cấu hình của token.
-- Chuẩn bị ba ví nếu muốn demo tách biệt rõ ràng: **Admin** phải là owner hiện tại của Factory; một ví xin quyền **Organizer**; một ví xác minh **Student**. Chọn hồ sơ trong menu không biến một ví bất kỳ thành Admin.
-- Triển khai đầy đủ migration, cấu hình mail/attester và kiểm tra `pnpm check:factory`. Factory chưa có round là trạng thái hợp lệ; tạo round ở bước Organizer/Admin trước khi thử đăng ký project.
+Mỗi vòng có địa chỉ `QFRound` riêng do Factory tạo ra. Khi tự triển khai, đối chiếu receipt, registry và khả năng nạp quỹ của Factory trước khi cập nhật file địa chỉ và biến môi trường. Thay ABI không nâng cấp contract đã triển khai. Thay `NEXT_PUBLIC_*` cần build lại frontend.
 
-### A. Admin cấp quyền Organizer
+Workflow [CI/CD](.github/workflows/ci.yml) kiểm tra frontend, contract và database fixture. Job deploy Vercel chỉ chạy trên `main` sau khi cả ba nhóm kiểm tra đạt. Workflow không tự triển khai smart contract hoặc chạy migration production.
 
-1. Ví Organizer chọn hồ sơ Organizer, nhập đơn đăng ký và xác thực OTP email liên hệ.
-2. Ví Admin mở **Cấp quyền Organizer** (`/admin?tab=platform`), chọn đơn chờ duyệt.
-3. Admin xác nhận giao dịch cấp quyền trên Fuji, sau đó ký quyết định để cập nhật trạng thái đơn.
-4. Có thể thử từ chối đơn hoặc thu hồi quyền của đơn đã duyệt; Organizer xem lý do thu hồi trong modal và nộp lại nếu cần.
+## Giới hạn và giả định tin cậy
 
-### B. Organizer hoặc Admin tạo và quản lý round
+- **Xác minh email có giới hạn:** OTP chứng minh quyền truy cập hộp thư theo chính sách tên miền, chưa chứng minh một người là sinh viên đang theo học hoặc chỉ có một hộp thư. Cơ chế hiện tại chưa phải ZK-Email.
+- **Backend giữ khóa attester:** hệ thống tin cậy backend trong việc xác thực email và ký attestation. Owner của registry có thể thay attester.
+- **QF vẫn có rủi ro thông đồng:** các nhóm phối hợp đóng góp có thể tác động kết quả. Ràng buộc email–ví, hạn mức và duyệt dự án giúp giảm lạm dụng, không loại bỏ hoàn toàn rủi ro.
+- **Người tạo vòng có quyền quản lý:** họ quyết định duyệt/từ chối dự án và có thể hủy vòng trước khi chốt, kể cả sau giờ kết thúc. Người góp phải tự gửi giao dịch yêu cầu hoàn token nếu vòng bị hủy.
+- **Nguồn quỹ qua nhà tổ chức:** nạp vào Factory dành cho Organizer/Admin, bổ sung vào vòng dành cho admin của vòng. Chưa có luồng nạp trực tiếp công khai cho mọi nhà tài trợ.
+- **Blockchain và database là hai hệ thống riêng:** giao dịch cấp/thu hồi quyền thành công không bị hoàn tác nếu cập nhật hồ sơ thất bại. Cần đối chiếu receipt và trạng thái quyền khi xử lý sai lệch.
+- **Dữ liệu dự án công khai:** mô tả, liên kết, địa chỉ ví và khoản góp được lưu trên blockchain. Email và hồ sơ xác minh nằm trong backend; hash email on-chain không đồng nghĩa với ẩn danh hoàn toàn.
+- **Phạm vi testnet:** cần kiểm toán độc lập và đánh giá vận hành trước khi cân nhắc sử dụng tài sản thật.
 
-1. Mở **Tạo round** (`/admin?tab=organizer`); nhập tên vòng, đơn vị tổ chức, thời gian, ngân sách và các giới hạn đóng góp/matching.
-2. Nạp MockUSDC vào Factory: approve ERC-20 nếu cần → `depositInitialPool` → đợi xác nhận.
-3. Gọi `createFundedRound` để tạo vòng với quỹ đã nạp. Round xuất hiện trong **Vòng gọi vốn**; ví tạo vòng là người quản lý vòng đó.
-4. Khi có project chờ duyệt, chọn đúng round trong trang quản trị và duyệt/từ chối. Chỉ người tạo round được thực hiện bước này, dù ví khác là Admin nền tảng.
+## Hướng phát triển
 
-### C. Student đăng ký, đóng góp và nhận tiền
+- Kiểm chứng mô hình với câu lạc bộ, nhà trường và nhà tài trợ trong các vòng thử nghiệm nhỏ.
+- Nghiên cứu ZK-Email và các hình thức xác minh giảm phụ thuộc vào attester tập trung.
+- Đánh giá pairwise matching và ngưỡng người ủng hộ tối thiểu để hạn chế thông đồng.
+- Mở rộng cơ chế nạp quỹ đối ứng và xử lý phần dư cho nhiều nhà tài trợ.
+- Bổ sung thống kê người ủng hộ duy nhất trên toàn vòng/nền tảng.
+- Kiểm toán bảo mật trước khi triển khai ngoài phạm vi thử nghiệm.
 
-1. Chọn hồ sơ Student và vào `/verify`; xác thực email trường bằng OTP, sau đó ký giao dịch ghi danh vào `StudentRegistry`. Chỉ nhận được OTP chưa đủ để có quyền Student on-chain.
-2. Vào `/register`, chọn vòng tài trợ và nhập project/CLB. Nếu mở từ `/register?round=0x...`, form chọn sẵn vòng đó khi còn nhận đăng ký. Có nhiều vòng thì có thể chọn vòng muốn nộp; chưa có vòng phù hợp thì thấy thông báo chờ vòng mới.
-3. Xác nhận giao dịch `registerProject`; project ở trạng thái chờ người tạo round duyệt. Theo dõi tại **Hoạt động của tôi**.
-4. Trong thời gian donate, Student chọn project đã được duyệt của người khác; approve MockUSDC cho round nếu cần, rồi `donate` hoặc `donateMany`. Giao diện hiển thị matching dự kiến; kết quả cuối cùng chỉ có sau khi chốt vòng.
-5. Sau `endTime`, người tạo round gọi `finalize` trong 24 giờ đầu; sau đó bất kỳ ví nào cũng có thể gọi. Student sở hữu project đã được duyệt vào **Hoạt động của tôi** để nhận tiền góp + matching bằng `claim`.
-6. Nếu vòng bị hủy trước khi chốt, Student dùng `refund`/`refundMany` nhận lại khoản đã góp; admin của round rút lại quỹ đối ứng. Các giao dịch có liên kết kiểm tra trên Snowtrace.
-
----
-
-## 10. Lộ trình phát triển
-
-* **Attestation bằng ZK-Email:** Thay thế chữ ký backend bằng bằng chứng Zero-Knowledge Proofs dựa trên chữ ký DKIM của máy chủ email, loại bỏ hoàn toàn sự phụ thuộc vào máy chủ trung gian.
-* **Pairwise Matching:** Tích hợp thuật toán giảm trọng số matching đối với các nhóm ví luôn cùng đóng góp cho một tập dự án giống nhau (chống hành vi thông đồng).
-* **Số người ủng hộ tối thiểu (Quorum Threshold):** Đặt điều kiện số lượng sinh viên độc lập tối thiểu phải đạt được trước khi một dự án đủ điều kiện nhận matching.
-* **Mở nạp quỹ cộng đồng:** Cho phép bất kỳ ai nạp thêm vào quỹ đối ứng và tự động hoàn lại phần dư theo tỷ lệ đóng góp của từng nhà tài trợ.
-* **Thống kê ví duy nhất toàn vòng/nền tảng:** Bổ sung thống kê không đếm lặp một Student khi họ ủng hộ nhiều project; `donorCount` theo từng project hiện đã có on-chain.
-* **Kiểm toán bảo mật:** Thực hiện kiểm toán an ninh hợp đồng thông minh toàn diện trước khi phát hành phiên bản mainnet.
-
----
-
-## 11. Cấu trúc dự án
+## Cấu trúc dự án
 
 ```text
 SqrtFund/
-├── contracts/
-│   ├── src/
-│   │   ├── MockUSDC.sol          # Token ERC-20 phục vụ thử nghiệm trên testnet
-│   │   ├── QFRound.sol           # Toán QF, donate, finalize, claim, cancel, refund
-│   │   ├── PrefundedQFRound.sol  # Round nhận quỹ ban đầu từ Factory
-│   │   ├── RoundFactory.sol      # Quyền Organizer, số dư nạp trước và tạo round độc lập
-│   │   └── StudentRegistry.sol   # Sổ đăng ký danh tính sinh viên dùng chung (EIP-712)
-│   ├── test/                     # Bộ kiểm thử đơn vị, fuzz và invariant (Foundry)
-│   ├── script/                   # Kịch bản triển khai smart contract
-│   └── deployments/fuji.json     # Địa chỉ các hợp đồng đã triển khai trên Fuji
+├── contracts/             # Solidity, kiểm thử Foundry, script và địa chỉ triển khai
 ├── src/
-│   ├── app/                      # App Router; API xác minh email và đơn Organizer
-│   ├── components/               # Giao diện: admin, layout, project, round, verify...
-│   ├── hooks/                    # Hook contract (wagmi/viem), API (TanStack Query), chọn round
-│   ├── lib/                      # Axios client, toán QF, EIP-712, server và định dạng
-│   │   └── store/                # Zustand: rounds, projects theo round, quyền/đơn Organizer
-│   └── views/                    # Các view màn hình chính
-├── supabase/migrations/          # Xác minh email, định danh ví, đơn Organizer và lý do thu hồi
-├── __tests__/                    # Kiểm thử giao diện và API với Vitest
-└── .env.example                  # File mẫu cấu hình biến môi trường
+│   ├── app/               # Next.js App Router và API
+│   ├── components/        # Giao diện vòng, dự án, xác minh và quản trị
+│   ├── hooks/             # Truy vấn, ví và thao tác contract
+│   ├── lib/               # Toán QF, API, store, xác thực và logic server
+│   └── views/             # Các màn hình chính
+├── public/brand/          # Logo và nhận diện N-Power
+├── realtime/              # Socket.IO service và worker đọc sự kiện blockchain
+├── scripts/               # Kiểm tra cấu hình, keeper và công cụ hỗ trợ
+├── supabase/migrations/   # Schema, hàm SQL và quyền truy cập database
+├── __tests__/             # Kiểm thử ứng dụng và API bằng Vitest
+├── docs/                  # Hướng dẫn và báo cáo kỹ thuật
+└── .env.example           # Mẫu cấu hình, không chứa khóa thật
 ```
 
-## CI và bản build
+## Tài liệu
 
-Workflow GitHub Actions kiểm tra frontend, contract và lưu bản build Next.js để tải về. Khi cả hai job đạt trên nhánh `main`, CD build và deploy production lên Vercel. Xem [hướng dẫn thiết lập CI](docs/ci.md) và [thiết lập CD Vercel](docs/vercel-cd.md) để cấu hình Variables, Secrets và môi trường Production.
+| Nội dung | Tài liệu |
+| --- | --- |
+| Hợp đồng và lệnh Foundry | [Smart contracts](contracts/README.md) |
+| Nạp quỹ trước khi tạo vòng | [Prefunded Factory](docs/prefunded-factory-deployment.md) |
+| Quyền quản trị nền tảng | [Platform Admin](docs/platform-admin-access.md) |
+| Công thức và quyết toán quỹ | [Matching settlement](docs/matching-settlement.md) |
+| Liên kết email với ví | [Email–wallet identity](docs/email-wallet-identity.md) |
+| Chính sách tên miền | [Student domain policy](docs/student-domain-policy.md) |
+| Upload ảnh có xác thực và quota | [SF-03](docs/sf03-upload-auth-quota.md) |
+| Lưu đơn và xét duyệt bền vững | [SF-04](docs/sf04-durable-organizer-applications.md) |
+| Thông báo | [Realtime notifications](docs/realtime-notifications.md) |
+| Tự động chốt vòng | [Finalize keeper](docs/finalize-keeper.md) |
+| Kiểm tra và bản build | [CI](docs/ci.md) |
+| Triển khai website | [Vercel CD](docs/vercel-cd.md) |
