@@ -23,11 +23,11 @@ import {
   ArrowRight,
   Rocket,
 } from "lucide-react";
-import { WalletConstellation } from "@/components/home/WalletConstellation";
 import { HowItWorksTimeline } from "@/components/home/HowItWorksTimeline";
 import { NetworkStats } from "@/components/home/NetworkStats";
 import AeroShards from "@/components/home/DeferredAeroShards";
 import { ChainLatticeBackground } from "@/components/background/DeferredLattice";
+import { TypewriterText } from "@/components/home/TypewriterText";
 
 
 export function HomeView() {
@@ -66,7 +66,8 @@ export function HomeView() {
     const updateHeaderHeight = () => {
       const header = document.querySelector("header");
       if (header) {
-        setHeaderHeight(header.offsetHeight);
+        const nextH = header.offsetHeight;
+        setHeaderHeight(prev => (prev === nextH ? prev : nextH));
       }
     };
 
@@ -96,21 +97,24 @@ export function HomeView() {
     };
 
     const scheduleUpdate = () => {
-      updateHeaderHeight();
       if (frame === null) frame = window.requestAnimationFrame(updateActiveSection);
     };
-    const observer = new ResizeObserver(scheduleUpdate);
-    if (pageRef.current) observer.observe(pageRef.current);
+
     const header = document.querySelector("header");
-    if (header) observer.observe(header);
-    scheduleUpdate();
+    let headerObserver: ResizeObserver | null = null;
+    if (header) {
+      headerObserver = new ResizeObserver(updateHeaderHeight);
+      headerObserver.observe(header);
+    }
+    updateHeaderHeight();
+
     window.addEventListener("scroll", scheduleUpdate, { passive: true });
     window.addEventListener("resize", scheduleUpdate);
     window.addEventListener("splash-intro-finished", scheduleUpdate);
 
     return () => {
       if (frame !== null) window.cancelAnimationFrame(frame);
-      observer.disconnect();
+      headerObserver?.disconnect();
       window.removeEventListener("scroll", scheduleUpdate);
       window.removeEventListener("resize", scheduleUpdate);
       window.removeEventListener("splash-intro-finished", scheduleUpdate);
@@ -292,38 +296,40 @@ export function HomeView() {
         <div aria-hidden="true" className="chain-lattice-hero-bridge" />
 
         <Container className="relative z-10 flex flex-1 w-full flex-col justify-center py-6 sm:py-8 lg:py-10">
-          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-16">
-            <div className="space-y-6" data-aos="fade-right" data-aos-duration="800">
-              <h1 className="hero-headline font-bold text-foreground max-w-2xl">
-                {t.homeIntro.headlineStart} {t.homeIntro.headlineAccent}
-              </h1>
+          <div className="max-w-4xl lg:max-w-5xl space-y-6" data-aos="fade-right" data-aos-duration="800">
+            <h1 className="hero-headline font-bold text-foreground max-w-4xl lg:max-w-5xl">
+              <span>{t.homeIntro.headlineStart} </span>
+              <span className="text-primary inline-block min-h-[1.12em]">
+                <TypewriterText
+                  phrases={t.homeIntro.headlinePhrases || [t.homeIntro.headlineAccent]}
+                  initialText={t.homeIntro.headlineAccent}
+                />
+              </span>
+            </h1>
 
-              <p className="max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-                {t.homeIntro.subheadline}
-              </p>
+            <p className="max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
+              {t.homeIntro.subheadline}
+            </p>
 
-              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+              <Link
+                href="/round"
+                className="gradient-border mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 px-6 py-2.5 text-foreground focus:outline-none sm:w-auto cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
+              >
+                <span>{t.homeIntro.primaryCta}</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+
+              {!isPlatformOwner && (
                 <Link
-                  href="/round"
-                  className="gradient-border mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 px-6 py-2.5 text-foreground focus:outline-none sm:w-auto cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
+                  href="/register"
+                  className="mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 border border-line-strong bg-surface px-6 py-2.5 text-muted transition-all hover:bg-surface-2 hover:border-line hover:text-foreground focus:outline-none sm:w-auto cursor-pointer active:scale-[0.98]"
                 >
-                  <span>{t.homeIntro.primaryCta}</span>
-                  <ArrowRight className="h-4 w-4" />
+                  <Rocket className="h-4 w-4" />
+                  <span>{t.homeIntro.secondaryCta}</span>
                 </Link>
-
-                {!isPlatformOwner && (
-                  <Link
-                    href="/register"
-                    className="mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 border border-line-strong bg-surface px-6 py-2.5 text-muted transition-all hover:bg-surface-2 hover:border-line hover:text-foreground focus:outline-none sm:w-auto cursor-pointer active:scale-[0.98]"
-                  >
-                    <Rocket className="h-4 w-4" />
-                    <span>{t.homeIntro.secondaryCta}</span>
-                  </Link>
-                )}
-              </div>
+              )}
             </div>
-
-            <div className="hidden lg:block"><WalletConstellation /></div>
           </div>
         </Container>
       </section>

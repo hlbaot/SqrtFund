@@ -150,9 +150,9 @@ summary:hover,
 }
 
 .hero-headline {
-  font-size: clamp(2.5rem, 5.2vw, 5rem);
-  line-height: 1.02;
-  text-wrap: balance;
+  font-size: clamp(2.5rem, 5vw, 4.75rem);
+  line-height: 1.12;
+  text-wrap: pretty;
 }
 
 @layer components {
