@@ -61,19 +61,19 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-line bg-bg/95 backdrop-blur-md">
       <NetworkGuard />
-      <Container className="flex min-h-16 items-center justify-end gap-4 xl:justify-between">
+      <Container className="flex min-h-16 items-center justify-between gap-4">
         <Link
           href="/"
-          className="hidden xl:flex min-h-[44px] min-w-[44px] items-center shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs cursor-pointer transition-opacity hover:opacity-85 active:scale-95"
+          className="flex min-h-[44px] min-w-[44px] items-center shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs cursor-pointer transition-opacity hover:opacity-85 active:scale-95"
           aria-label={t.nav.homeAria}
         >
           <Image
-            src="/brand/sqrt-fund-logo.png"
-            alt="SqrtFund"
-            width={58}
-            height={40}
+            src="/brand/npower-horizontal.png"
+            alt="N-Power"
+            width={170}
+            height={32}
             priority
-            className="h-8 w-auto object-contain lg:h-10"
+            className="h-7 w-auto object-contain sm:h-8 lg:h-9"
           />
         </Link>
 

@@ -1,4 +1,4 @@
-import { requireApprovedStudentEmail } from "@/lib/server/studentEmailPolicy";
+import { requireEligibleStudentEmail } from "@/lib/server/studentEmailPolicy";
 import { authorizeEmailWallet } from "@/lib/server/emailWalletAuthorization";
 import { isAddress, type Address, type Hex } from "viem";
 import { ensureEmailWallet } from "@/lib/server/emailWalletIdentity";
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     if (!row || typeof row.email !== "string") return failure("OTP_EXPIRED");
     if (!isAddress(row.address) || !isAddress(row.registry_address) || !/^0x[0-9a-f]{64}$/.test(row.email_hash))
       throw new Error("Invalid verification record");
-    requireApprovedStudentEmail(row.email);
+    requireEligibleStudentEmail(row.email);
     await authorizeEmailWallet(request, body.walletProof, row.email, row.address, "student");
     stage = "registry";
     let registry: Address;

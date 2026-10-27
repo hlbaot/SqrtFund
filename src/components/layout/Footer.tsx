@@ -21,14 +21,14 @@ export function Footer() {
           <Link
             href="/"
             className="flex min-h-[44px] items-center shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs"
-            aria-label="SqrtFund"
+            aria-label="N-Power"
           >
             <Image
-              src="/brand/sqrt-fund-logo.png"
-              alt="SqrtFund"
-              width={58}
-              height={40}
-              className="h-10 w-auto shrink-0 object-contain"
+              src="/brand/npower-horizontal.png"
+              alt="N-Power"
+              width={170}
+              height={32}
+              className="h-8 w-auto shrink-0 object-contain"
             />
           </Link>
           <span className="text-line-strong">/</span>

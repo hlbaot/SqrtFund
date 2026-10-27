@@ -1,4 +1,4 @@
-import { requireApprovedStudentEmail } from "@/lib/server/studentEmailPolicy";
+import { requireEligibleStudentEmail } from "@/lib/server/studentEmailPolicy";
 import { authorizeEmailWallet } from "@/lib/server/emailWalletAuthorization";
 import { setOtpExpiry } from "@/lib/verify/expiry";
 import { randomUUID } from "node:crypto";
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     // Validate the raw address too, so normalization cannot conceal malformed aliases.
     const deliveryEmail = body.email.trim().toLowerCase();
     const email = normalizeEmail(deliveryEmail);
-    requireApprovedStudentEmail(deliveryEmail);
+    requireEligibleStudentEmail(deliveryEmail);
     verificationConfig(true);
     const address = body.address.toLowerCase();
     await authorizeEmailWallet(request, body.walletProof, email, address, "student");
