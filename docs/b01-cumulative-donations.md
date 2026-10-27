@@ -44,3 +44,7 @@ Kiểm tra HTTP live sau deploy:
 Không chạy giao dịch donate thật hoặc upload ảnh thật trên production; luồng gửi/top-up được kiểm thử bằng DOM mock và Solidity local. Không kết luận đã test positive wallet end-to-end trên live. SF-04 atomic review được kiểm chứng trên fixture local; không review/thu hồi đơn thật để thử trên production.
 
 **Lưu ý lần push sau:** workspace vẫn chứa các chỉnh sửa strict-domain chưa chốt (domain.ts, request-otp, confirm, StudentVerifyBox, copy.ts, helper mới và tests/docs). Push toàn bộ rồi auto-deploy sẽ khác snapshot vừa deploy và có thể khóa xác minh Student mới khi thiếu ALLOWED_EMAIL_DOMAINS. Cần chốt/tách thay đổi đó trước khi push.
+
+## Cập nhật quyết định domain sau merge
+
+Sau PR #56 merge, strict-domain lên production và trả unconfigured vì allowlist trống. Người dùng yêu cầu giữ open-edu; code được cập nhật để default open-edu khi thiếu danh sách, không còn cần tách các chỉnh sửa domain khỏi lần push tiếp theo. Các ghi chú cảnh báo workspace strict-domain phía trên là lịch sử trước quyết định này. Xem docs/student-domain-policy.md cho chính sách hiện hành.

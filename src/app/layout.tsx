@@ -26,7 +26,7 @@ const jetBrainsMono = JetBrains_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   const metadata = await pageMetadata("home");
-  return { ...metadata, title: { default: `${metadata.title} | SqrtFund`, template: "%s | SqrtFund" } };
+  return { ...metadata, title: { default: `${metadata.title} | N-Power`, template: "%s | N-Power" } };
 }
 
 export default async function RootLayout({

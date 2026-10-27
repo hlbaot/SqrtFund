@@ -131,3 +131,7 @@ Chẩn đoán đầy đủ, từng kết quả cast, file/dòng trước sửa, 
 ## SF-04 — lưu đơn bền vững
 
 Organizer repository chỉ trả dữ liệu đã được database xác nhận; đã bỏ global process-memory fallback ở create/list/resubmit/update. Lỗi DB 503, revision conflict 409; thông báo realtime và UI success chỉ sau acknowledgment hợp lệ. Thu hồi nhiều đơn approved cùng ví dùng transaction trong migration 0009_organizer_review_atomic.sql. Cần chạy migration trước khi triển khai; chưa chạy production. Xem [báo cáo SF-04](sf04-durable-organizer-applications.md).
+
+## Quyết định MVP open-edu — 27/10/2026
+
+Theo yêu cầu người dùng, bỏ trạng thái khóa Student khi ALLOWED_EMAIL_DOMAINS trống: dùng open-edu cho .edu/.edu.vn, vẫn áp dụng blocklist, OTP và wallet ownership. Cấu hình allowlist tường minh vẫn khớp chính xác; cấu hình sai vẫn fail closed. Xem docs/student-domain-policy.md. Đây thay thế hướng strict-domain bắt buộc trong các mục trước.

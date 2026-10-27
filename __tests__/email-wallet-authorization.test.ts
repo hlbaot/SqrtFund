@@ -312,3 +312,18 @@ it("a previously issued OTP and valid wallet proof cannot attest a domain remove
   expect(response.status).toBe(400); expect(await response.json()).toMatchObject({ code: "INVALID_DOMAIN" });
   expect(f.rpc).not.toHaveBeenCalled(); expect(f.claim).not.toHaveBeenCalled(); expect(f.sign).not.toHaveBeenCalled();
 });
+
+it("open-edu still rejects an unsigned Student request before mail or storage", async () => {
+  vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "");
+  const response = await studentRequest(req({ email, address: wallet }));
+  expect(response.status).toBe(401);
+  expect(await response.json()).toMatchObject({code:"WALLET_PROOF_REQUIRED"});
+  expect(f.send).not.toHaveBeenCalled(); expect(f.claim).not.toHaveBeenCalled(); expect(f.reserve).not.toHaveBeenCalled();
+});
+it("open-edu still rejects a signature belonging to another wallet", async () => {
+  vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "");
+  const p = permit();
+  const proof = await signed({...p, wallet: "0x9999999999999999999999999999999999999999"});
+  const response = await studentRequest(req({email,address:wallet,walletProof:proof}));
+  expect(response.status).toBe(401); expect(f.send).not.toHaveBeenCalled(); expect(f.claim).not.toHaveBeenCalled();
+});
