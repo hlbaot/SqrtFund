@@ -258,19 +258,3 @@ SqrtFund/
 └── .env.example           # Mẫu cấu hình, không chứa khóa thật
 ```
 
-## Tài liệu
-
-| Nội dung | Tài liệu |
-| --- | --- |
-| Hợp đồng và lệnh Foundry | [Smart contracts](contracts/README.md) |
-| Nạp quỹ trước khi tạo vòng | [Prefunded Factory](docs/prefunded-factory-deployment.md) |
-| Quyền quản trị nền tảng | [Platform Admin](docs/platform-admin-access.md) |
-| Công thức và quyết toán quỹ | [Matching settlement](docs/matching-settlement.md) |
-| Liên kết email với ví | [Email–wallet identity](docs/email-wallet-identity.md) |
-| Chính sách tên miền | [Student domain policy](docs/student-domain-policy.md) |
-| Upload ảnh có xác thực và quota | [SF-03](docs/sf03-upload-auth-quota.md) |
-| Lưu đơn và xét duyệt bền vững | [SF-04](docs/sf04-durable-organizer-applications.md) |
-| Thông báo | [Realtime notifications](docs/realtime-notifications.md) |
-| Tự động chốt vòng | [Finalize keeper](docs/finalize-keeper.md) |
-| Kiểm tra và bản build | [CI](docs/ci.md) |
-| Triển khai website | [Vercel CD](docs/vercel-cd.md) |
