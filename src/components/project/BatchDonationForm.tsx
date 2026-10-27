@@ -1,7 +1,8 @@
 "use client";
+import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { isPublicProject } from "@/lib/projectVisibility";
 import { MatchingPoolWarning } from "./MatchingPoolWarning";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { formatUnits, maxUint256, type Address } from "viem";
 import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,35 +20,47 @@ import { donationLimit } from "@/lib/studentAccess";
 import { simulateDonationBatch } from "@/lib/qf";
 import { Button } from "@/components/ui/Button";
 
-export function BatchDonationForm({ roundAddress, onBack }: { roundAddress: Address; onBack: () => void }) {
+export function BatchDonationForm(props: { roundAddress: Address; onBack: () => void }) {
+  const { address, chainId } = useAccount();
+  return <BatchDonationSession key={`${props.roundAddress}:${address}:${chainId}`} {...props} />;
+}
+function BatchDonationSession({ roundAddress, onBack }: { roundAddress: Address; onBack: () => void }) {
   const { address } = useAccount(); const { t, locale } = useLocale(); const c = t.phase2;
   const round = useRound(roundAddress); const { projects } = useProjects(roundAddress);
   const { canParticipate } = useRole(roundAddress); const query = useQueryClient();
   const { donateMany, isPending } = useDonate(roundAddress);
+  const busy = useRef(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const approved = useMemo(() => projects.filter(isPublicProject), [projects]);
   const donations = useReadContracts({ allowFailure: true,
-    contracts: approved.map(p => ({ address: roundAddress, abi: qfRoundAbi, functionName: "donationOf" as const, args: [address!, p.contractId] as const })),
+    contracts: approved.map(p => ({ address: roundAddress, abi: qfRoundAbi, functionName: "donationOf" as const, chainId: TARGET_CHAIN_ID, args: [address!, p.contractId] as const })),
     query: { enabled: Boolean(address && approved.length), refetchInterval: 15000 } });
   const noRoundLimit = isUncappedDonation(round.maxPerRound);
-  const remaining = useReadContract({ address: roundAddress, abi: qfRoundAbi, functionName: "remainingBudget", args: [address!], query: { enabled: Boolean(address && !noRoundLimit), refetchInterval: 15000 } });
+  const remaining = useReadContract({ address: roundAddress, abi: qfRoundAbi, functionName: "remainingBudget", chainId: TARGET_CHAIN_ID, args: [address!], query: { enabled: Boolean(address && !noRoundLimit), refetchInterval: 15000 } });
   const roundRemaining = noRoundLimit ? maxUint256 : remaining.data;
   const balance = useTokenBalance(address);
   const donorTotals = useMemo(() => Object.fromEntries(approved.map((p, i) => [p.id, typeof donations.data?.[i]?.result === "bigint" ? donations.data[i].result as bigint : 0n])), [approved, donations.data]);
   const selected = approved.filter(p => amounts[p.id]?.trim());
   const allocations = selected.map(p => { const result = parseUsdc(amounts[p.id]); return { id: p.id, amount: result.success ? result.amount : 0n, valid: result.success }; });
   const total = allocations.reduce((sum, a) => sum + a.amount, 0n);
-  const loaded = typeof roundRemaining === "bigint" && balance.isReady && tokenMatchesConfigured(round.token) && donations.data?.length === approved.length && donations.data.every(r => r.status === "success");
-  const invalid = !round.minDonation || !round.maxDonation || allocations.some(a => !a.valid || (donorTotals[a.id] ?? 0n) > 0n || donationLimit(a.amount, round.minDonation!, round.maxDonation!, donorTotals[a.id] ?? 0n, roundRemaining ?? 0n) !== null) || total > (roundRemaining ?? 0n);
+  const loaded = typeof roundRemaining === "bigint" && balance.isReady && tokenMatchesConfigured(round.token) && !donations.isError && (noRoundLimit || !remaining.isError) && donations.data?.length === approved.length && donations.data.every(r => r.status === "success" && typeof r.result === "bigint");
+  const invalid = !round.minDonation || !round.maxDonation || allocations.some(a => !a.valid || donationLimit(a.amount, round.minDonation!, round.maxDonation!, donorTotals[a.id] ?? 0n, roundRemaining ?? 0n) !== null) || selected.some(p => p.ownerAddress?.toLowerCase() === address?.toLowerCase()) || total > (roundRemaining ?? 0n);
   const insufficient = balance.isReady && balance.balance !== undefined && total > balance.balance;
   const expected = simulateDonationBatch(approved.map(p => ({ id: p.id, sumSqrt: p.sumSqrtRaw, totalDonated: p.totalDonatedRaw })), donorTotals, allocations, round.pool, round.maxMatchBps ?? 3000n);
   async function submit() {
-    if (!loaded || invalid || insufficient || !canParticipate || !selected.length || isPending || round.status !== "open" || !round.supportsPhase2) return;
-    const ok = await donateMany(selected.map(p => p.contractId), allocations.map(a => a.amount));
-    if (ok) { setAmounts({}); await query.invalidateQueries(); }
+    if (busy.current || refreshing || !loaded || invalid || insufficient || !canParticipate || !selected.length || isPending || refreshing || round.status !== "open" || !round.supportsPhase2) return;
+    busy.current = true;
+    try {
+      const ok = await donateMany(selected.map(p => p.contractId), allocations.map(a => a.amount));
+      if (ok) {
+        setAmounts({}); setRefreshing(true);
+        await query.invalidateQueries();
+      }
+    } finally { busy.current = false; setRefreshing(false); }
   }
   return <section className="space-y-4">
-    <div className="flex items-center justify-between gap-3"><h2 className="font-bold">{c.splitBudget}</h2><Button variant="ghost" disabled={isPending} onClick={onBack}>{c.singleProject}</Button></div>
+    <div className="flex items-center justify-between gap-3"><h2 className="font-bold">{c.splitBudget}</h2><Button variant="ghost" disabled={isPending || refreshing} onClick={onBack}>{c.singleProject}</Button></div>
     <p className="text-sm text-muted">{c.expectedHint}</p>
     {round.token && !tokenMatchesConfigured(round.token) && <p role="alert">{t.tokenBalance.tokenMismatch}</p>}
     {!balance.isReady && <p role="status">{balance.isError ? t.tokenBalance.error : balance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}</p>}
@@ -57,6 +70,8 @@ export function BatchDonationForm({ roundAddress, onBack }: { roundAddress: Addr
       {approved.map(p => {
         const isOwnerProject = Boolean(address && p.ownerAddress && p.ownerAddress.toLowerCase() === address.toLowerCase());
         const hasAlreadyDonatedProject = (donorTotals[p.id] ?? 0n) > 0n;
+        const projectExhausted = typeof round.maxDonation === "bigint" && typeof round.minDonation === "bigint" && !isUncappedDonation(round.maxDonation)
+          && round.maxDonation - (donorTotals[p.id] ?? 0n) < round.minDonation;
         return (
           <div key={p.id} className="space-y-2 border border-line p-3">
             <label className="block text-sm">
@@ -68,7 +83,7 @@ export function BatchDonationForm({ roundAddress, onBack }: { roundAddress: Addr
               )}
               {!isOwnerProject && hasAlreadyDonatedProject && (
                 <span className="ml-2 text-xs text-money font-normal">
-                  ({locale === "vi" ? "Đã ủng hộ" : "Already supported"})
+                  ({locale === "vi" ? "Đã góp" : "Contributed"} {formatUnits(donorTotals[p.id] ?? 0n, 6)} USDC)
                 </span>
               )}
               <input
@@ -76,9 +91,9 @@ export function BatchDonationForm({ roundAddress, onBack }: { roundAddress: Addr
                 type="text"
                 inputMode="decimal"
                 autoComplete="off"
-                placeholder={hasAlreadyDonatedProject ? (locale === "vi" ? "Đã ủng hộ" : "Already supported") : "0 USDC"}
+                placeholder="0 USDC"
                 value={amounts[p.id] ?? ""}
-                disabled={!canParticipate || !loaded || isPending || round.status !== "open" || isOwnerProject || hasAlreadyDonatedProject}
+                disabled={!canParticipate || !loaded || isPending || refreshing || round.status !== "open" || isOwnerProject || projectExhausted}
                 onChange={event => setAmounts(current => ({ ...current, [p.id]: event.target.value }))}
                 className="mt-2 w-full border border-line bg-bg p-2 disabled:opacity-50"
               />
@@ -90,6 +105,6 @@ export function BatchDonationForm({ roundAddress, onBack }: { roundAddress: Addr
     </div>
     <p className="font-semibold">{c.total}: {formatUnits(total, 6)} USDC</p>
     {selected.length > 0 && (invalid || insufficient) && <p role="alert" className="text-sm text-primary">{insufficient ? c.insufficientBalance : c.invalidAllocation}</p>}
-    <Button fullWidth disabled={!loaded || !canParticipate || !selected.length || invalid || insufficient || isPending || round.status !== "open"} isLoading={isPending} onClick={() => void submit()}>{c.confirmDonation}</Button>
+    <Button fullWidth disabled={!loaded || !canParticipate || !selected.length || invalid || insufficient || isPending || refreshing || round.status !== "open"} isLoading={isPending} onClick={() => void submit()}>{c.confirmDonation}</Button>
   </section>;
 }

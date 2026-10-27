@@ -21,7 +21,7 @@ export function allowedDomains(value: string = ""): string[] {
   return value.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
 }
 export type EmailDomainPolicy = {
-  mode: "open-edu" | "allowlist";
+  mode: "unconfigured" | "allowlist";
   allowedDomains: string[];
   blockedDomains: string[];
 };
@@ -31,7 +31,10 @@ function domainList(value: DomainList): string[] {
 }
 export function emailDomainPolicy(allowed: DomainList = [], blocked: DomainList = []): EmailDomainPolicy {
   const list = domainList(allowed);
-  return { mode: list.length ? "allowlist" : "open-edu", allowedDomains: list, blockedDomains: domainList(blocked) };
+  const denied = domainList(blocked);
+  const validDomain = (value: string) => value !== "edu.vn" && emailDomain(`policy@${value}`) === value;
+  const configured = list.length > 0 && list.every(validDomain) && denied.every(validDomain);
+  return { mode: configured ? "allowlist" : "unconfigured", allowedDomains: list, blockedDomains: denied };
 }
 function matchesDomain(domain: string, entry: string): boolean {
   return domain === entry || domain.endsWith(`.${entry}`);
@@ -40,11 +43,10 @@ export function isAllowedEmail(email: string, domains: DomainList = [], blocked:
   const domain = emailDomain(email);
   if (!domain || !emailDomain(normalizeEmail(email)) || domain === "edu.vn") return false;
   const policy = emailDomainPolicy(domains, blocked);
-  // Deny rules take precedence, including subdomains, in both modes.
+  // Deny rules cover descendants; allow rules require an exact approved domain.
   if (policy.blockedDomains.some(d => matchesDomain(domain, d))) return false;
-  return policy.mode === "allowlist"
-    ? policy.allowedDomains.some(d => matchesDomain(domain, d))
-    : domain.endsWith(".edu") || domain.endsWith(".edu.vn");
+  // Trust is explicit: an academic-looking suffix or parent domain is not approval.
+  return policy.mode === "allowlist" && policy.allowedDomains.includes(domain);
 }
 export function maskEmail(email: string): string {
   const [local, domain] = normalizeEmail(email).split("@");

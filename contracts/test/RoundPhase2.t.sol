@@ -17,6 +17,24 @@ contract RoundPhase2Test is QFRoundTest {
     function _two(uint256 a, uint256 b) internal pure returns (uint256[] memory ids) {
         ids = new uint256[](2); ids[0] = a; ids[1] = b;
     }
+    function test_RepeatedSingleAndBatchContributionsCountOneSupporter() public {
+        (uint256 a, uint256 b) = _prepare();
+        vm.prank(donor1); round.donate(a, 3e6);
+        vm.prank(donor1); round.donateMany(_two(a,b), _two(1e6,1e6));
+        vm.prank(donor1); round.donate(a, 1e6);
+        (QFRound.ProjectView[] memory projects,) = round.getProjects(0,50);
+        assertEq(projects[0].donorCount, 1);
+        assertEq(projects[0].totalDonated, 5e6);
+        assertEq(projects[0].sumSqrt, Math.sqrt(5e6 * 1e12));
+        assertEq(round.donationOf(donor1,a), 5e6);
+        assertEq(round.spentInRound(donor1), 6e6);
+        (,uint256[] memory matching) = round.previewMatching();
+        assertEq(matching[0],0); // Splitting one donor's contribution cannot manufacture matching.
+        vm.prank(donor1); vm.expectRevert(QFRound.DonationExceedsMax.selector); round.donate(a,1e6);
+        vm.prank(donor1); vm.expectRevert(QFRound.DonationExceedsMax.selector); round.donateMany(_two(b,a),_two(1e6,1e6));
+        assertEq(round.donationOf(donor1,b),1e6); // Failed top-up rolls the whole batch back.
+        assertEq(round.spentInRound(donor1),6e6);
+    }
     function test_CancelRefundAllAndPoolAccounting() public {
         (uint256 a, uint256 b) = _prepare();
         vm.prank(donor1); round.donateMany(_two(a,b), _two(2e6,3e6));

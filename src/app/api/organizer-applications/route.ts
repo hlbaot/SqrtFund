@@ -16,6 +16,12 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function privateJson(body: unknown, init: ResponseInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("Cache-Control", "no-store");
+  return NextResponse.json(body, { ...init, headers });
+}
+
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
 export async function GET(request: Request) {
@@ -26,18 +32,18 @@ export async function GET(request: Request) {
     const status = searchParams.get("status") || undefined;
 
     if (walletAddress && !isAddress(walletAddress)) {
-      return NextResponse.json({ ok: false, error: "INVALID_WALLET_ADDRESS" }, { status: 400, headers });
+      return privateJson({ ok: false, error: "INVALID_WALLET_ADDRESS" }, { status: 400, headers });
     }
 
     await authorizeOrganizerRead(request, walletAddress);
     const applications = await listOrganizerApplications({ walletAddress, status });
-    return NextResponse.json({ ok: true, applications }, { headers });
+    return privateJson({ ok: true, applications }, { headers });
   } catch (error) {
     if (error instanceof VerificationError)
-      return NextResponse.json({ ok: false, error: error.code }, { status: error.status, headers });
+      return privateJson({ ok: false, error: error.code }, { status: error.status, headers });
     // Do not log credentials, query strings or application data.
     console.error("[api/organizer-applications] GET unavailable");
-    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500, headers });
+    return privateJson({ ok: false, error: "INTERNAL_ERROR" }, { status: 500, headers });
   }
 }
 
@@ -45,25 +51,25 @@ export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== "object") {
-      return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+      return privateJson({ ok: false, error: "INVALID_BODY" }, { status: 400 });
     }
 
     const { walletAddress, organizationName, contactEmail, reason } = body as Record<string, unknown>;
 
     if (typeof walletAddress !== "string" || !isAddress(walletAddress)) {
-      return NextResponse.json({ ok: false, error: "INVALID_WALLET_ADDRESS" }, { status: 400 });
+      return privateJson({ ok: false, error: "INVALID_WALLET_ADDRESS" }, { status: 400 });
     }
 
     if (typeof organizationName !== "string" || organizationName.trim().length < 2 || organizationName.trim().length > 120) {
-      return NextResponse.json({ ok: false, error: "INVALID_ORGANIZATION_NAME" }, { status: 400 });
+      return privateJson({ ok: false, error: "INVALID_ORGANIZATION_NAME" }, { status: 400 });
     }
 
     if (typeof contactEmail !== "string" || !EMAIL_REGEX.test(contactEmail.trim())) {
-      return NextResponse.json({ ok: false, error: "INVALID_EMAIL" }, { status: 400 });
+      return privateJson({ ok: false, error: "INVALID_EMAIL" }, { status: 400 });
     }
 
     if (typeof reason !== "string" || reason.trim().length < 5 || reason.trim().length > 2000) {
-      return NextResponse.json({ ok: false, error: "INVALID_REASON" }, { status: 400 });
+      return privateJson({ ok: false, error: "INVALID_REASON" }, { status: 400 });
     }
 
     const existing = await listOrganizerApplications({ walletAddress: walletAddress.trim() });
@@ -71,13 +77,13 @@ export async function POST(request: Request) {
     const reverified = await verifyOrganizerReapplication(body, previous);
     // Reuse stored verification only with a valid signature from the same wallet.
     if (!reverified && !verifyOrganizerEmailProof(body.emailVerificationToken, contactEmail, walletAddress)) {
-      return NextResponse.json({ ok: false, error: "EMAIL_NOT_VERIFIED" }, { status: 403 });
+      return privateJson({ ok: false, error: "EMAIL_NOT_VERIFIED" }, { status: 403 });
     }
 
     // Check if wallet already has a pending application
     const activePending = existing.find(a => a.status === "pending");
     if (activePending) {
-      return NextResponse.json(
+      return privateJson(
         { ok: false, error: "APPLICATION_ALREADY_PENDING", existingApplication: activePending },
         { status: 409 }
       );
@@ -95,11 +101,11 @@ export async function POST(request: Request) {
       : await createOrganizerApplication(input);
 
     await publishNotificationChange();
-    return NextResponse.json({ ok: true, application }, { status: 201 });
+    return privateJson({ ok: true, application }, { status: 201 });
   } catch (error) {
-    if (error instanceof VerificationError) return NextResponse.json({ ok: false, error: error.code }, { status: error.status });
-    console.error("[api/organizer-applications] POST error:", error);
-    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+    if (error instanceof VerificationError) return privateJson({ ok: false, error: error.code }, { status: error.status });
+    console.error("[api/organizer-applications] POST unavailable");
+    return privateJson({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
 
@@ -107,26 +113,26 @@ export async function PATCH(request: Request) {
   try {
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== "object") {
-      return NextResponse.json({ ok: false, error: "INVALID_BODY" }, { status: 400 });
+      return privateJson({ ok: false, error: "INVALID_BODY" }, { status: 400 });
     }
 
     const { id, status, txHash, reviewedBy, revocationReason } = body as Record<string, unknown>;
 
     if (typeof id !== "string" || !id.trim()) {
-      return NextResponse.json({ ok: false, error: "INVALID_ID" }, { status: 400 });
+      return privateJson({ ok: false, error: "INVALID_ID" }, { status: 400 });
     }
 
     if (status !== "approved" && status !== "rejected" && status !== "revoked") {
-      return NextResponse.json({ ok: false, error: "INVALID_STATUS" }, { status: 400 });
+      return privateJson({ ok: false, error: "INVALID_STATUS" }, { status: 400 });
     }
 
     if (reviewedBy && (typeof reviewedBy !== "string" || !isAddress(reviewedBy))) {
-      return NextResponse.json({ ok: false, error: "INVALID_REVIEWER_ADDRESS" }, { status: 400 });
+      return privateJson({ ok: false, error: "INVALID_REVIEWER_ADDRESS" }, { status: 400 });
     }
 
     // Require revocation reason when revoking
     if (status === "revoked" && (typeof revocationReason !== "string" || revocationReason.trim().length < 3)) {
-      return NextResponse.json({ ok: false, error: "REVOCATION_REASON_REQUIRED" }, { status: 400 });
+      return privateJson({ ok: false, error: "REVOCATION_REASON_REQUIRED" }, { status: 400 });
     }
 
     const authorization = await authorizeOrganizerReview(body);
@@ -139,14 +145,14 @@ export async function PATCH(request: Request) {
     });
 
     if (!application) {
-      return NextResponse.json({ ok: false, error: "APPLICATION_CHANGED" }, { status: 409 });
+      return privateJson({ ok: false, error: "APPLICATION_CHANGED" }, { status: 409 });
     }
 
     await publishNotificationChange();
-    return NextResponse.json({ ok: true, application });
+    return privateJson({ ok: true, application });
   } catch (error) {
-    if (error instanceof VerificationError) return NextResponse.json({ ok: false, error: error.code }, { status: error.status });
-    console.error("[api/organizer-applications] PATCH error:", error);
-    return NextResponse.json({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
+    if (error instanceof VerificationError) return privateJson({ ok: false, error: error.code }, { status: error.status });
+    console.error("[api/organizer-applications] PATCH unavailable");
+    return privateJson({ ok: false, error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }

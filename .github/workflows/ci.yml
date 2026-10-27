@@ -173,6 +173,10 @@ jobs:
           for fixture in supabase/tests/*.sql; do
             docker exec "$POSTGRES_CONTAINER" psql -U postgres -d sqrtfund_ci -v ON_ERROR_STOP=1 -f "/workspace/$fixture"
           done
+      - name: Check competing organizer reviews
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: python3 scripts/check-organizer-review-concurrency.py
       - name: Check concurrent upload quota reservations
         env:
           POSTGRES_CONTAINER: ${{ job.services.postgres.id }}

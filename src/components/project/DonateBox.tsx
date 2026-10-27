@@ -1,4 +1,5 @@
 "use client";
+import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { isPublicProject } from "@/lib/projectVisibility";
 import { MatchingPoolWarning } from "@/components/project/MatchingPoolWarning";
 import { BatchDonationForm } from "@/components/project/BatchDonationForm";
@@ -42,7 +43,11 @@ export interface DonateBoxProps {
   roundAddress?: Address;
 }
 
-export function DonateBox({ project, className = "", roundAddress: customRound }: DonateBoxProps) {
+export function DonateBox(props: DonateBoxProps) {
+  const { address, chainId } = useAccount();
+  return <DonationSession key={`${props.roundAddress}:${props.project.id}:${address}:${chainId}`} {...props} />;
+}
+function DonationSession({ project, className = "", roundAddress: customRound }: DonateBoxProps) {
   const { t, locale } = useLocale();
   const { address, isConnected, chainId } = useAccount();
 
@@ -53,18 +58,20 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   const isOrgRole = isOrganizer || isRoundAdmin || canCreateRound;
   const { profile } = useWalletProfile(address, chainId, defaultWalletProfile(isOrgRole, isStudent));
   const isOrganizerUser = isConnected && (profile === "organizer" || (!isStudent && isOrgRole));
-  const { donate, step: donationStep, isPending: isDonatePending, activeTxHash } = useDonate(customRound);
+  const { donate, reset, step: donationStep, isPending: isDonatePending, activeTxHash } = useDonate(customRound);
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [batchMode, setBatchMode] = useState(false);
   const [amount, setAmount] = useState<number>(1);
   const [inputValue, setInputValue] = useState<string>("1");
 
   // Read how much current user has already donated to this project
   const projectIdBigInt = BigInt(project.id || "1");
-  const { data: userDonatedData, refetch: refetchDonation } = useReadContract({
+  const { data: userDonatedData, refetch: refetchDonation, isError: donationReadFailed } = useReadContract({
     address: roundAddress,
     abi: qfRoundAbi,
     functionName: "donationOf",
+    chainId: TARGET_CHAIN_ID,
     args: address ? [address, projectIdBigInt] : undefined,
     query: {
       enabled: Boolean(roundAddress && address),
@@ -72,11 +79,11 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
     },
   });
 
+  const donationReady = typeof userDonatedData === "bigint" && !donationReadFailed;
   const userDonatedBigInt = (userDonatedData as bigint | undefined) ?? 0n;
   const userDonatedUsdc = Number(userDonatedBigInt) / 1_000_000;
   const noProjectLimit = isUncappedDonation(maxDonation);
   const noRoundLimit = isUncappedDonation(maxPerRound);
-  const openDonations = minDonation === 1n && noProjectLimit && noRoundLimit;
   const maxDonationUsdc = Number(maxDonation) / 1_000_000;
   const remainingAllowanceUsdc = Math.max(0, maxDonationUsdc - userDonatedUsdc);
 
@@ -85,12 +92,12 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   const usdcBalanceUsdc = Number(usdcBalanceBigInt ?? 0n) / 1_000_000;
   const tokenReady = tokenMatchesConfigured(token);
 
-  const { data: roundRemainingData, refetch: refetchBudget } = useReadContract({ address: roundAddress, abi: qfRoundAbi,
-    functionName: "remainingBudget", args: address ? [address] : undefined,
+  const { data: roundRemainingData, refetch: refetchBudget, isError: budgetReadFailed } = useReadContract({ address: roundAddress, abi: qfRoundAbi,
+    functionName: "remainingBudget", chainId: TARGET_CHAIN_ID, args: address ? [address] : undefined,
     query: { enabled: Boolean(roundAddress && address && !noRoundLimit), refetchInterval: 5000 },
   });
   const roundRemaining = noRoundLimit ? maxUint256 : roundRemainingData;
-  const budgetReady = typeof roundRemaining === "bigint" && typeof maxPerRound === "bigint";
+  const budgetReady = typeof roundRemaining === "bigint" && typeof maxPerRound === "bigint" && (noRoundLimit || !budgetReadFailed);
   const roundRemainingUsdc = Number(roundRemaining ?? 0n) / 1_000_000;
   const minDonationUsdc = Number(minDonation) / 1_000_000;
   const roundBudgetExhausted = budgetReady && roundRemaining < minDonation;
@@ -173,22 +180,21 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
   ];
 
   const handleExecuteDonate = async () => {
-    if (!isConnected || !address || !balance.isReady || !tokenReady || !parsedInput.success || !budgetReady || !canParticipate || error || isOwner || isOrganizerUser || hasAlreadyDonated) return;
+    if (!isConnected || !address || !balance.isReady || !tokenReady || !parsedInput.success || !budgetReady || !donationReady || isRefreshing || !canParticipate || error || hasInsufficientBalance || isRoundClosed || isOwner || isOrganizerUser) return;
     const donationAmountBigInt = parsedInput.amount;
     const ok = await donate(projectIdBigInt, donationAmountBigInt);
     if (ok) {
-      refetchDonation();
-      refetchBudget();
-      refetchProjects();
-      refetchRound();
-      queryClient.invalidateQueries();
+      setIsRefreshing(true);
+      try {
+        await Promise.allSettled([refetchDonation(), refetchBudget(), refetchProjects(), refetchRound(), queryClient.invalidateQueries()]);
+      } finally { setIsRefreshing(false); }
     }
   };
 
   const isOwner = Boolean(address && project.ownerAddress && address.toLowerCase() === project.ownerAddress.toLowerCase());
   const isRoundClosed = roundStatus !== "open";
   const hasAlreadyDonated = Boolean(isConnected && userDonatedBigInt > 0n);
-  const isMaxAllowanceReached = !noProjectLimit && remainingAllowanceUsdc <= 0;
+  const isMaxAllowanceReached = donationReady && !noProjectLimit && userDonatedBigInt >= maxDonation;
 
   if (!isConnected || !address) {
     return (
@@ -215,7 +221,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
       </div>
 
       {token && !tokenReady && <p role="alert">{t.tokenBalance.tokenMismatch}</p>}
-      {!hasAlreadyDonated && !isOrganizerUser && !isOwner && supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
+      {!isOrganizerUser && !isOwner && supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending || isRefreshing} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
 
       {/* Round Closed Banner */}
       {isRoundClosed && (
@@ -255,13 +261,13 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
         </div>
       )}
 
-      {!hasAlreadyDonated && !isOrganizerUser && !isOwner && <StudentVerifyBox />}
-      {!hasAlreadyDonated && !isOwner && isStudent && !noRoundLimit && <div className="my-4 border border-line bg-bg p-3 text-sm">
+      {!isOrganizerUser && !isOwner && <StudentVerifyBox />}
+      {!isOwner && isStudent && !noRoundLimit && <div className="my-4 border border-line bg-bg p-3 text-sm">
         {fmt(t.donateBox.roundBudgetRemaining, { remaining: budgetReady ? formatUsdcFixed(roundRemainingUsdc, { includeSymbol: false }) : "—", max: maxPerRound === undefined ? "—" : formatUsdcFixed(Number(maxPerRound) / 1_000_000, { includeSymbol: false }) })}
       </div>}
 
       {/* Round cũ giữ trạng thái và giới hạn đã deploy. */}
-      {hasAlreadyDonated ? (
+      {hasAlreadyDonated && donationStep !== "success" && (
         <div className="mt-4 space-y-4">
           <div className="border border-money/40 bg-money/10 p-5 rounded-xs space-y-3">
             <div className="flex items-center gap-2.5 text-money font-bold text-sm">
@@ -293,7 +299,8 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
             </Link>
           </div>
         </div>
-      ) : isConnected && isMaxAllowanceReached && !isRoundClosed ? (
+      )}
+      {isConnected && isMaxAllowanceReached && !isRoundClosed && (
         /* Max allowance reached alert */
         <div className="my-4 border border-money/40 bg-money/10 p-3 text-xs text-money">
           <p className="font-bold">{t.donateBox.maxReachedTitle}</p>
@@ -301,9 +308,10 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
             {fmt(t.donateBox.maxReachedDesc, { max: maxDonationUsdc })}
           </p>
         </div>
-      ) : null}
+      )}
+      {!donationReady && !isOwner && isStudent && <p role="status" className="mt-3 text-xs text-muted">{donationReadFailed ? (locale === "vi" ? "Chưa đọc được tổng đã góp. Vui lòng thử lại sau." : "Unable to read your contribution total. Please retry later.") : t.common.loading}</p>}
 
-      {hasAlreadyDonated ? null : donationStep !== "success" ? (
+      {donationStep !== "success" ? (
         <div className="mt-4 space-y-4">
           {/* Amount input & Quick buttons */}
           <div className="space-y-2">
@@ -330,7 +338,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
                 max={noProjectLimit ? undefined : remainingAllowanceUsdc}
                 step="0.000001"
                 value={inputValue}
-                disabled={isDonatePending || isRoundClosed || isOwner || isOrganizerUser || isMaxAllowanceReached || !canParticipate || !budgetReady || roundBudgetExhausted}
+                disabled={isDonatePending || isRefreshing || !donationReady || isRoundClosed || isOwner || isOrganizerUser || isMaxAllowanceReached || !canParticipate || !budgetReady || roundBudgetExhausted}
                 onChange={(e) => handleAmountChange(e.target.value)}
                 className="w-full appearance-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none border border-line-strong bg-bg pl-3 pr-16 py-2 text-base font-bold text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
               />
@@ -422,8 +430,8 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
                 {isStudent ? t.verification.roundNotEligible : t.donateBox.verificationRequired}
               </Button>
-            ) : !budgetReady || roundBudgetExhausted ? (
-              <Button variant="secondary" fullWidth disabled>{budgetReady ? t.donateBox.roundBudgetExhausted : t.common.loading}</Button>
+            ) : !budgetReady || !donationReady || roundBudgetExhausted ? (
+              <Button variant="secondary" fullWidth disabled>{budgetReady && donationReady && roundBudgetExhausted ? t.donateBox.roundBudgetExhausted : t.common.loading}</Button>
             ) : isMaxAllowanceReached ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
                 {fmt(t.donateBox.maxReachedBtn, { max: maxDonationUsdc })}
@@ -436,7 +444,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
               <Button
                 variant="primary"
                 fullWidth
-                disabled={Boolean(error) || isDonatePending || isRoundClosed || !balance.isReady || !tokenReady}
+                disabled={Boolean(error) || isDonatePending || isRefreshing || isRoundClosed || !balance.isReady || !tokenReady}
                 isLoading={isDonatePending}
                 onClick={handleExecuteDonate}
                 className="py-3 text-sm font-bold"
@@ -465,6 +473,7 @@ export function DonateBox({ project, className = "", roundAddress: customRound }
             </p>
           </div>
           {activeTxHash && <TxStatusDisplay status="success" txHash={activeTxHash} />}
+          {!isOwner && !isOrganizerUser && <Button fullWidth variant="secondary" disabled={isRefreshing || !donationReady || !budgetReady || !canParticipate || isRoundClosed || isMaxAllowanceReached || roundBudgetExhausted} onClick={() => reset()}>{t.donateBox.donateAgain}</Button>}
         </div>
       )}
     </Frame>

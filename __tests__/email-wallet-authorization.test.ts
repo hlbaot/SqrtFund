@@ -296,3 +296,19 @@ it("Student ownership proof remains valid when no Factory is configured", async 
     authorizeEmailWallet(req({}), await signed(), email, wallet, "student"),
   ).resolves.toBeUndefined();
 });
+
+it("a valid wallet signature does not make an unapproved edu mailbox eligible", async () => {
+  const p = { ...permit(), email: "fixture@untrusted-school.edu.vn" };
+  const response = await studentRequest(req({ email: p.email, address: wallet, walletProof: await signed(p) }));
+  expect(response.status).toBe(400); expect(await response.json()).toMatchObject({ code: "INVALID_DOMAIN" });
+  expect(f.claim).not.toHaveBeenCalled(); expect(f.reserve).not.toHaveBeenCalled();
+  expect(f.from).not.toHaveBeenCalled(); expect(f.send).not.toHaveBeenCalled(); expect(f.sign).not.toHaveBeenCalled();
+});
+it("a previously issued OTP and valid wallet proof cannot attest a domain removed from policy", async () => {
+  const p = { ...permit(), email: "fixture@untrusted-school.edu.vn" };
+  const query = { select: () => query, eq: () => query, maybeSingle: async () => ({ data: { ...row, email: p.email, email_domain: "untrusted-school.edu.vn" }, error: null }) };
+  f.from.mockReturnValue(query);
+  const response = await studentConfirm(req({ requestId, otp: "123456", walletProof: await signed(p) }));
+  expect(response.status).toBe(400); expect(await response.json()).toMatchObject({ code: "INVALID_DOMAIN" });
+  expect(f.rpc).not.toHaveBeenCalled(); expect(f.claim).not.toHaveBeenCalled(); expect(f.sign).not.toHaveBeenCalled();
+});

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { authorizeUpload } from "@/lib/server/uploadAuthorization";
-import { MAX_UPLOAD_BYTES } from "@/lib/uploadPermit";
+import { MAX_UPLOAD_BYTES, imageMatchesMime } from "@/lib/uploadPermit";
 import { validateUploadImage } from "@/lib/server/uploadImage";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
 import { VerificationError } from "@/lib/verify/errors";
@@ -74,10 +74,10 @@ export async function POST(request: Request) {
       return reply("UPLOAD_INVALID_FILE", 400);
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (
+      !imageMatchesMime(bytes, file.type) ||
       crypto.createHash("sha256").update(bytes).digest("hex") !== permit.digest
     )
       return reply("UPLOAD_INVALID_FILE", 400);
-    await validateUploadImage(bytes, file.type);
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const secret = process.env.CLOUDINARY_API_SECRET;
@@ -101,7 +101,10 @@ export async function POST(request: Request) {
         Number(data.retryAfter) || 3600,
       );
     if (data.status !== "OK") return reply("UPLOAD_QUOTA_UNAVAILABLE", 503);
-    // Reservation is charged even if Cloudinary fails/timeouts. Never retry automatically.
+    // Charge expensive attempts before decoding. Replays/quota denials must not
+    // repeatedly invoke the decoder; invalid content also burns this nonce/quota.
+    await validateUploadImage(bytes, file.type);
+    // Reservation stays charged if decoding or Cloudinary fails. Never retry automatically.
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const body = new FormData();
     body.append("file", file);

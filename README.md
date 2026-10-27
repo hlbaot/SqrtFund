@@ -56,7 +56,7 @@ SqrtFund có **3 vai trò nghiệp vụ: Student, Organizer và Admin**. Quyền
 **Phạm vi quyền & Quy tắc nghiệp vụ:**
 
 - **Chống tự quyên góp (Anti-Self Donation):** Sinh viên tạo dự án không thể tự donate cho dự án của chính mình (`SelfDonationNotAllowed` on-chain).
-- **Giới hạn 1 lượt quyên góp / dự án:** Mỗi sinh viên chỉ được ủng hộ tối đa 1 lần cho mỗi dự án trong một vòng gọi vốn (`hasAlreadyDonated`). Sau khi donate thành công, form quyên góp của dự án đó sẽ khóa lại và hiển thị trạng thái "Đã ủng hộ".
+- **Đóng góp cộng dồn:** Sinh viên có thể góp thêm vào cùng dự án trong trần `maxDonation` và ngân sách `maxPerRound`. `donationOf` lưu tổng theo ví/dự án; mỗi ví chỉ tính một supporter. QF lấy căn của tổng đã góp, không tính mỗi lần chuyển tiền là một danh tính mới.
 - **Nhà tổ chức không quyên góp:** Ví mang vai trò Organizer chỉ có quyền nạp matching pool (`depositInitialPool`/`fundPool`) và quản trị vòng; bị chặn hoàn toàn quyền donate vào bất kỳ dự án nào (cả ở round của mình lẫn round khác) để đảm bảo tính khách quan và minh bạch của cơ chế Quadratic Funding.
 - **Khóa cố định vai trò ví:** Sau khi ví kết nối đã chọn vai trò (Student hoặc Organizer), hệ thống khóa chức năng đổi vai trò để ngăn chặn việc tráo đổi danh tính.
 - Admin nền tảng và Organizer **không tự có quyền duyệt project hoặc quản lý round của người khác**.
