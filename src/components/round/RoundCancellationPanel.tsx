@@ -124,10 +124,11 @@ export function RoundCancellationPanel({
   const derivedProjectNames = projectNames || Object.fromEntries(projects.map(p => [p.id, p.name]));
 
   return (
-    <section className="space-y-4 border border-primary/40 bg-surface p-4" aria-label={round.isCancelled ? c.banner : t.phase2.cancelRound}>
+    <section id="refund" className="scroll-mt-24 space-y-4 border border-primary/40 bg-surface p-4" aria-label={round.isCancelled ? c.banner : t.phase2.cancelRound}>
       {round.isCancelled ? (
         <>
           <h2 role="status" className="font-bold text-primary">{c.banner}</h2>
+          <p className="text-sm text-muted">{locale === "vi" ? "Kết nối đúng ví đã đóng góp để nhận lại tiền trực tiếp. Matching không được phân bổ khi round bị hủy; người tổ chức thu hồi pool qua thao tác riêng." : "Connect the wallet that contributed to refund its direct contributions. A cancelled round allocates no matching; the organizer recovers the pool separately."}</p>
           {!viewer ? (
             <p>{c.connect}</p>
           ) : !refunds.isReady ? (

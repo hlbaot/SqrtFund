@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { FundingBreakdown } from "@/components/project/FundingBreakdown";
 import type { Address } from "viem";
 import { projectsStore } from "@/lib/store/projectsStore";
 import { roundsStore } from "@/lib/store/roundsStore";
@@ -447,7 +449,7 @@ export function MyView() {
                       return (
                         <div
                           key={`${proj.roundId}:${proj.id}`}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5"
+                          className="grid grid-cols-1 items-start gap-4 py-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(140px,0.7fr)]"
                         >
                           <div className="space-y-1.5 max-w-md">
                             <div className="flex items-center gap-2">
@@ -472,17 +474,9 @@ export function MyView() {
                             </div>
                           </div>
 
+                          <div className="min-w-0"><FundingBreakdown project={proj} compact finalized={projectFinalized} cancelled={projectCancelled} /><Link className="text-xs text-primary underline" href={`/round/${proj.roundId}/project/${proj.id}#claim`}>{locale === "vi" ? "Hồ sơ, nhận tiền và cập nhật kết quả" : "Proposal, claim funds and report outcomes"}</Link></div>
                           {/* Financial payout & claim button */}
                           <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <span className="block role-label text-muted">
-                                {projectFinalized ? (locale === "vi" ? "Khoản nhận đã chốt" : "Final payout") : t.myActivity.estimatedPayout}
-                              </span>
-                              <span className="role-value-md text-money block">
-                                {projectFinalized && proj.finalMatching === undefined ? "—" : formatUsdcFixed(totalPayout)}
-                              </span>
-                            </div>
-
                             {/* Claim Button */}
                             <div>
                               {proj.claimed ? (
@@ -495,7 +489,7 @@ export function MyView() {
                                   <Button
                                     variant="primary"
                                     size="sm"
-                                    disabled={projectCancelled || proj.rejected || !projectFinalized || !proj.approved || isClaimPending}
+                                    disabled={projectCancelled || proj.rejected || !projectFinalized || !proj.approved || proj.finalMatching === undefined || totalPayout <= 0 || isClaimPending}
                                     isLoading={isClaimPending}
                                     onClick={() => handleClaim(proj.contractId, proj.roundId as Address)}
                                     className="font-bold text-xs"
@@ -503,11 +497,7 @@ export function MyView() {
                                     {t.myActivity.claimButton}
                                   </Button>
 
-                                  {!projectFinalized && (
-                                    <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block z-20 w-52 border border-line-strong bg-bg p-2 text-center text-xs text-muted">
-                                      {t.myActivity.claimDisabledTooltip}
-                                    </div>
-                                  )}
+                                  <p className="mt-1 max-w-52 text-xs text-muted" role="status">{projectCancelled ? (locale === "vi" ? "Round đã hủy; người góp nhận hoàn tiền." : "Round cancelled; contributors can refund.") : !proj.approved ? (locale === "vi" ? "Dự án chưa được duyệt." : "Project not approved.") : !projectFinalized ? (locale === "vi" ? "Chờ người tổ chức chốt round." : "Waiting for the organizer to finalize the round.") : proj.finalMatching === undefined ? (locale === "vi" ? "Chưa đọc được khoản nhận đã chốt." : "Final payout is unavailable.") : totalPayout <= 0 ? (locale === "vi" ? "Không có khoản tiền để nhận." : "No funds to claim.") : (locale === "vi" ? "Tiền sẽ về ví chủ dự án sau khi xác nhận giao dịch." : "Funds go to the owner's wallet after transaction confirmation.")}</p>
                                 </div>
                               )}
                             </div>

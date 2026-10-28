@@ -63,6 +63,7 @@ export function Navbar() {
       <NetworkGuard />
       <Container className="flex min-h-16 items-center justify-between gap-4">
         <Link
+          id="tour-brand"
           href="/"
           className="flex min-h-[44px] min-w-[44px] items-center shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs cursor-pointer transition-opacity hover:opacity-85 active:scale-95"
           aria-label={t.nav.homeAria}
@@ -78,6 +79,7 @@ export function Navbar() {
         </Link>
 
         <nav
+          id="tour-nav"
           className="hidden items-center gap-1 text-sm font-medium xl:flex"
           aria-label={t.nav.primaryNavigation}
         >
@@ -90,8 +92,12 @@ export function Navbar() {
 
         <div className="hidden items-center gap-3 xl:flex">
           <NotificationBell />
-          <LanguageToggle />
-          <ConnectWalletButton />
+          <div id="tour-language">
+            <LanguageToggle />
+          </div>
+          <div id="tour-wallet">
+            <ConnectWalletButton />
+          </div>
         </div>
 
         <div className="flex items-center gap-2 xl:hidden">
@@ -131,3 +137,4 @@ export function Navbar() {
 
 // Re-export as Header for backward compatibility
 export const Header = Navbar;
+

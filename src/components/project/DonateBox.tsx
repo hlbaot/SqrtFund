@@ -1,4 +1,6 @@
 "use client";
+import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
+import { ContributionGuide } from "./ContributionGuide";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { isPublicProject } from "@/lib/projectVisibility";
 import { MatchingPoolWarning } from "@/components/project/MatchingPoolWarning";
@@ -52,9 +54,9 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
   const { address, isConnected, chainId } = useAccount();
 
   const queryClient = useQueryClient();
-  const { roundAddress, token, status: roundStatus, pool, supportsPhase2, isCancelled, minDonation = 1_000_000n, maxPerRound, maxDonation = 5_000_000n, maxMatchBps = 3000n, refetch: refetchRound } = useRound(customRound);
+  const { roundAddress, token, status: roundStatus, startTime, pool, supportsPhase2, isCancelled, minDonation = 1_000_000n, maxPerRound, maxDonation = 5_000_000n, maxMatchBps = 3000n, refetch: refetchRound } = useRound(customRound);
   const { projects, refetch: refetchProjects } = useProjects(roundAddress);
-  const { isStudent, isOrganizer, isRoundAdmin, canCreateRound, canParticipate } = useRole(customRound);
+  const { isStudent, isOrganizer, isRoundAdmin, canCreateRound, canParticipate, isLoading: accessLoading, isError: accessError } = useRole(customRound);
   const isOrgRole = isOrganizer || isRoundAdmin || canCreateRound;
   const { profile } = useWalletProfile(address, chainId, defaultWalletProfile(isOrgRole, isStudent));
   const isOrganizerUser = isConnected && (profile === "organizer" || (!isStudent && isOrgRole));
@@ -180,7 +182,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
   ];
 
   const handleExecuteDonate = async () => {
-    if (!isConnected || !address || !balance.isReady || !tokenReady || !parsedInput.success || !budgetReady || !donationReady || isRefreshing || !canParticipate || error || hasInsufficientBalance || isRoundClosed || isOwner || isOrganizerUser) return;
+    if (!isConnected || !address || chainId !== TARGET_CHAIN_ID || !balance.isReady || !tokenReady || !parsedInput.success || !budgetReady || !donationReady || isRefreshing || !canParticipate || error || hasInsufficientBalance || isRoundClosed || isOwner || isOrganizerUser) return;
     const donationAmountBigInt = parsedInput.amount;
     const ok = await donate(projectIdBigInt, donationAmountBigInt);
     if (ok) {
@@ -192,22 +194,32 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
   };
 
   const isOwner = Boolean(address && project.ownerAddress && address.toLowerCase() === project.ownerAddress.toLowerCase());
-  const isRoundClosed = roundStatus !== "open";
+  const now = useCurrentTimestamp();
+  const upcoming = typeof startTime === "bigint" && BigInt(now) < startTime;
+  const isRoundClosed = roundStatus !== "open" || upcoming || project.status !== "approved";
+  const roundBlockedMessage = upcoming ? (locale === "vi" ? "Round chưa bắt đầu. Bạn có thể chuẩn bị ví và token trước; hãy quay lại khi round mở." : "This round has not started. Prepare your wallet and tokens, then return when it opens.") : project.status !== "approved" ? (locale === "vi" ? "Dự án chưa được duyệt để nhận đóng góp." : "This project is not approved for contributions.") : t.donateBox.roundClosedMsg;
   const hasAlreadyDonated = Boolean(isConnected && userDonatedBigInt > 0n);
   const isMaxAllowanceReached = donationReady && !noProjectLimit && userDonatedBigInt >= maxDonation;
 
+  if (project.rejected || project.status === "rejected") return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><p role="status">{t.rejection.blocked}</p><Button disabled fullWidth>{t.rejection.status}</Button></Frame>;
+  if (isCancelled) return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><h2 className="font-bold text-primary">{t.phase2.cancelled}</h2><p className="text-sm">{t.phase2.cancelledHint}</p><Link className="underline" href={`/round/${roundAddress}`}>{t.phase2.refund}</Link></Frame>;
+  if (roundStatus === "closed" || roundStatus === "finalized") return <Frame className={`space-y-3 bg-surface p-5 ${className}`}>
+    <h2 className="font-semibold">{locale === "vi" ? "Round đã kết thúc — không nhận đóng góp mới" : "Round ended — new contributions are closed"}</h2>
+    <p className="text-sm text-muted">{roundStatus === "finalized" ? (locale === "vi" ? "Kết quả đã chốt. Ví chủ dự án có thể kiểm tra khoản tiền được nhận trong mục claim." : "Results are finalized. Project owners can check their payout in the claim section.") : (locale === "vi" ? "Đang chờ người tổ chức chốt kết quả; tổng dự kiến chưa phải khoản đã nhận." : "Waiting for the organizer to finalize results; estimates are not funds received.")}</p>
+    {roundStatus === "finalized" && <a href="#claim" className="block text-sm text-primary underline">{locale === "vi" ? "Xem trạng thái nhận tiền" : "View claim status"}</a>}
+    <Link href="/round" className="block text-sm text-primary underline">{locale === "vi" ? "Tìm round khác để đóng góp" : "Find another round to contribute"}</Link>
+  </Frame>;
   if (!isConnected || !address) {
     return (
       <Frame className={`space-y-4 bg-surface p-5 lg:p-6 ${className}`}>
         <h2 className="text-base font-bold text-foreground">{t.common.walletRequired}</h2>
         <p className="text-sm text-muted">{t.donateBox.notConnected}</p>
+        {project.status === "approved" && !isCancelled && <ContributionGuide student={false} eligible={false} balanceReady={false} sufficient={false} blocked={isRoundClosed ? roundBlockedMessage : undefined} />}
         <ConnectWalletButton />
       </Frame>
     );
   }
 
-  if (project.rejected || project.status === "rejected") return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><p role="status">{t.rejection.blocked}</p><Button disabled fullWidth>{t.rejection.status}</Button></Frame>;
-  if (isCancelled) return <Frame className={`space-y-3 bg-surface p-5 ${className}`}><h2 className="font-bold text-primary">{t.phase2.cancelled}</h2><p className="text-sm">{t.phase2.cancelledHint}</p><Link className="underline" href={`/round/${roundAddress}`}>{t.phase2.refund}</Link></Frame>;
   if (batchMode && roundAddress && supportsPhase2) return <Frame className={`bg-surface p-5 ${className}`}><BatchDonationForm roundAddress={roundAddress} onBack={() => setBatchMode(false)} /></Frame>;
   return (
     <Frame className={`bg-surface p-5 lg:p-6 ${className}`}>
@@ -230,7 +242,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
           className="my-4 flex items-center gap-2 border border-line-strong bg-surface-2 p-3 text-xs text-muted"
         >
           <AlertCircle className="h-4 w-4 shrink-0 text-primary" />
-          <span>{t.donateBox.roundClosedMsg}</span>
+          <span>{roundBlockedMessage}</span>
         </div>
       )}
 
@@ -261,7 +273,11 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
         </div>
       )}
 
-      {!isOrganizerUser && !isOwner && <StudentVerifyBox />}
+      {!isOrganizerUser && !isOwner && <>
+        <ContributionGuide checkingAccess={accessLoading} accessError={accessError} student={isStudent} eligible={canParticipate} balanceReady={balance.isReady} sufficient={!hasInsufficientBalance}
+          blocked={isRoundClosed ? roundBlockedMessage : !tokenReady ? t.tokenBalance.tokenMismatch : donationReadFailed ? (locale === "vi" ? "Chưa đọc được tổng đã góp; chưa thể kiểm tra trần." : "Contribution totals are unavailable; limits cannot be checked.") : budgetReadFailed && !noRoundLimit ? (locale === "vi" ? "Chưa đọc được ngân sách round còn lại." : "Remaining round budget is unavailable.") : error || undefined} />
+        <StudentVerifyBox />
+      </>}
       {!isOwner && isStudent && !noRoundLimit && <div className="my-4 border border-line bg-bg p-3 text-sm">
         {fmt(t.donateBox.roundBudgetRemaining, { remaining: budgetReady ? formatUsdcFixed(roundRemainingUsdc, { includeSymbol: false }) : "—", max: maxPerRound === undefined ? "—" : formatUsdcFixed(Number(maxPerRound) / 1_000_000, { includeSymbol: false }) })}
       </div>}
@@ -444,7 +460,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
               <Button
                 variant="primary"
                 fullWidth
-                disabled={Boolean(error) || isDonatePending || isRefreshing || isRoundClosed || !balance.isReady || !tokenReady}
+                disabled={chainId !== TARGET_CHAIN_ID || Boolean(error) || isDonatePending || isRefreshing || isRoundClosed || !balance.isReady || !tokenReady}
                 isLoading={isDonatePending}
                 onClick={handleExecuteDonate}
                 className="py-3 text-sm font-bold"

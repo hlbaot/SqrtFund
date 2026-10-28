@@ -1,4 +1,5 @@
 "use client";
+import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { isPublicProject } from "@/lib/projectVisibility";
 import { MatchingPoolWarning } from "./MatchingPoolWarning";
@@ -26,7 +27,9 @@ export function BatchDonationForm(props: { roundAddress: Address; onBack: () => 
 }
 function BatchDonationSession({ roundAddress, onBack }: { roundAddress: Address; onBack: () => void }) {
   const { address } = useAccount(); const { t, locale } = useLocale(); const c = t.phase2;
-  const round = useRound(roundAddress); const { projects } = useProjects(roundAddress);
+  const round = useRound(roundAddress);
+  const now = useCurrentTimestamp();
+  const upcoming = typeof round.startTime === "bigint" && BigInt(now) < round.startTime; const { projects } = useProjects(roundAddress);
   const { canParticipate } = useRole(roundAddress); const query = useQueryClient();
   const { donateMany, isPending } = useDonate(roundAddress);
   const busy = useRef(false);
@@ -49,7 +52,7 @@ function BatchDonationSession({ roundAddress, onBack }: { roundAddress: Address;
   const insufficient = balance.isReady && balance.balance !== undefined && total > balance.balance;
   const expected = simulateDonationBatch(approved.map(p => ({ id: p.id, sumSqrt: p.sumSqrtRaw, totalDonated: p.totalDonatedRaw })), donorTotals, allocations, round.pool, round.maxMatchBps ?? 3000n);
   async function submit() {
-    if (busy.current || refreshing || !loaded || invalid || insufficient || !canParticipate || !selected.length || isPending || refreshing || round.status !== "open" || !round.supportsPhase2) return;
+    if (upcoming || busy.current || refreshing || !loaded || invalid || insufficient || !canParticipate || !selected.length || isPending || refreshing || round.status !== "open" || !round.supportsPhase2) return;
     busy.current = true;
     try {
       const ok = await donateMany(selected.map(p => p.contractId), allocations.map(a => a.amount));
@@ -62,6 +65,7 @@ function BatchDonationSession({ roundAddress, onBack }: { roundAddress: Address;
   return <section className="space-y-4">
     <div className="flex items-center justify-between gap-3"><h2 className="font-bold">{c.splitBudget}</h2><Button variant="ghost" disabled={isPending || refreshing} onClick={onBack}>{c.singleProject}</Button></div>
     <p className="text-sm text-muted">{c.expectedHint}</p>
+    {upcoming && <p role="status" className="text-sm">{locale === "vi" ? "Round chưa bắt đầu; chưa thể gửi đóng góp." : "The round has not started; contributions cannot be submitted yet."}</p>}
     {round.token && !tokenMatchesConfigured(round.token) && <p role="alert">{t.tokenBalance.tokenMismatch}</p>}
     {!balance.isReady && <p role="status">{balance.isError ? t.tokenBalance.error : balance.isLoading ? t.tokenBalance.loading : t.tokenBalance.unavailable}</p>}
     <MatchingPoolWarning totalRaw={expected.reduce((sum, p) => sum + p.raw, 0n)} pool={round.pool} />
@@ -93,7 +97,7 @@ function BatchDonationSession({ roundAddress, onBack }: { roundAddress: Address;
                 autoComplete="off"
                 placeholder="0 USDC"
                 value={amounts[p.id] ?? ""}
-                disabled={!canParticipate || !loaded || isPending || refreshing || round.status !== "open" || isOwnerProject || projectExhausted}
+                disabled={upcoming || !canParticipate || !loaded || isPending || refreshing || round.status !== "open" || isOwnerProject || projectExhausted}
                 onChange={event => setAmounts(current => ({ ...current, [p.id]: event.target.value }))}
                 className="mt-2 w-full border border-line bg-bg p-2 disabled:opacity-50"
               />
@@ -105,6 +109,6 @@ function BatchDonationSession({ roundAddress, onBack }: { roundAddress: Address;
     </div>
     <p className="font-semibold">{c.total}: {formatUnits(total, 6)} USDC</p>
     {selected.length > 0 && (invalid || insufficient) && <p role="alert" className="text-sm text-primary">{insufficient ? c.insufficientBalance : c.invalidAllocation}</p>}
-    <Button fullWidth disabled={!loaded || !canParticipate || !selected.length || invalid || insufficient || isPending || refreshing || round.status !== "open"} isLoading={isPending} onClick={() => void submit()}>{c.confirmDonation}</Button>
+    <Button fullWidth disabled={upcoming || !loaded || !canParticipate || !selected.length || invalid || insufficient || isPending || refreshing || round.status !== "open"} isLoading={isPending} onClick={() => void submit()}>{c.confirmDonation}</Button>
   </section>;
 }

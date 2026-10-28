@@ -363,6 +363,7 @@ const enData = {
     },
     nav: {
       home: "Home",
+      guide: "Guide",
       round: "Round",
       register: "Register project",
       my: "My activity",
@@ -1435,6 +1436,7 @@ const viData: Translations = {
     },
     nav: {
       home: "Trang chủ",
+      guide: "Hướng dẫn",
       round: "Vòng gọi vốn",
       register: "Đăng ký dự án",
       my: "Hoạt động của tôi",

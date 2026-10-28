@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+vi.mock("@/components/project/ContributionGuide", () => ({ ContributionGuide: () => null }));
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";

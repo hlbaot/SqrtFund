@@ -7,14 +7,14 @@ afterEach(() => vi.unstubAllEnvs());
 it("publishes only static public sitemap URLs with the default base", () => {
   vi.stubEnv("NEXT_PUBLIC_SITE_URL", "");
   const urls = sitemap().map(entry => entry.url);
-  expect(urls).toEqual([`${DEFAULT_SITE_URL}/`, `${DEFAULT_SITE_URL}/rounds`, `${DEFAULT_SITE_URL}/verify`]);
+  expect(urls).toEqual([`${DEFAULT_SITE_URL}/`, `${DEFAULT_SITE_URL}/rounds`, `${DEFAULT_SITE_URL}/verify`, `${DEFAULT_SITE_URL}/guide`]);
   expect(urls.some(url => /\/(admin|my|register|api)(?:\/|$)/.test(url))).toBe(false);
   expect(urls.some(url => url.includes("0x"))).toBe(false);
 });
 it("disallows private routes and API crawling and points to the public sitemap", () => {
   vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://www.sqrtfund.tech/");
   const result = robots();
-  expect(result.rules).toEqual(expect.objectContaining({ userAgent: "*", allow: ["/", "/rounds", "/verify"], disallow: expect.arrayContaining(["/admin", "/my", "/register", "/api/"]) }));
+  expect(result.rules).toEqual(expect.objectContaining({ userAgent: "*", allow: ["/", "/rounds", "/verify", "/guide"], disallow: expect.arrayContaining(["/admin", "/my", "/register", "/api/"]) }));
   expect(result.sitemap).toBe("https://www.sqrtfund.tech/sitemap.xml");
   expect(sitemap().every(entry => entry.url.startsWith("https://www.sqrtfund.tech/"))).toBe(true);
 });
