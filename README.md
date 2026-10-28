@@ -154,7 +154,7 @@ Nếu đã clone mà chưa có thư viện contract, chạy `git submodule updat
 | Xác minh | `OTP_SECRET`, `ATTESTER_PRIVATE_KEY` | Băm OTP và ký bằng khóa tương ứng với attester trên registry |
 | Chính sách email | `ALLOWED_EMAIL_DOMAINS`, `BLOCKED_EMAIL_DOMAINS` | Cho phép tên miền cụ thể và chặn tên miền không phù hợp |
 | Email | `EMAIL_PROVIDER`, các biến `SMTP_*` hoặc `RESEND_API_KEY` | Gửi OTP qua SMTP hoặc Resend |
-| Upload ảnh | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Upload có chữ ký phía server. Unsigned preset cũ không thay thế cấu hình này |
+| Upload ảnh | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` hoặc `CLOUDINARY_URL` | Upload có chữ ký phía server. `CLOUDINARY_URL` dùng dạng `cloudinary://API_KEY:API_SECRET@CLOUD_NAME`; biến riêng được ưu tiên. Unsigned preset cũ không thay thế cấu hình này |
 | Realtime, tùy chọn | `NEXT_PUBLIC_SOCKET_URL`, `SOCKET_SERVER_URL`, `SOCKET_PUBLISH_SECRET`, `SOCKET_ALLOWED_ORIGINS` | Kết nối và publish thông báo qua Socket.IO |
 | Keeper, tùy chọn | `KEEPER_PRIVATE_KEY`, `KEEPER_RPC_URL` | Chạy tác vụ chốt vòng bằng ví riêng |
 

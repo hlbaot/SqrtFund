@@ -11,11 +11,15 @@ const f = vi.hoisted(() => ({
   loading: false, error: false, unavailable: false, readError: false, wrongTarget: false,
   endTime: 2000n, chainId: 43113, fill: false, emptyStates: 0,
   connected: true, draftReady: true, clearDraft: vi.fn(),
+  uploading: false, uploadError: null as string | null,
   submit: undefined as ((event: { preventDefault: () => void }) => Promise<unknown>) | undefined,
   write: vi.fn(), receipt: vi.fn(), role: vi.fn(), round: vi.fn(), initial: vi.fn(), begin: vi.fn(),
 }));
 const first = `0x${"1".repeat(40)}` as Address;
 const second = `0x${"2".repeat(40)}` as Address;
+vi.mock("@/hooks/useProjectImageUpload", () => ({ useProjectImageUpload: () => ({
+  upload: vi.fn(), reset: vi.fn(), isUploading: f.uploading, error: f.uploadError,
+}) }));
 vi.mock("@/hooks/useFormDraft", () => ({ useFormDraft: (_key: string, defaults: Record<string, string>) => ({
   ready: f.draftReady, hasDraft: f.fill, storageError: false,
   values: f.fill && "name" in defaults ? { ...defaults, name: "Robotics club", description: "A detailed project description", contactUrl: "https://example.test" } : defaults,
@@ -68,7 +72,8 @@ vi.mock("@/lib/context/locale", async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   Object.assign(f, { connected: true, selected: undefined, rounds: [], loading: false, error: false, unavailable: false,
-    readError: false, wrongTarget: false, endTime: 2000n, chainId: 43113, fill: false, emptyStates: 0, submit: undefined, draftReady: true });
+    readError: false, wrongTarget: false, endTime: 2000n, chainId: 43113, fill: false, emptyStates: 0, submit: undefined, draftReady: true,
+    uploading: false, uploadError: null });
   vi.spyOn(Date, "now").mockReturnValue(1000_000);
   f.write.mockResolvedValue(`0x${"a".repeat(64)}`);
   f.receipt.mockResolvedValue({ status: "success" });
@@ -148,6 +153,18 @@ it("blocks submission until the correct scoped draft has loaded", async () => {
   chooseSecond(); f.fill = true; f.draftReady = false; render(second);
   await f.submit!({ preventDefault: vi.fn() });
   expect(f.write).not.toHaveBeenCalled();
+});
+it("blocks project submission while the image is still uploading", async () => {
+  chooseSecond(); f.fill = true; f.uploading = true; render(second);
+  await f.submit!({ preventDefault: vi.fn() });
+  expect(f.write).not.toHaveBeenCalled();
+});
+it("explains missing upload configuration and offers an existing image URL", () => {
+  chooseSecond(); f.uploadError = "UPLOAD_CONFIG_MISSING";
+  const html = render(second);
+  expect(html).toContain("Máy chủ chưa cấu hình dịch vụ tải ảnh");
+  expect(html).toContain("Hoặc dùng đường dẫn ảnh có sẵn");
+  expect(html).toContain('type="url"');
 });
 it.each(["expired", "wrong-network", "wrong-target"])("blocks a stale or invalid submission: %s", async reason => {
   chooseSecond(); f.fill = true;

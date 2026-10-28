@@ -23,7 +23,7 @@ import { ProjectCard } from "@/components/project/ProjectCard";
 import type { Project, ProjectCategory } from "@/types";
 import { StudentAccessGate } from "@/components/verify/StudentAccessGate";
 import { useRole } from "@/hooks/useRole";
-import { CheckCircle2, AlertCircle, Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { CheckCircle2, AlertCircle, Upload, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 const PROJECT_DEFAULTS = { name: "", category: "technology", description: "", contactUrl: "", imageUrl: "" };
@@ -80,6 +80,13 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
   const isUploadingImage = imageUpload.isUploading;
   const uploadMessages: Record<string, string> = {
     UPLOAD_TOO_LARGE: t.register.fileTooLarge,
+    UPLOAD_INVALID_FILE: locale === "vi" ? "Ảnh không hợp lệ. Hãy chọn ảnh PNG, JPEG hoặc WebP còn nguyên vẹn, tối đa 16 triệu pixel và 8192 pixel mỗi chiều." : "Invalid image. Select an intact PNG, JPEG or WebP, up to 16 million pixels and 8192 pixels per side.",
+    UPLOAD_CONFIG_MISSING: locale === "vi" ? "Máy chủ chưa cấu hình dịch vụ tải ảnh. Vui lòng liên hệ quản trị viên hoặc dùng đường dẫn ảnh có sẵn." : "Image uploads are not configured on the server. Contact the administrator or use an existing image URL.",
+    CONFIG_MISSING: locale === "vi" ? "Máy chủ chưa cấu hình dịch vụ tải ảnh. Vui lòng liên hệ quản trị viên hoặc dùng đường dẫn ảnh có sẵn." : "Image uploads are not configured on the server. Contact the administrator or use an existing image URL.",
+    UPLOAD_QUOTA_UNAVAILABLE: locale === "vi" ? "Không kiểm tra được hạn mức tải ảnh. Vui lòng thử lại sau hoặc dùng đường dẫn ảnh có sẵn." : "Unable to check the upload quota. Try again later or use an existing image URL.",
+    UPLOAD_AUTH_UNAVAILABLE: locale === "vi" ? "Không kiểm tra được trạng thái xác minh ví. Vui lòng thử lại sau." : "Unable to check your wallet verification. Please try again later.",
+    UPLOAD_PROVIDER_FAILED: locale === "vi" ? "Dịch vụ lưu ảnh gặp lỗi. Vui lòng thử lại sau hoặc dùng đường dẫn ảnh có sẵn." : "Image storage failed. Try again later or use an existing image URL.",
+    UPLOAD_PROVIDER_PERMISSION_DENIED: locale === "vi" ? "Dịch vụ lưu ảnh chưa được cấp quyền tải ảnh. Vui lòng liên hệ quản trị viên hoặc dùng đường dẫn ảnh có sẵn." : "Image storage does not have upload permission. Contact the administrator or use an existing image URL.",
     UPLOAD_FORBIDDEN: locale === "vi" ? "Cần ví Student đã xác minh trên Fuji." : "A verified Student wallet on Fuji is required.",
     UPLOAD_QUOTA_EXCEEDED: locale === "vi" ? "Đã đạt giới hạn tải ảnh. Vui lòng thử lại sau." : "Image upload quota reached. Please try again later.",
     UPLOAD_ALREADY_USED: locale === "vi" ? "Yêu cầu này đã được sử dụng. Hãy chọn ảnh và ký lại." : "This request was already used. Select the image and sign again.",
@@ -152,7 +159,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
       txToast.error(toastId, t.verification.title, t.verification.roundNotEligible);
       return;
     }
-    if (!draft.ready || !validate()) return;
+    if (!draft.ready || isUploadingImage || !validate()) return;
     const flow = beginFlow("register-project", { patch: receipt => {
       const event = parseEventLogs({ abi: qfRoundAbi, eventName: "ProjectRegistered", logs: receipt.logs.filter(log => log.address.toLowerCase() === selectedAddress.toLowerCase()) })[0];
       return event ? [projectsStore.getState().patch(projectKey(selectedAddress, event.args.id), {
@@ -433,7 +440,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
                   <div className="flex items-center gap-2 bg-surface-2 px-3 py-1.5 rounded-xs border border-line text-xs">
                     <CheckCircle2 className="h-4 w-4 text-money shrink-0" />
                     <span className="text-foreground font-medium">
-                      {locale === "vi" ? "Đã tải ảnh thành công" : "Image uploaded successfully"}
+                      {locale === "vi" ? "Đã chọn ảnh dự án" : "Project image selected"}
                     </span>
                     <button
                       type="button"
@@ -450,6 +457,16 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
                   </div>
                 )}
               </div>
+
+              <Input
+                label={locale === "vi" ? "Hoặc dùng đường dẫn ảnh có sẵn" : "Or use an existing image URL"}
+                type="url"
+                placeholder="https://example.com/image.png"
+                value={imageUrl}
+                disabled={isUploadingImage}
+                onChange={event => { setImageUrl(event.target.value); imageUpload.reset(); }}
+                maxLength={200}
+              />
 
               {uploadError && (
                 <p className="text-xs text-primary font-medium" role="alert">
@@ -469,7 +486,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
                 type="submit"
                 variant="primary"
                 fullWidth
-                disabled={isSubmitting || roundStatus !== "open" || isCancelled || !canParticipate || chainId !== TARGET_CHAIN_ID}
+                disabled={isSubmitting || isUploadingImage || roundStatus !== "open" || isCancelled || !canParticipate || chainId !== TARGET_CHAIN_ID}
                 isLoading={isSubmitting}
                 className="py-3 font-bold"
               >

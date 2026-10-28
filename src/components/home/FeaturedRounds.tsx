@@ -47,8 +47,8 @@ function useRoundData(summary: RoundSummary) {
 }
 
 function FeaturedRoundItem({ summary }: { summary: RoundSummary }) {
-  const { round, data } = useRoundData(summary);
-  return <RoundCard round={data} adminAddress={round.admin} roundIndex={summary.index} />;
+  const { data } = useRoundData(summary);
+  return <RoundCard round={data} roundIndex={summary.index} />;
 }
 
 function FeaturedProjectsOfRound({ summary }: { summary: RoundSummary }) {

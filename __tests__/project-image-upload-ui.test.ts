@@ -106,6 +106,26 @@ it("does not upload when the signature was rejected", async () => {
   expect(state.error).toBe("WALLET_REJECTED");
   expect(f.fetch).not.toHaveBeenCalled();
 });
+
+it.each(["", "image/jpg"])("normalizes picker MIME %s before signing and sending the image", async mime => {
+  const input = new File([Uint8Array.from([255, 216, 255, 0])], "photo.jpg", { type: mime });
+  // jsdom's Blob lacks arrayBuffer; model the native browser slice implementation.
+  Object.defineProperty(input, "slice", { value: () => ({ arrayBuffer: async () => Uint8Array.from([255, 216, 255, 0]).buffer }) });
+  await act(async () => state.upload(input));
+  const normalized = f.permit.mock.calls[0][0] as File;
+  expect(normalized.type).toBe("image/jpeg");
+  expect(normalized.size).toBe(input.size);
+  expect(f.fetch.mock.calls[0][1].body.get("file").type).toBe("image/jpeg");
+  expect(f.uploaded).toHaveBeenCalledOnce();
+});
+
+it("reports infrastructure body-size failures even when the response is not JSON", async () => {
+  f.fetch.mockResolvedValueOnce({ ok: false, status: 413, json: async () => { throw new SyntaxError(); } });
+  await act(async () => state.upload(file));
+  expect(state.error).toBe("UPLOAD_TOO_LARGE");
+  expect(state.isUploading).toBe(false);
+  expect(f.uploaded).not.toHaveBeenCalled();
+});
 it("does not send a signature completed after wallet/round changes, including returning to the old scope", async () => {
   let finish!: (signature: string) => void;
   f.sign.mockImplementationOnce(
