@@ -68,10 +68,10 @@ export function Navbar() {
           aria-label={t.nav.homeAria}
         >
           <Image
-            src="/brand/npower-horizontal.png"
-            alt="N-Power"
-            width={170}
-            height={32}
+            src="/brand/logo_sqrtfund.png"
+            alt="SqrtFund"
+            width={128}
+            height={64}
             priority
             className="h-7 w-auto object-contain sm:h-8 lg:h-9"
           />

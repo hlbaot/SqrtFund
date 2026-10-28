@@ -1,29 +1,18 @@
 "use client";
-import { isPublicProject } from "@/lib/projectVisibility";
-import { VerificationStats } from "@/components/verify/VerificationStats";
 
 import { AOSInit } from "@/components/common/AOSInit";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/context/locale";
 import { useRole } from "@/hooks/useRole";
-import { useRound } from "@/hooks/useRound";
-import { useProjects } from "@/hooks/useProjects";
-import { RoundCard } from "@/components/round/RoundCard";
-import { ProjectCard } from "@/components/project/ProjectCard";
-import { EmptyState } from "@/components/common/EmptyState";
-import { ErrorState } from "@/components/common/ErrorState";
-import { MonoLabel } from "@/components/ui/MonoLabel";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { Container } from "@/components/layout/Container";
-import type { Round } from "@/types";
 import {
   ArrowRight,
   Rocket,
 } from "lucide-react";
 import { HowItWorksTimeline } from "@/components/home/HowItWorksTimeline";
+import { FeaturedRoundsSection, FeaturedProjectsSection } from "@/components/home/FeaturedRounds";
 import { NetworkStats } from "@/components/home/NetworkStats";
 import AeroShards from "@/components/home/DeferredAeroShards";
 import { ChainLatticeBackground } from "@/components/background/DeferredLattice";
@@ -31,30 +20,8 @@ import { TypewriterText } from "@/components/home/TypewriterText";
 
 
 export function HomeView() {
-  const router = useRouter();
   const { t } = useLocale();
   const { isPlatformOwner } = useRole();
-  const {
-    roundAddress,
-    allRounds,
-    admin,
-    name: roundName,
-    organizer: roundOrganizer,
-    pool,
-    startTime,
-    endTime,
-    status,
-    isCancelled,
-    isLoading: isRoundLoading,
-    isError: isRoundError,
-    refetch: refetchRound,
-  } = useRound();
-  const {
-    projects,
-    isLoading: isProjectsLoading,
-    isError: isProjectsError,
-    refetch: refetchProjects,
-  } = useProjects();
   const pageRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState("intro");
   const [headerHeight, setHeaderHeight] = useState(102);
@@ -120,65 +87,6 @@ export function HomeView() {
       window.removeEventListener("splash-intro-finished", scheduleUpdate);
     };
   }, []);
-
-  const isLoading = isRoundLoading || isProjectsLoading;
-  const hasError = isRoundError || isProjectsError;
-
-  const approvedProjects = useMemo(() => {
-    return [...projects]
-      .filter(isPublicProject)
-      .sort((a, b) => b.estimatedMatching - a.estimatedMatching);
-  }, [projects]);
-
-  const totalDirectDonated = useMemo(() => {
-    return approvedProjects.reduce((acc, p) => acc + p.totalDonated, 0);
-  }, [approvedProjects]);
-
-  const totalSupporters = useMemo(() => {
-    return approvedProjects.reduce((acc, p) => acc + p.supporterCount, 0);
-  }, [approvedProjects]);
-
-  const poolUsdc = Number(pool) / 1_000_000;
-
-  const roundIndex = useMemo(() => {
-    if (!roundAddress || !allRounds || allRounds.length === 0) return 1;
-    const idx = allRounds.indexOf(roundAddress);
-    return idx !== -1 ? idx + 1 : allRounds.length;
-  }, [roundAddress, allRounds]);
-
-  const activeRound: Round | null = useMemo(() => {
-    if (!roundAddress) return null;
-    return {
-      id: roundAddress,
-      title: roundName?.trim() ? roundName.trim() : `${t.homeIntro.roundTitle} #${roundIndex}`,
-      description: roundOrganizer?.trim() || "",
-      name: roundName,
-      organizer: roundOrganizer,
-      matchingPool: poolUsdc,
-      totalDonated: totalDirectDonated,
-      totalSupporters,
-      projectCount: approvedProjects.length,
-      startTime: startTime
-        ? new Date(Number(startTime) * 1000).toISOString()
-        : new Date().toISOString(),
-      endTime: endTime ? new Date(Number(endTime) * 1000).toISOString() : new Date().toISOString(),
-      status,
-      sponsorName: roundOrganizer?.trim() || "",
-    };
-  }, [
-    roundAddress,
-    roundIndex,
-    roundName,
-    roundOrganizer,
-    poolUsdc,
-    totalDirectDonated,
-    totalSupporters,
-    approvedProjects.length,
-    startTime,
-    endTime,
-    status,
-    t.homeIntro.roundTitle,
-  ]);
 
   const sideNav = [
     { id: "intro", label: t.homeIntro.sideIntro },
@@ -343,108 +251,17 @@ export function HomeView() {
         <ChainLatticeBackground variant="dense" />
         <Container className="py-[clamp(2.5rem,5vw,4.5rem)]" data-aos="fade-up" data-aos-duration="600">
           <NetworkStats />
-          <VerificationStats />
         </Container>
       </section>
 
       {/* 3. How it works: Scroll-driven Blockchain Timeline */}
       <HowItWorksTimeline />
 
-      {/* 4. Current round: wide card with dynamic round title, admin copy button, inline stats, responsive CTA */}
-      {hasError ? (
-        <section className="chain-lattice-host">
-          <ChainLatticeBackground variant="dense" />
-          <Container className="py-[clamp(3rem,6vw,6rem)]" data-aos="fade-up">
-            <ErrorState
-              title={t.homeIntro.errorTitle}
-              reason={t.homeIntro.errorReason}
-              solution={t.homeIntro.errorSolution}
-              onRetry={() => {
-                refetchRound();
-                refetchProjects();
-              }}
-            />
-          </Container>
-        </section>
-      ) : activeRound ? (
-        <section id="current-round" className="chain-lattice-host scroll-mt-20">
-          <ChainLatticeBackground variant="dense" />
-          <Container className="space-y-6 py-[clamp(3rem,6vw,6rem)]" data-aos="fade-up" data-aos-duration="700">
-            <div className="flex items-center justify-between">
-              <div>
-                <MonoLabel className="text-primary">{t.homeIntro.activeRoundLabel}</MonoLabel>
-                <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                  {t.roundCard.openTitle}
-                </h2>
-              </div>
-            </div>
-            <RoundCard
-              round={activeRound}
-              adminAddress={admin}
-              roundIndex={roundIndex}
-            />
-          </Container>
-        </section>
-      ) : null}
+      {/* 4. Featured rounds (by open status, then matching pool) */}
+      <FeaturedRoundsSection />
 
-      {/* 5. Featured projects */}
-      <section id="projects-list" className="chain-lattice-host scroll-mt-20">
-        <ChainLatticeBackground variant="dense" />
-        <Container className="space-y-8 py-[clamp(3rem,6vw,6rem)]">
-          <div
-            className="flex flex-col justify-between gap-3 border-b border-line pb-4 sm:flex-row sm:items-end"
-            data-aos="fade-up"
-            data-aos-duration="600"
-          >
-            <div>
-              <MonoLabel className="text-primary">{t.homeIntro.projectsEyebrow}</MonoLabel>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                {t.homeIntro.projectsTitle}
-              </h2>
-              <p className="mt-1 text-xs text-muted sm:text-sm">{t.homeIntro.projectsSubtitle}</p>
-            </div>
-            <div className="mono-label flex items-center gap-2 text-muted">
-              <span className="inline-block h-2 w-2 bg-money" />
-              <span>{t.homeIntro.formulaActive}</span>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <Skeleton className="h-80" />
-              <Skeleton className="h-80" />
-            </div>
-          ) : approvedProjects.length === 0 ? (
-            <EmptyState
-              title={t.homeIntro.noProjectsTitle}
-              description={t.homeIntro.noProjectsDesc}
-              actionLabel={t.homeIntro.noProjectsCta}
-              onAction={() => router.push("/register")}
-            />
-          ) : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {approvedProjects.map((project, index) => (
-                <div
-                  key={project.id}
-                  data-aos="fade-up"
-                  data-aos-delay={(index % 4) * 100}
-                  data-aos-duration="600"
-                >
-                  <ProjectCard
-                    project={{
-                      ...project,
-                      rank: index + 1,
-                    }}
-                    roundId={roundAddress ?? ""}
-                    roundAddress={roundAddress}
-                    canDonate={!isCancelled && status === "open"}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </Container>
-      </section>
+      {/* 5. Featured projects of each featured round (by supporters, then amount) */}
+      <FeaturedProjectsSection />
     </div>
   );
 }

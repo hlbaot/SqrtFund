@@ -12,24 +12,24 @@ export function getSiteUrl(): URL {
 
 export const seoCopy = {
   en: {
-    home: ["Quadratic funding for students", "N-Power helps student clubs explore quadratic funding, transparent donations and matching pools on Avalanche Fuji testnet."],
-    rounds: ["Explore funding rounds", "Explore student funding rounds, approved projects and matching pools on N-Power's Avalanche Fuji testnet dApp."],
-    round: ["Funding round overview", "View N-Power funding rounds, project leaderboards and matching allocations on Avalanche Fuji testnet."],
-    detail: ["Funding round", "View approved student projects, round details and quadratic matching on N-Power."],
-    verify: ["Verify your student identity", "Learn how to verify a university email and link your wallet to a shared Student identity for N-Power funding rounds."],
-    admin: ["Manage Funding Rounds", "Manage your N-Power funding rounds and project reviews."],
-    my: ["My activity", "View your projects, donations and available actions on N-Power."],
-    register: ["Register a project", "Submit your student project to a N-Power funding round."],
+    home: ["Quadratic funding for students", "SqrtFund helps student clubs explore quadratic funding, transparent donations and matching pools on Avalanche Fuji testnet."],
+    rounds: ["Explore funding rounds", "Explore student funding rounds, approved projects and matching pools on SqrtFund's Avalanche Fuji testnet dApp."],
+    round: ["Funding round overview", "View SqrtFund funding rounds, project leaderboards and matching allocations on Avalanche Fuji testnet."],
+    detail: ["Funding round", "View approved student projects, round details and quadratic matching on SqrtFund."],
+    verify: ["Verify your student identity", "Learn how to verify a university email and link your wallet to a shared Student identity for SqrtFund funding rounds."],
+    admin: ["Manage Funding Rounds", "Manage your SqrtFund funding rounds and project reviews."],
+    my: ["My activity", "View your projects, donations and available actions on SqrtFund."],
+    register: ["Register a project", "Submit your student project to a SqrtFund funding round."],
   },
   vi: {
-    home: ["Quadratic Funding cho sinh viên", "N-Power giúp câu lạc bộ sinh viên tìm hiểu Quadratic Funding, đóng góp minh bạch và quỹ đối ứng trên mạng thử nghiệm Avalanche Fuji."],
-    rounds: ["Khám phá vòng gọi vốn", "Khám phá các vòng gọi vốn sinh viên, dự án đã duyệt và quỹ đối ứng trên dApp N-Power, mạng thử nghiệm Avalanche Fuji."],
-    round: ["Tổng quan vòng gọi vốn", "Xem vòng gọi vốn, bảng xếp hạng dự án và phân bổ quỹ đối ứng trên N-Power, mạng thử nghiệm Avalanche Fuji."],
-    detail: ["Chi tiết vòng gọi vốn", "Xem các dự án sinh viên đã được duyệt, thông tin vòng và phân bổ matching trên N-Power."],
-    verify: ["Xác thực danh tính sinh viên", "Tìm hiểu cách xác thực email trường và liên kết ví với danh tính Student dùng chung để tham gia các vòng gọi vốn N-Power."],
-    admin: ["Quản lý vòng gọi vốn", "Quản lý vòng gọi vốn và xét duyệt dự án trên N-Power."],
-    my: ["Hoạt động của tôi", "Xem dự án, đóng góp và các thao tác của bạn trên N-Power."],
-    register: ["Đăng ký dự án", "Gửi dự án sinh viên của bạn vào một vòng gọi vốn N-Power."],
+    home: ["Quadratic Funding cho sinh viên", "SqrtFund giúp câu lạc bộ sinh viên tìm hiểu Quadratic Funding, đóng góp minh bạch và quỹ đối ứng trên mạng thử nghiệm Avalanche Fuji."],
+    rounds: ["Khám phá vòng gọi vốn", "Khám phá các vòng gọi vốn sinh viên, dự án đã duyệt và quỹ đối ứng trên dApp SqrtFund, mạng thử nghiệm Avalanche Fuji."],
+    round: ["Tổng quan vòng gọi vốn", "Xem vòng gọi vốn, bảng xếp hạng dự án và phân bổ quỹ đối ứng trên SqrtFund, mạng thử nghiệm Avalanche Fuji."],
+    detail: ["Chi tiết vòng gọi vốn", "Xem các dự án sinh viên đã được duyệt, thông tin vòng và phân bổ matching trên SqrtFund."],
+    verify: ["Xác thực danh tính sinh viên", "Tìm hiểu cách xác thực email trường và liên kết ví với danh tính Student dùng chung để tham gia các vòng gọi vốn SqrtFund."],
+    admin: ["Quản lý vòng gọi vốn", "Quản lý vòng gọi vốn và xét duyệt dự án trên SqrtFund."],
+    my: ["Hoạt động của tôi", "Xem dự án, đóng góp và các thao tác của bạn trên SqrtFund."],
+    register: ["Đăng ký dự án", "Gửi dự án sinh viên của bạn vào một vòng gọi vốn SqrtFund."],
   },
 } as const;
 export type SeoPage = keyof typeof seoCopy.en;
@@ -44,7 +44,7 @@ export function metadataForPage(page: SeoPage, locale: Locale = "en", path = pat
     keywords: ["quadratic funding", "student clubs", "Avalanche Fuji", "quỹ sinh viên"],
     alternates: { canonical: url },
     robots: noindex ? { index: false, follow: false } : { index: true, follow: true },
-    openGraph: { type: "website", title: `${title} | N-Power`, description, url, siteName: "N-Power", locale: locale === "vi" ? "vi_VN" : "en_US", alternateLocale: locale === "vi" ? "en_US" : "vi_VN", images: [{ url: new URL("/opengraph-image", base), width: 1200, height: 630, alt: "N-Power — Quadratic Funding cho quỹ hoạt động sinh viên" }] },
-    twitter: { card: "summary_large_image", title: `${title} | N-Power`, description, images: [new URL("/twitter-image", base)] },
+    openGraph: { type: "website", title: `${title} | SqrtFund`, description, url, siteName: "SqrtFund", locale: locale === "vi" ? "vi_VN" : "en_US", alternateLocale: locale === "vi" ? "en_US" : "vi_VN", images: [{ url: new URL("/opengraph-image", base), width: 1200, height: 630, alt: "SqrtFund — Quadratic Funding cho quỹ hoạt động sinh viên" }] },
+    twitter: { card: "summary_large_image", title: `${title} | SqrtFund`, description, images: [new URL("/twitter-image", base)] },
   };
 }
