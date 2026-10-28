@@ -219,7 +219,7 @@ export function HomeView() {
               {t.homeIntro.subheadline}
             </p>
 
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+            <div id="tour-hero-actions" className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
               <Link
                 href="/round"
                 className="gradient-border mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 px-6 py-2.5 text-foreground focus:outline-none sm:w-auto cursor-pointer transition-all hover:brightness-110 active:scale-[0.98]"
@@ -256,6 +256,7 @@ export function HomeView() {
 
       {/* 3. How it works: Scroll-driven Blockchain Timeline */}
       <HowItWorksTimeline />
+      <Container className="pb-8"><Link href="/guide" className="inline-flex min-h-11 items-center gap-2 border border-primary bg-surface px-4 py-2 text-sm font-semibold text-primary">{t.nav.guide}<ArrowRight className="h-4 w-4" /></Link></Container>
 
       {/* 4. Featured rounds (by open status, then matching pool) */}
       <FeaturedRoundsSection />

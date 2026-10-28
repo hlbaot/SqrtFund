@@ -46,7 +46,7 @@ export type EnrichedProject = Project & {
 export function useProjects(customRoundAddress?: Address, options: { enabled?: boolean } = {}) {
   const enabled = options.enabled !== false;
   const polling = useVisiblePolling();
-  const { roundAddress: defaultRoundAddress, admin, finalized, confirmedBlock } = useRound(customRoundAddress);
+  const { roundAddress: defaultRoundAddress, admin, finalized, isCancelled, confirmedBlock } = useRound(customRoundAddress);
   const { address, isConnected, chainId } = useAccount();
   const viewer = isConnected && chainId === TARGET_CHAIN_ID ? address : undefined;
   const roundAddress = customRoundAddress || defaultRoundAddress;
@@ -167,6 +167,8 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
         supporterCount: Number(p.donorCount),
         totalDonated: totalDonatedNum,
         estimatedMatching: matchingNum,
+        fundingState: isCancelled ? "cancelled" : finalized ? "finalized" : "estimated",
+        matchingUnavailable: !estimatedMap.has(pIdStr),
         finalMatching: finalMatchingRaw === undefined ? undefined : Number(finalMatchingRaw) / 1_000_000,
         finalMatchingRaw,
         status: p.rejected ? "rejected" : p.approved ? "approved" : "pending",
@@ -183,7 +185,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     // Trang chi tiết và bảng xếp hạng dùng chung quy tắc, không lấy ID làm hạng.
     const ranks = new Map(rankProjects(mapped).map(project => [project.id, project.supporterRank]));
     return mapped.map(project => ({ ...project, rank: ranks.get(project.id) }));
-  }, [projectsData, estimatedMap, roundAddress, finalMap]);
+  }, [projectsData, estimatedMap, roundAddress, finalMap, finalized, isCancelled]);
 
   const knownEmptyRound = roundsStore(useShallow(state => Boolean(roundAddress && state.entities[roundAddress.toLowerCase()]?.fields?.results[11]?.result === 0n)));
   const mirroredProjects = projectsStore(useShallow(state => roundAddress ? state.projectsByRound[roundAddress.toLowerCase()] : undefined));

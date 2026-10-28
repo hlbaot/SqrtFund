@@ -1,3 +1,4 @@
+vi.mock("@/components/project/ContributionGuide", () => ({ ContributionGuide: () => createElement("div", null, "Các bước đóng góp") }));
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -5,18 +6,18 @@ import { maxUint256 } from "viem";
 import { copy } from "@/lib/copy";
 import { DonateBox } from "@/components/project/DonateBox";
 
-const f = vi.hoisted(() => ({ step: "idle", connected: true, input: "100", donated: 20_000_000n, legacy: false, balance: 500_000_000n }));
+const f = vi.hoisted(() => ({ roundStatus: "open", step: "idle", connected: true, input: "100", donated: 20_000_000n, legacy: false, balance: 500_000_000n }));
 vi.mock("react", async importOriginal => {
   const react = await importOriginal<typeof import("react")>();
   return { ...react, useState: (initial: unknown) => react.useState(initial === "1" ? f.input : initial === 1 ? Number(f.input) : initial) };
 });
 vi.mock("wagmi", () => ({
-  useAccount: () => ({ address: "0x1111111111111111111111111111111111111111", isConnected: f.connected }),
+  useAccount: () => ({ address: "0x1111111111111111111111111111111111111111", isConnected: f.connected, chainId: 43113 }),
   useReadContract: ({ functionName }: { functionName: string }) => ({ data: functionName === "donationOf" ? f.donated : 10_000_000n, refetch: vi.fn() }),
 }));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
 vi.mock("@/hooks/useRound", () => ({ useRound: () => ({
-  roundAddress: "0x2222222222222222222222222222222222222222", token: "token", status: "open", pool: 200_000_000n,
+  roundAddress: "0x2222222222222222222222222222222222222222", token: "token", status: f.roundStatus, pool: 200_000_000n,
   supportsPhase2: true, isCancelled: false, minDonation: f.legacy ? 1_000_000n : 1n,
   maxDonation: f.legacy ? 5_000_000n : maxUint256, maxPerRound: f.legacy ? 10_000_000n : maxUint256, maxMatchBps: 3000n, refetch: vi.fn(),
 }) }));
@@ -34,13 +35,14 @@ const project = { id: "1", name: "Project", roundId: "round", ownerAddress: "0x3
   status: "approved" as const, category: "technology" as const, shortDescription: "", description: "", contactUrl: "",
   supporterCount: 1, totalDonated: 20, estimatedMatching: 0, sumSqrtRaw: 0n, totalDonatedRaw: 20_000_000n };
 const render = () => renderToStaticMarkup(createElement(DonateBox, { project }));
-beforeEach(() => Object.assign(f, { step: "idle", connected: true, input: "100", donated: 0n, legacy: false, balance: 500_000_000n }));
+beforeEach(() => Object.assign(f, { roundStatus: "open", step: "idle", connected: true, input: "100", donated: 0n, legacy: false, balance: 500_000_000n }));
 it("requires wallet connection before showing donation controls even with cached account data", () => {
   f.connected = false;
   f.donated = 20_000_000n;
   const html = render();
   expect(html).toContain(copy.vi.common.walletRequired);
   expect(html).toContain(copy.vi.donateBox.notConnected);
+  expect(html).toContain("Các bước đóng góp");
   expect(html).toContain("<button");
   expect(html).not.toContain('disabled=""');
   expect(html).not.toContain('id="donation-amount"');
@@ -102,4 +104,9 @@ it("enforces the remaining cumulative project cap for a returning donor", () => 
   f.donated = 5_000_000n;
   expect(render()).toContain(copy.vi.donateBox.maxReachedTitle);
   expect(render().match(/<input[^>]*id="donation-amount"[^>]*>/)?.[0]).toContain('disabled=""');
+});
+
+it("explains a finalized round before asking an anonymous visitor to connect or contribute",()=>{
+ f.connected=false;f.roundStatus="finalized";const html=render();
+ expect(html).toContain("Round đã kết thúc");expect(html).toContain('href="#claim"');expect(html).not.toContain("Các bước đóng góp");expect(html).not.toContain('id="donation-amount"');
 });
