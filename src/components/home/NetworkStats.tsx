@@ -2,10 +2,19 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, Coins, Rocket } from "lucide-react";
-import { useBlockNumber } from "wagmi";
-import { useRound } from "@/hooks/useRound";
-import { useProjects } from "@/hooks/useProjects";
+import { Layers, Coins, Rocket } from "lucide-react";
+import { useQueries } from "@tanstack/react-query";
+import { usePublicClient } from "wagmi";
+import type { Address } from "viem";
+import { useFactoryRounds } from "@/hooks/useRound";
+import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
+import { useVisiblePolling } from "@/hooks/useVisiblePolling";
+import { readMirrorRound } from "@/lib/store/chainSync";
+import { roundsStore } from "@/lib/store/roundsStore";
+import { roundReadRetry } from "@/lib/contracts/roundReads";
+import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
+import { isPublicRound } from "@/lib/roundVisibility";
+import { QUERY_STALE_MS, QUERY_GC_MS } from "@/lib/queryPolicy";
 import { useLocale } from "@/lib/context/locale";
 import { formatNumber } from "@/lib/format";
 
@@ -49,33 +58,86 @@ function useCountUp(target: number, duration: number = 800, active: boolean = tr
   return value;
 }
 
+type Column = {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  unit?: string;
+  caption: string;
+  onClick: () => void;
+  visual: React.ReactNode;
+  footer: React.ReactNode;
+  badge?: string;
+};
+
+/**
+ * Platform-wide stats aggregated over every public round (not only the latest one).
+ */
 export function NetworkStats() {
   const router = useRouter();
   const { locale } = useLocale();
   const isVi = locale === "vi";
+  const nowSec = useCurrentTimestamp();
+  const polling = useVisiblePolling();
+  const client = usePublicClient({ chainId: TARGET_CHAIN_ID });
+  const { factoryData, isFactoryLoading, isFactoryError } = useFactoryRounds();
 
-  const {
-    pool,
-    isLoading: isRoundLoading,
-    isError: isRoundError,
-  } = useRound();
+  const addresses = useMemo(
+    () => ((factoryData?.[0]?.result as Address[] | undefined) ?? []).filter((a) => isPublicRound(a, TARGET_CHAIN_ID)),
+    [factoryData],
+  );
 
-  const {
-    projects,
-    isLoading: isProjectsLoading,
-    isError: isProjectsError,
-  } = useProjects();
+  const queries = useQueries({
+    queries: addresses.map((address) => ({
+      // Same key as useRound/useRegistrationRounds so the cache is shared.
+      queryKey: ["round-fields", TARGET_CHAIN_ID, address.toLowerCase()],
+      queryFn: async () => {
+        const head = await client!.getBlockNumber({ cacheTime: 0 });
+        const floor = roundsStore.getState().entities[address.toLowerCase()]?.confirmedBlock ?? 0n;
+        const confirmedBlock = head < floor ? floor : head;
+        return { ...(await readMirrorRound(client!, address, confirmedBlock)), confirmedBlock };
+      },
+      enabled: Boolean(client),
+      staleTime: QUERY_STALE_MS,
+      gcTime: QUERY_GC_MS,
+      refetchInterval: polling,
+      refetchIntervalInBackground: false,
+      ...roundReadRetry,
+    })),
+  });
 
-  const { data: blockNumber } = useBlockNumber({ watch: true });
+  const rounds = queries.map((q) => {
+    const r = q.data?.results;
+    const cancelled = r?.[15]?.result === true;
+    const finalized = r?.[8]?.result === true;
+    const endTime = r?.[3]?.result as bigint | undefined;
+    const ended = endTime !== undefined && nowSec > 0 && BigInt(nowSec) >= endTime;
+    return {
+      pool: cancelled ? 0 : Number((r?.[7]?.result as bigint | undefined) ?? 0n) / 1_000_000,
+      projects: Number((r?.[11]?.result as bigint | undefined) ?? 0n),
+      active: !cancelled && !finalized && !ended,
+      loaded: Boolean(r),
+    };
+  });
+
+  const totalRounds = addresses.length;
+  const activeRounds = rounds.filter((r) => r.active).length;
+  const totalPool = Math.round(rounds.reduce((a, r) => a + r.pool, 0));
+  const totalProjects = rounds.reduce((a, r) => a + r.projects, 0);
+  const maxPool = Math.max(1, ...rounds.map((r) => r.pool));
+
+  const isOffline = isFactoryError || queries.some((q) => q.isError);
+  const isLoading = isFactoryLoading || (totalRounds > 0 && rounds.some((r) => !r.loaded) && !isOffline);
+
   const [secondsAgo, setSecondsAgo] = useState(0);
   const [inView, setInView] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dataSignature = `${totalRounds}:${activeRounds}:${totalPool}:${totalProjects}`;
 
-  // IntersectionObserver to trigger count-up when section enters viewport
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -83,346 +145,184 @@ export function NetworkStats() {
           observer.disconnect();
         }
       },
-      { threshold: 0.15 }
+      { threshold: 0.15 },
     );
-
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
-  // Track seconds elapsed since last on-chain block update
+  // Seconds since the last data change
   useEffect(() => {
     const resetFrame = requestAnimationFrame(() => setSecondsAgo(0));
-    const interval = setInterval(() => {
-      setSecondsAgo((s) => s + 1);
-    }, 1000);
+    const interval = setInterval(() => setSecondsAgo((s) => s + 1), 1000);
     return () => { cancelAnimationFrame(resetFrame); clearInterval(interval); };
-  }, [blockNumber]);
+  }, [dataSignature]);
 
-  // Derived metrics
-  const approvedProjects = useMemo(() => projects.filter((p) => p.approved), [projects]);
-  const pendingProjectsCount = useMemo(() => projects.filter((p) => !p.approved).length, [projects]);
+  const animatedRounds = useCountUp(totalRounds, 800, inView);
+  const animatedPool = useCountUp(totalPool, 800, inView);
+  const animatedProjects = useCountUp(totalProjects, 800, inView);
 
-  const totalSupporters = useMemo(() => {
-    return approvedProjects.reduce((acc, p) => acc + p.supporterCount, 0);
-  }, [approvedProjects]);
-
-  const poolUsdc = useMemo(() => {
-    return pool ? Math.round(Number(pool) / 1_000_000) : 0;
-  }, [pool]);
-
-  const isLoading = isRoundLoading || isProjectsLoading;
-  const isOffline = isRoundError || isProjectsError;
-
-  // Count-up animated values
-  const animatedSupporters = useCountUp(totalSupporters, 800, inView);
-  const animatedPool = useCountUp(poolUsdc, 800, inView);
-  const animatedProjects = useCountUp(approvedProjects.length, 800, inView);
-
-  // On-chain data tick indicator
   const [tick, setTick] = useState(false);
   useEffect(() => {
-    if (inView) {
-      const frame = requestAnimationFrame(() => setTick(true));
-      const timer = setTimeout(() => setTick(false), 250);
-      return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
-    }
-  }, [totalSupporters, poolUsdc, approvedProjects.length, inView]);
+    if (!inView) return;
+    const frame = requestAnimationFrame(() => setTick(true));
+    const timer = setTimeout(() => setTick(false), 250);
+    return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
+  }, [dataSignature, inView]);
 
-  // Smooth scroll handler for internal page sections
-  const handleScrollTo = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+  const handleScrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+
+  const columns: Column[] = [
+    {
+      key: "rounds",
+      icon: <Layers className="h-4 w-4 text-muted" />,
+      label: isVi ? "VÒNG TÀI TRỢ" : "FUNDING ROUNDS",
+      value: animatedRounds,
+      caption: isVi ? "Tổng số vòng đã tạo" : "Total rounds created",
+      badge: activeRounds > 0 ? `${activeRounds} ${isVi ? "ĐANG MỞ" : "OPEN"}` : undefined,
+      onClick: () => router.push("/rounds"),
+      visual: (
+        <div className="flex h-6 items-center gap-1.5">
+          {Array.from({ length: 12 }).map((_, i) => {
+            const round = rounds[i];
+            const cls = !round
+              ? "border border-white/20 bg-transparent group-hover:border-white/40"
+              : round.active
+                ? "bg-primary shadow-[0_0_6px_rgba(232,65,66,0.5)]"
+                : "bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)]";
+            return <span key={i} className={`h-2 w-2 rounded-full transition-all duration-300 ${cls}`} style={{ transitionDelay: `${i * 30}ms` }} />;
+          })}
+        </div>
+      ),
+      footer: totalRounds === 0
+        ? (isVi ? "Chưa có vòng nào" : "No rounds yet")
+        : `${activeRounds} ${isVi ? "đang mở" : "open"} · ${totalRounds - activeRounds} ${isVi ? "đã kết thúc" : "ended"}`,
+    },
+    {
+      key: "pool",
+      icon: <Coins className="h-4 w-4 text-muted" />,
+      label: isVi ? "QUỸ ĐỐI ỨNG" : "MATCHING POOL",
+      value: animatedPool,
+      unit: "USDC",
+      caption: isVi ? "Tổng quỹ đối ứng của mọi vòng" : "Total matching pool across all rounds",
+      badge: totalPool > 0 ? "ACTIVE" : undefined,
+      onClick: () => handleScrollTo("current-round"),
+      visual: (
+        <div className="flex h-6 w-full items-center gap-[3px]">
+          {rounds.length === 0
+            ? Array.from({ length: 20 }).map((_, i) => <span key={i} className="h-1 flex-1 rounded-[1px] bg-white/12" />)
+            : rounds.map((r, i) => (
+              <span
+                key={i}
+                title={`${formatNumber(Math.round(r.pool))} USDC`}
+                className={`h-1 rounded-[1px] transition-all duration-300 ${r.pool > 0 ? "bg-primary shadow-[0_0_4px_rgba(232,65,66,0.6)]" : "bg-white/12"}`}
+                style={{ flex: Math.max(0.15, r.pool / maxPool) }}
+              />
+            ))}
+        </div>
+      ),
+      footer: totalPool === 0
+        ? <span className="font-medium tracking-wide text-primary">{isVi ? "CHỜ NẠP TIỀN ĐẦU TIÊN" : "AWAITING FIRST DEPOSIT"}</span>
+        : `${totalRounds} ${isVi ? "vòng" : "rounds"} · ${isVi ? "mỗi đoạn là một vòng" : "one segment per round"}`,
+    },
+    {
+      key: "projects",
+      icon: <Rocket className="h-4 w-4 text-muted" />,
+      label: isVi ? "DỰ ÁN" : "PROJECTS",
+      value: animatedProjects,
+      caption: isVi ? "Dự án đã đăng ký ở mọi vòng" : "Projects registered across all rounds",
+      badge: totalProjects > 0 ? `${totalProjects} ACTIVE` : undefined,
+      onClick: () => handleScrollTo("projects-list"),
+      visual: (
+        <div className="flex h-6 items-center gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <span
+              key={i}
+              className={`h-2.5 w-2.5 rounded-[2px] transition-all duration-300 ${i < totalProjects
+                ? "border border-primary bg-primary/20 shadow-[0_0_6px_rgba(232,65,66,0.3)] group-hover:scale-110"
+                : "border border-dashed border-white/20 bg-transparent group-hover:border-white/40"}`}
+              style={{ transitionDelay: `${i * 40}ms` }}
+            />
+          ))}
+        </div>
+      ),
+      footer: rounds.filter((r) => r.projects > 0).length > 0
+        ? `${rounds.filter((r) => r.projects > 0).length}/${totalRounds} ${isVi ? "vòng có dự án" : "rounds have projects"}`
+        : (isVi ? "Chưa có dự án" : "No projects yet"),
+    },
+  ];
 
   return (
     <div ref={containerRef} className="relative w-full">
-      {/* Unified "Metrics Bar" container */}
-      <div className="relative rounded-[4px] border border-white/12 bg-surface overflow-hidden text-white shadow-2xl transition-all duration-300">
-        {/* 4 Corner Brackets (8px x 8px Red #E84142) */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-[1px] -left-[1px] z-30 h-2 w-2 border-t-2 border-l-2 border-primary"
-        />
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-[1px] -right-[1px] z-30 h-2 w-2 border-t-2 border-r-2 border-primary"
-        />
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-[1px] -left-[1px] z-30 h-2 w-2 border-b-2 border-l-2 border-primary"
-        />
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-[1px] -right-[1px] z-30 h-2 w-2 border-b-2 border-r-2 border-primary"
-        />
+      <div className="relative overflow-hidden rounded-[4px] border border-white/12 bg-surface text-white shadow-2xl transition-all duration-300">
+        <span aria-hidden="true" className="pointer-events-none absolute -top-[1px] -left-[1px] z-30 h-2 w-2 border-t-2 border-l-2 border-primary" />
+        <span aria-hidden="true" className="pointer-events-none absolute -top-[1px] -right-[1px] z-30 h-2 w-2 border-t-2 border-r-2 border-primary" />
+        <span aria-hidden="true" className="pointer-events-none absolute -bottom-[1px] -left-[1px] z-30 h-2 w-2 border-b-2 border-l-2 border-primary" />
+        <span aria-hidden="true" className="pointer-events-none absolute -bottom-[1px] -right-[1px] z-30 h-2 w-2 border-b-2 border-r-2 border-primary" />
 
-        {/* 1. TOP BAR (32px high, bg-white/[0.02], border-b border-white/12) */}
         <div className="relative z-10 flex h-8 items-center justify-between border-b border-white/12 bg-white/[0.02] px-4 font-mono text-xs">
-          {/* Left: ● LIVE or ● OFFLINE */}
           <div className="flex items-center gap-2">
             {isOffline ? (
               <>
-                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                <span className="font-semibold tracking-[0.08em] text-primary">
-                  {isVi ? "OFFLINE · ĐANG THỬ LẠI" : "OFFLINE · RETRYING"}
-                </span>
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                <span className="font-semibold tracking-[0.08em] text-primary">{isVi ? "OFFLINE · ĐANG THỬ LẠI" : "OFFLINE · RETRYING"}</span>
               </>
             ) : (
               <>
-                <span className="h-1.5 w-1.5 rounded-full bg-money animate-pulse" />
-                <span className="font-semibold tracking-[0.08em] text-muted">
-                  LIVE
-                </span>
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-money" />
+                <span className="font-semibold tracking-[0.08em] text-muted">LIVE</span>
               </>
             )}
           </div>
-
-          {/* Right: Real update time */}
-          <div className="text-muted tracking-[0.05em]">
-            <span>
-              {isVi ? `CẬP NHẬT ${secondsAgo}S TRƯỚC` : `UPDATED ${secondsAgo}S AGO`}
-            </span>
+          <div className="tracking-[0.05em] text-muted">
+            <span>{isVi ? `CẬP NHẬT ${secondsAgo}S TRƯỚC` : `UPDATED ${secondsAgo}S AGO`}</span>
           </div>
         </div>
 
-        {/* 2. THREE UNIFIED METRIC COLUMNS (Divided by 1px borders, no gaps) */}
         <div className="relative z-10 grid grid-cols-1 divide-y divide-white/12 md:grid-cols-3 md:divide-y-0 md:divide-x">
-          {/* COLUMN 1: SUPPORTERS */}
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => router.push("/my/activity")}
-            onKeyDown={(e) => e.key === "Enter" && router.push("/my/activity")}
-            className="group relative flex flex-col justify-between overflow-hidden p-6 lg:p-8 cursor-pointer transition-all duration-300 hover:bg-white/[0.015]"
-          >
-            {/* Column hover outline highlight */}
-            <div className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-300 group-hover:border-primary/60 z-20" />
-
-            {/* Giant watermark number behind column */}
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute -bottom-6 -right-4 font-mono font-black text-[140px] lg:text-[180px] xl:text-[200px] leading-none text-white/[0.03] select-none z-0 hidden lg:block"
+          {columns.map((col) => (
+            <div
+              key={col.key}
+              role="button"
+              tabIndex={0}
+              onClick={col.onClick}
+              onKeyDown={(e) => e.key === "Enter" && col.onClick()}
+              className="group relative flex cursor-pointer flex-col justify-between overflow-hidden p-6 transition-all duration-300 hover:bg-white/[0.015] lg:p-8"
             >
-              {totalSupporters}
-            </span>
-
-            {/* Row 1: Icon + Mono Label + Trend Chip */}
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-muted">
-                <Users className="h-4 w-4 text-muted" />
-                <span>{isVi ? "NGƯỜI ỦNG HỘ" : "SUPPORTERS"}</span>
-              </div>
-
-              {/* Trend chip: +1 TODAY or ACTIVE */}
-              {totalSupporters > 0 && (
-                <span className="font-mono text-xs text-money border border-money/40 bg-money/10 px-1.5 py-0.5 rounded-[2px] tracking-wider">
-                  +1 TODAY
-                </span>
-              )}
-            </div>
-
-            {/* Row 2: Main Number (Always White) */}
-            <div className="relative z-10 my-4 sm:my-6">
-              <div
-                className={`font-mono font-bold text-white tracking-[-0.03em] tabular-nums text-4xl sm:text-5xl md:text-5xl lg:text-7xl xl:text-8xl leading-none transition-transform duration-250 ${tick ? "translate-y-2 opacity-80" : "translate-y-0 opacity-100"
-                  }`}
+              <div className="pointer-events-none absolute inset-0 z-20 border border-transparent transition-colors duration-300 group-hover:border-primary/60" />
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -bottom-6 -right-4 z-0 hidden select-none font-mono text-[140px] font-black leading-none text-white/[0.03] lg:block lg:text-[180px] xl:text-[200px]"
               >
-                {isLoading ? "—" : formatNumber(animatedSupporters)}
-              </div>
-              <p className="mt-2 text-sm text-muted">
-                {isVi ? "Sinh viên ủng hộ" : "Student supporters"}
-              </p>
-            </div>
+                {col.value}
+              </span>
 
-            {/* Row 3: Mini-visual Slots (12 dots 8px) */}
-            <div className="relative z-10 mt-auto pt-3 border-t border-white/[0.06]">
-              <div className="flex items-center gap-1.5 h-6">
-                {Array.from({ length: 12 }).map((_, i) => {
-                  const isFilled = i < Math.min(12, totalSupporters);
-                  return (
-                    <span
-                      key={i}
-                      className={`h-2 w-2 rounded-full transition-all duration-300 ${isFilled
-                          ? "bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] group-hover:scale-110"
-                          : "border border-white/20 bg-transparent group-hover:border-white/40"
-                        }`}
-                      style={{ transitionDelay: `${i * 30}ms` }}
-                    />
-                  );
-                })}
-              </div>
-
-              <div className="mt-2 font-mono text-xs text-muted flex items-center justify-between">
-                <span>
-                  {totalSupporters === 0
-                    ? isVi
-                      ? "Hãy là người đầu tiên ủng hộ →"
-                      : "Be the first to donate →"
-                    : isVi
-                      ? `${totalSupporters} / 12 để mở khóa thưởng`
-                      : `${totalSupporters} / 12 to unlock bonus`}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* COLUMN 2: MATCHING POOL */}
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => handleScrollTo("current-round")}
-            onKeyDown={(e) => e.key === "Enter" && handleScrollTo("current-round")}
-            className="group relative flex flex-col justify-between overflow-hidden p-6 lg:p-8 cursor-pointer transition-all duration-300 hover:bg-white/[0.015]"
-          >
-            {/* Column hover outline highlight */}
-            <div className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-300 group-hover:border-primary/60 z-20" />
-
-            {/* Giant watermark number behind column */}
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute -bottom-6 -right-4 font-mono font-black text-[140px] lg:text-[180px] xl:text-[200px] leading-none text-white/[0.03] select-none z-0 hidden lg:block"
-            >
-              {poolUsdc}
-            </span>
-
-            {/* Row 1: Icon + Mono Label */}
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-muted">
-                <Coins className="h-4 w-4 text-muted" />
-                <span>{isVi ? "QUỸ ĐỐI ỨNG" : "MATCHING POOL"}</span>
-              </div>
-
-              {poolUsdc > 0 && (
-                <span className="font-mono text-xs text-money border border-money/40 bg-money/10 px-1.5 py-0.5 rounded-[2px] tracking-wider">
-                  ACTIVE
-                </span>
-              )}
-            </div>
-
-            {/* Row 2: Main Number (Always White, Unit 20px Gray) */}
-            <div className="relative z-10 my-4 sm:my-6">
-              <div
-                className={`flex items-baseline font-mono font-bold text-white tracking-[-0.03em] tabular-nums text-4xl sm:text-5xl md:text-5xl lg:text-7xl xl:text-8xl leading-none transition-transform duration-250 ${tick ? "translate-y-2 opacity-80" : "translate-y-0 opacity-100"
-                  }`}
-              >
-                <span>{isLoading ? "—" : formatNumber(animatedPool)}</span>
-                <span className="ml-2 font-mono text-lg lg:text-xl font-normal text-muted tracking-normal">
-                  USDC
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-muted">
-                {isVi ? "Quỹ đối ứng USDC" : "USDC matching pool"}
-              </p>
-            </div>
-
-            {/* Row 3: Mini-visual Slots (4px horizontal bar divided into 20 segments) */}
-            <div className="relative z-10 mt-auto pt-3 border-t border-white/[0.06]">
-              <div className="flex items-center gap-[3px] h-6 w-full">
-                {Array.from({ length: 20 }).map((_, i) => {
-                  const targetPool = 1000;
-                  const filledCount = Math.min(20, Math.round((poolUsdc / targetPool) * 20));
-                  const isFilled = i < filledCount;
-                  return (
-                    <span
-                      key={i}
-                      className={`h-1 flex-1 rounded-[1px] transition-all duration-300 ${isFilled
-                          ? "bg-primary shadow-[0_0_4px_rgba(232,65,66,0.6)]"
-                          : "bg-white/12 group-hover:bg-white/20"
-                        }`}
-                      style={{ transitionDelay: `${i * 20}ms` }}
-                    />
-                  );
-                })}
-              </div>
-
-              <div className="mt-2 font-mono text-xs">
-                {poolUsdc === 0 ? (
-                  <span className="text-primary tracking-wide font-medium">
-                    {isVi ? "CHỜ NẠP TIỀN ĐẦU TIÊN" : "AWAITING FIRST DEPOSIT"}
-                  </span>
-                ) : (
-                  <span className="text-muted">
-                    {formatNumber(poolUsdc)} / 1,000 USDC {isVi ? "mục tiêu" : "target"}
-                  </span>
+              <div className="relative z-10 flex items-center justify-between">
+                <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                  {col.icon}
+                  <span>{col.label}</span>
+                </div>
+                {col.badge && (
+                  <span className="rounded-[2px] border border-money/40 bg-money/10 px-1.5 py-0.5 font-mono text-xs tracking-wider text-money">{col.badge}</span>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* COLUMN 3: PROJECTS */}
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => handleScrollTo("projects-list")}
-            onKeyDown={(e) => e.key === "Enter" && handleScrollTo("projects-list")}
-            className="group relative flex flex-col justify-between overflow-hidden p-6 lg:p-8 cursor-pointer transition-all duration-300 hover:bg-white/[0.015]"
-          >
-            {/* Column hover outline highlight */}
-            <div className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-300 group-hover:border-primary/60 z-20" />
-
-            {/* Giant watermark number behind column */}
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute -bottom-6 -right-4 font-mono font-black text-[140px] lg:text-[180px] xl:text-[200px] leading-none text-white/[0.03] select-none z-0 hidden lg:block"
-            >
-              {approvedProjects.length}
-            </span>
-
-            {/* Row 1: Icon + Mono Label */}
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-muted">
-                <Rocket className="h-4 w-4 text-muted" />
-                <span>{isVi ? "DỰ ÁN" : "PROJECTS"}</span>
+              <div className="relative z-10 my-4 sm:my-6">
+                <div
+                  className={`flex items-baseline font-mono text-4xl font-bold leading-none tracking-[-0.03em] tabular-nums text-white transition-transform duration-250 sm:text-5xl lg:text-7xl xl:text-8xl ${tick ? "translate-y-2 opacity-80" : "translate-y-0 opacity-100"}`}
+                >
+                  <span>{isLoading ? "—" : formatNumber(col.value)}</span>
+                  {col.unit && <span className="ml-2 font-mono text-lg font-normal tracking-normal text-muted lg:text-xl">{col.unit}</span>}
+                </div>
+                <p className="mt-2 text-sm text-muted">{col.caption}</p>
               </div>
 
-              {approvedProjects.length > 0 && (
-                <span className="font-mono text-xs text-money border border-money/40 bg-money/10 px-1.5 py-0.5 rounded-[2px] tracking-wider">
-                  {approvedProjects.length} ACTIVE
-                </span>
-              )}
-            </div>
-
-            {/* Row 2: Main Number (Always White) */}
-            <div className="relative z-10 my-4 sm:my-6">
-              <div
-                className={`font-mono font-bold text-white tracking-[-0.03em] tabular-nums text-4xl sm:text-5xl md:text-5xl lg:text-7xl xl:text-8xl leading-none transition-transform duration-250 ${tick ? "translate-y-2 opacity-80" : "translate-y-0 opacity-100"
-                  }`}
-              >
-                {isLoading ? "—" : formatNumber(animatedProjects)}
-              </div>
-              <p className="mt-2 text-sm text-muted">
-                {isVi ? "Dự án đã duyệt" : "Approved projects"}
-              </p>
-            </div>
-
-            {/* Row 3: Mini-visual Slots (Row of 6 square boxes 10px) */}
-            <div className="relative z-10 mt-auto pt-3 border-t border-white/[0.06]">
-              <div className="flex items-center gap-2 h-6">
-                {Array.from({ length: 6 }).map((_, i) => {
-                  const isApproved = i < approvedProjects.length;
-                  return (
-                    <span
-                      key={i}
-                      className={`h-2.5 w-2.5 rounded-[2px] transition-all duration-300 ${isApproved
-                          ? "border border-primary bg-primary/20 shadow-[0_0_6px_rgba(232,65,66,0.3)] group-hover:scale-110"
-                          : "border border-dashed border-white/20 bg-transparent group-hover:border-white/40"
-                        }`}
-                      style={{ transitionDelay: `${i * 40}ms` }}
-                    />
-                  );
-                })}
-              </div>
-
-              <div className="mt-2 font-mono text-xs text-muted">
-                {approvedProjects.length} {isVi ? "đã duyệt" : "approved"}
-                <span className="mx-1.5">·</span>
-                {pendingProjectsCount} {isVi ? "đang chờ" : "pending"}
+              <div className="relative z-10 mt-auto border-t border-white/[0.06] pt-3">
+                {col.visual}
+                <div className="mt-2 font-mono text-xs text-muted">{col.footer}</div>
               </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

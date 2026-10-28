@@ -1,19 +1,18 @@
 <p align="center">
-  <img src="public/brand/npower-horizontal.png" alt="Logo N-Power" width="480" />
+  <img src="public/brand/logo_sqrtfund.png" alt="Logo SqrtFund" width="480" />
 </p>
 
-<h1 align="center">N-Power</h1>
+<h1 align="center">SqrtFund</h1>
 
 <p align="center">Nền tảng Quadratic Funding cho câu lạc bộ và dự án sinh viên trên Avalanche.</p>
 
 <p align="center">
   <a href="https://www.sqrtfund.tech/">Ứng dụng</a> ·
   <a href="https://www.canva.com/design/DAHYhkwRwHU/_L6w-_FjVNtWDEsDq29LGw/edit">Slide giới thiệu</a> ·
-  <a href="#cài-đặt-và-chạy-local">Cài đặt</a> ·
-  <a href="#tài-liệu">Tài liệu</a>
+  <a href="#">Thuyết trình (video)</a>
 </p>
 
-**N-Power** giúp sinh viên gây quỹ cho ý tưởng của mình và cùng quyết định những dự án nên nhận thêm tài trợ. Nhà tổ chức cung cấp một quỹ đối ứng, sinh viên đóng góp cho dự án quan tâm, còn hợp đồng thông minh tính khoản tài trợ bổ sung theo cơ chế **Quadratic Funding (QF)**.
+**SqrtFund** giúp sinh viên gây quỹ cho ý tưởng của mình và cùng quyết định những dự án nên nhận thêm tài trợ. Nhà tổ chức cung cấp một quỹ đối ứng, sinh viên đóng góp cho dự án quan tâm, còn hợp đồng thông minh tính khoản tài trợ bổ sung theo cơ chế **Quadratic Funding (QF)**.
 
 Ở cùng tổng tiền đóng góp, một dự án có nhiều người ủng hộ có thể nhận mức đối ứng cao hơn dự án chỉ nhận vài khoản góp lớn. Các khoản góp và kết quả phân bổ được ghi nhận trên blockchain để người tham gia có thể đối chiếu.
 
@@ -31,7 +30,7 @@
 
 Các nhóm sinh viên cần kinh phí cho hoạt động câu lạc bộ, nghiên cứu và sản phẩm thử nghiệm. Nếu chỉ xét tổng tiền gây quỹ, một số khoản góp lớn có thể lấn át sự quan tâm của nhiều sinh viên đóng góp ít hơn. Việc theo dõi cách phân bổ quỹ cũng khó khăn khi dữ liệu nằm rải rác.
 
-N-Power tổ chức việc gây quỹ thành từng **vòng tài trợ** với thời gian, ngân sách và giới hạn đóng góp cụ thể. Sinh viên đã xác minh chọn dự án để ủng hộ. Khi vòng kết thúc, hệ thống tính phần quỹ đối ứng theo quy tắc đã thiết lập.
+SqrtFund tổ chức việc gây quỹ thành từng **vòng tài trợ** với thời gian, ngân sách và giới hạn đóng góp cụ thể. Sinh viên đã xác minh chọn dự án để ủng hộ. Khi vòng kết thúc, hệ thống tính phần quỹ đối ứng theo quy tắc đã thiết lập.
 
 ### Chức năng hiện có trong mã nguồn
 
@@ -249,7 +248,7 @@ SqrtFund/
 │   ├── hooks/             # Truy vấn, ví và thao tác contract
 │   ├── lib/               # Toán QF, API, store, xác thực và logic server
 │   └── views/             # Các màn hình chính
-├── public/brand/          # Logo và nhận diện N-Power
+├── public/brand/          # Logo và nhận diện SqrtFund
 ├── realtime/              # Socket.IO service và worker đọc sự kiện blockchain
 ├── scripts/               # Kiểm tra cấu hình, keeper và công cụ hỗ trợ
 ├── supabase/migrations/   # Schema, hàm SQL và quyền truy cập database
@@ -258,19 +257,3 @@ SqrtFund/
 └── .env.example           # Mẫu cấu hình, không chứa khóa thật
 ```
 
-## Tài liệu
-
-| Nội dung | Tài liệu |
-| --- | --- |
-| Hợp đồng và lệnh Foundry | [Smart contracts](contracts/README.md) |
-| Nạp quỹ trước khi tạo vòng | [Prefunded Factory](docs/prefunded-factory-deployment.md) |
-| Quyền quản trị nền tảng | [Platform Admin](docs/platform-admin-access.md) |
-| Công thức và quyết toán quỹ | [Matching settlement](docs/matching-settlement.md) |
-| Liên kết email với ví | [Email–wallet identity](docs/email-wallet-identity.md) |
-| Chính sách tên miền | [Student domain policy](docs/student-domain-policy.md) |
-| Upload ảnh có xác thực và quota | [SF-03](docs/sf03-upload-auth-quota.md) |
-| Lưu đơn và xét duyệt bền vững | [SF-04](docs/sf04-durable-organizer-applications.md) |
-| Thông báo | [Realtime notifications](docs/realtime-notifications.md) |
-| Tự động chốt vòng | [Finalize keeper](docs/finalize-keeper.md) |
-| Kiểm tra và bản build | [CI](docs/ci.md) |
-| Triển khai website | [Vercel CD](docs/vercel-cd.md) |

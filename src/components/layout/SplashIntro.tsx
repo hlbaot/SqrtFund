@@ -49,10 +49,10 @@ export function SplashIntro({ initialLocale = "vi" }: { initialLocale?: "en" | "
       <div className="relative z-10 flex w-full max-w-[min(34rem,100%)] flex-col items-center text-center">
         <div className="splash-logo-wrap flex flex-col items-center">
           <Image
-            src="/brand/npower-logo.png"
-            alt="N-Power"
+            src="/brand/logo_sqrtfund.png"
+            alt="SqrtFund"
             width={200}
-            height={155}
+            height={100}
             priority
             aria-hidden="true"
             className="h-auto w-36 sm:w-44 object-contain"

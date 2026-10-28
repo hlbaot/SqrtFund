@@ -31,7 +31,7 @@ describe.each(["vi", "en"] as const)("metadata in %s", locale => {
     const result = metadataForPage(page, locale);
     expect(result.title).toBe(seoCopy[locale][page][0]); expect(result.description).toBe(seoCopy[locale][page][1]);
     expect(result.alternates?.canonical).toBeInstanceOf(URL);
-    expect(result.openGraph).toEqual(expect.objectContaining({ siteName: "N-Power", locale: locale === "vi" ? "vi_VN" : "en_US", images: [expect.objectContaining({ width: 1200, height: 630 })] }));
+    expect(result.openGraph).toEqual(expect.objectContaining({ siteName: "SqrtFund", locale: locale === "vi" ? "vi_VN" : "en_US", images: [expect.objectContaining({ width: 1200, height: 630 })] }));
     expect(result.twitter).toEqual(expect.objectContaining({ card: "summary_large_image" }));
   });
 });
