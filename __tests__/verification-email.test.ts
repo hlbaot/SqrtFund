@@ -3,7 +3,7 @@ import { buildVerificationEmail } from "@/lib/verify/emailTemplate";
 describe("branded verification email", () => {
   it("preserves a leading-zero code and includes bilingual expiry/instructions and a text alternative", () => {
     const email = buildVerificationEmail("012345");
-    expect(email.subject).toBe("Mã xác thực N-Power / N-Power verification code");
+    expect(email.subject).toBe("Mã xác thực SqrtFund / SqrtFund verification code");
     expect(email.html).toContain(">012345</p>");
     expect(email.text).toContain("012345");
     expect(email.text).toContain("Valid for 5 minutes");

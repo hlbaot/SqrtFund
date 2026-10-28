@@ -24,10 +24,10 @@ export function Footer() {
             aria-label="N-Power"
           >
             <Image
-              src="/brand/npower-horizontal.png"
-              alt="N-Power"
-              width={170}
-              height={32}
+              src="/brand/logo_sqrtfund.png"
+              alt="SqrtFund"
+              width={128}
+              height={64}
               className="h-8 w-auto shrink-0 object-contain"
             />
           </Link>
