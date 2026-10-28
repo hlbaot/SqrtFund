@@ -1,4 +1,9 @@
 "use client";
+import { projectFunding } from "@/lib/projectFunding";
+import { ContributionOverview } from "@/components/project/ContributionGuide";
+import { ProjectClaimPanel } from "@/components/project/ProjectClaimPanel";
+import { FundingBreakdown } from "@/components/project/FundingBreakdown";
+import { ProjectProfilePanel } from "@/components/project/ProjectProfilePanel";
 import { ExplorerLink } from "@/components/tx/ExplorerLink";
 import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
 
@@ -16,10 +21,8 @@ import { ProjectDetailSkeleton } from "@/components/common/PageSkeletons";
 import { ErrorState } from "@/components/common/ErrorState";
 import { Badge } from "@/components/ui/Badge";
 import { Container } from "@/components/layout/Container";
-import { formatUsdc, formatUsdcFixed, shortAddress } from "@/lib/format";
-import { Stat, StatGroup } from "@/components/common/Stat";
+import { formatUsdcFixed } from "@/lib/format";
 import { fmt } from "@/lib/copy";
-import { InfoTooltip } from "@/components/leaderboard/Primitives";
 import {
   ArrowLeft,
   ExternalLink,
@@ -28,7 +31,6 @@ import {
   Cpu,
   Leaf,
   Music,
-  User,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
@@ -40,7 +42,7 @@ export function ProjectDetailView() {
   const customRoundAddress = rawRoundId.startsWith("0x") ? (rawRoundId as Address) : undefined;
 
   const { t, locale } = useLocale();
-  const { roundAddress, isCancelled, isLoading: isRoundLoading, isError: isRoundError } = useRound(customRoundAddress);
+  const { roundAddress, finalized, isCancelled, status: roundStatus, isLoading: isRoundLoading, isError: isRoundError } = useRound(customRoundAddress);
   const { projects, isLoading: isProjectsLoading, isError: isProjectsError, refetch } = useProjects(roundAddress);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -75,6 +77,7 @@ export function ProjectDetailView() {
     );
   }
 
+  const funding = projectFunding(project,finalized,isCancelled);
   const CategoryIcon = {
     education: BookOpen,
     technology: Cpu,
@@ -98,6 +101,8 @@ export function ProjectDetailView() {
           <span>{t.projectDetail.backToRound}</span>
         </Link>
       </div>
+
+      {project.status === "approved" && roundStatus === "open" && !isCancelled && <ContributionOverview expanded={mobileDrawerOpen} onOpen={()=>setMobileDrawerOpen(true)} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left column: Single Unified Project Details Card */}
@@ -168,54 +173,10 @@ export function ProjectDetailView() {
               <ExplorerLink address={roundAddress} label={t.onChain.roundContract} />
             </div>
 
-            {/* 2. Key Metrics Grid (4 columns on desktop, 2 on mobile) */}
-            <StatGroup columns={4} className="my-2">
-              <Stat
-                label={t.projectCard.directDonations}
-                value={formatUsdcFixed(project.totalDonated, { includeSymbol: false })}
-                unit="USDC"
-                tone="default"
-                title={formatUsdc(project.totalDonated)}
-              />
-              <Stat
-                label={t.projectCard.matchingEstimated}
-                value={formatUsdcFixed(project.estimatedMatching, { includeSymbol: false })}
-                unit="USDC"
-                tone="money"
-                title={formatUsdc(project.estimatedMatching)}
-              />
-              <Stat
-                label={
-                  <span className="inline-flex items-center gap-1">
-                    <span>{t.common.supporters}</span>
-                    <InfoTooltip
-                      label={t.common.supporters}
-                      className="h-4 w-4"
-                    >
-                      {t.projectDetail.qfSupporterTooltip}
-                    </InfoTooltip>
-                  </span>
-                }
-                value={
-                  <span className="inline-flex items-center gap-1.5 text-money">
-                    <User className="h-4 w-4 shrink-0 text-money" aria-hidden="true" />
-                    <span>x{project.supporterCount}</span>
-                  </span>
-                }
-                tone="money"
-                title={`${project.supporterCount} ${t.common.supporters}`}
-              />
-              <Stat
-                label={t.competition.project}
-                value={
-                  <span className="truncate max-w-[160px] block" title={project.name}>
-                    {project.name}
-                  </span>
-                }
-                tone="default"
-                title={project.name}
-              />
-            </StatGroup>
+            <FundingBreakdown project={project} finalized={finalized} cancelled={isCancelled} />
+            <p className="text-sm text-muted">{project.supporterCount} {t.common.supporters}</p>
+            <ProjectProfilePanel project={project} roundAddress={roundAddress} />
+            <ProjectClaimPanel project={project} round={roundAddress} finalized={finalized} cancelled={isCancelled} onClaimed={()=>void refetch()} />
 
             {/* Divider */}
             <div className="border-t border-line" />
@@ -264,13 +225,14 @@ export function ProjectDetailView() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <span className="role-label block text-muted">
-              {t.projectCard.matchingEstimated}
+              {locale === "vi" ? (isCancelled ? "Round đã hủy" : finalized ? "Tổng đã chốt" : "Tổng dự kiến nhận") : (isCancelled ? "Round cancelled" : finalized ? "Final total" : "Estimated total")}
             </span>
             <span className="role-value-md text-money block">
-              {formatUsdcFixed(project.estimatedMatching)}
+              {isCancelled || funding.total === undefined ? "—" : formatUsdcFixed(funding.total)}
             </span>
           </div>
 
+          {isCancelled ? <a href="#refund" className="border border-primary bg-primary px-4 py-2 text-xs font-bold text-white">{locale === "vi" ? "Xem hoàn tiền" : "View refunds"}</a> : finalized ? <a href="#claim" className="border border-primary bg-primary px-4 py-2 text-xs font-bold text-white">{locale === "vi" ? "Trạng thái nhận tiền" : "Claim status"}</a> : roundStatus === "closed" ? <Link href={`/round/${roundAddress}`} className="border border-line px-4 py-2 text-xs font-bold">{locale === "vi" ? "Chờ chốt kết quả" : "Awaiting finalization"}</Link> : (
           <button
             type="button"
             onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
@@ -279,10 +241,11 @@ export function ProjectDetailView() {
             <span>{isCancelled ? t.cancellation.banner : mobileDrawerOpen ? t.projectDetail.closeDrawer : t.donateBox.title}</span>
             {mobileDrawerOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
+          )}
         </div>
 
-        {mobileDrawerOpen && (
-          <div className="mt-4 pt-4 border-t border-line max-h-[75vh] overflow-y-auto">
+        {mobileDrawerOpen && roundStatus === "open" && (
+          <div id="mobile-contribution-panel" className="mt-4 pt-4 border-t border-line max-h-[75vh] overflow-y-auto">
             <DonateBox project={project} roundAddress={roundAddress} />
           </div>
         )}

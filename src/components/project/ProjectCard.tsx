@@ -1,5 +1,6 @@
 "use client";
 
+import { FundingBreakdown } from "./FundingBreakdown";
 import React, { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -7,10 +8,8 @@ import { isAddress, type Address } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import type { Project } from "@/types";
-import { formatUsdc, formatUsdcFixed } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
 import { SupporterMarks } from "./SupporterMarks";
-import { Stat, StatGroup } from "@/components/common/Stat";
 import { Badge } from "@/components/ui/Badge";
 import { Frame } from "@/components/ui/Frame";
 import { GradientBorder } from "@/components/ui/GradientBorder";
@@ -169,22 +168,7 @@ export function ProjectCard({
       </div>
 
       {/* 3. USDC Donated & 4. Estimated Matching */}
-      <StatGroup columns={2} className="my-3">
-        <Stat
-          label={t.projectCard.directDonations}
-          value={formatUsdcFixed(project.totalDonated, { includeSymbol: false })}
-          unit="USDC"
-          tone="default"
-          title={formatUsdc(project.totalDonated)}
-        />
-        <Stat
-          label={t.projectCard.matchingEstimated}
-          value={formatUsdcFixed(project.estimatedMatching, { includeSymbol: false })}
-          unit="USDC"
-          tone="money"
-          title={formatUsdc(project.estimatedMatching)}
-        />
-      </StatGroup>
+      <FundingBreakdown project={project} compact />
 
       {/* Action Buttons */}
       <div className="mt-4 pt-1 flex items-center gap-2">

@@ -64,3 +64,10 @@ it.each(["organizer", "admin"])("hides project registration on navbar for %s but
   expect(html).toContain('href="/my"');
   expect(html).not.toContain('href="/admin?tab=platform"');
 });
+
+it("does not include the guide link in the navbar", () => {
+  f.connected = false;
+  const html = renderToStaticMarkup(createElement(Navbar));
+  expect(html).not.toContain('href="/guide"');
+});
+

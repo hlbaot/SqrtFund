@@ -8,6 +8,7 @@ import { SiteChainLatticeBackground } from "@/components/background/DeferredLatt
 import { Suspense } from "react";
 import { getRequestLocale, pageMetadata } from "@/lib/seo.server";
 import { NavigationProgress } from "@/components/layout/NavigationProgress";
+import { AutoOnboardingTour } from "@/components/onboarding/AutoOnboardingTour";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -57,6 +58,7 @@ export default async function RootLayout({
               {children}
             </main>
             <Footer />
+            <AutoOnboardingTour />
           </Providers>
         </div>
       </body>

@@ -6,12 +6,12 @@ import { buildNotificationItems } from "@/lib/notifications";
 import type { NotificationItem } from "@/lib/notifications";
 
 type Read = (call: { address: Address; abi: Abi; functionName: string; args?: readonly unknown[] }) => Promise<unknown>;
-type RawProject = { id: bigint; owner: Address; name: string; approved: boolean; rejected?: boolean };
+type RawProject = { id: bigint; owner: Address; name: string; approved: boolean; rejected?: boolean; claimed?:boolean; totalDonated?:bigint };
 export type RoundNotificationSnapshot = {
   roundAddress: Address; admin: Address; endTime: bigint; finalized: boolean; isCancelled: boolean;
-  hasDonated?: boolean;
+  hasDonated?: boolean; refundTotal?:bigint;
   projects: { id: string; name: string; ownerAddress: Address; approved: boolean; rejected: boolean;
-    claimed: boolean; totalDonatedRaw: bigint; estimatedMatchingRaw: bigint }[];
+    claimed: boolean; totalDonatedRaw: bigint; estimatedMatchingRaw: bigint; finalMatchingRaw?: bigint }[];
 };
 
 /** Đọc hết các trang, gồm Round cũ; lỗi RPC không được hiểu là danh sách rỗng. */
@@ -33,18 +33,23 @@ export async function loadRoundNotificationSnapshot(read: Read, address: Address
     for (const project of page) projects.push({
       id: project.id.toString(), name: project.name, ownerAddress: project.owner,
       approved: project.approved, rejected: project.rejected === true,
-      claimed: false, totalDonatedRaw: 0n, estimatedMatchingRaw: 0n,
+      claimed: project.claimed === true, totalDonatedRaw: project.totalDonated ?? 0n, estimatedMatchingRaw: 0n,
     });
     offset += BigInt(page.length);
     if (offset >= total) break;
     if (!page.length) throw new Error("Incomplete project page");
   }
-  const donated = wallet && wallet.toLowerCase() !== String(admin).toLowerCase() ? await Promise.all(projects.map(async project => {
+  if (finalized === true && !isCancelled && wallet) await Promise.all(projects.filter(p=>p.ownerAddress.toLowerCase()===wallet.toLowerCase() && p.approved && !p.rejected && !p.claimed).map(async project=>{
+    const payout=await get("payoutOf",[BigInt(project.id)]);
+    if(typeof payout!=="bigint")throw new Error("Invalid payout response");
+    project.finalMatchingRaw=payout;
+  }));
+  const donated = wallet ? await Promise.all(projects.map(async project => {
     const amount = await get("donationOf", [wallet, BigInt(project.id)]);
     if (typeof amount !== "bigint") throw new Error("Invalid donation response");
-    return amount > 0n;
+    return amount;
   })) : [];
-  return { roundAddress: address, admin: admin as Address, endTime: endTime as bigint, hasDonated: donated.some(Boolean),
+  return { roundAddress: address, admin: admin as Address, endTime: endTime as bigint, hasDonated: donated.some(amount=>amount>0n), refundTotal: isCancelled ? donated.reduce((sum,amount)=>sum+amount,0n) : 0n,
     finalized: finalized === true, isCancelled, projects };
 }
 
@@ -62,5 +67,5 @@ export function roundLifecycleNotificationItems(snapshot: RoundNotificationSnaps
 
 export function roundProjectNotificationItems(snapshot: RoundNotificationSnapshot, wallet: string, now: number) {
   return buildNotificationItems({ address: wallet, round: { ...snapshot,
-    status: now > 0 && BigInt(now) >= snapshot.endTime ? "closed" : "open" }, projects: snapshot.projects });
+    status: now > 0 && BigInt(now) >= snapshot.endTime ? "closed" : "open" }, projects: snapshot.projects, refundTotal:snapshot.refundTotal });
 }

@@ -134,7 +134,7 @@ export function useNotifications() {
       }
     }
 
-    for (const item of rawItems) {
+    for (const item of [...new Map(rawItems.map(item=>[item.key,item])).values()]) {
       const isRead = ready && keys.includes(item.key);
 
       if (item.key.startsWith("roundEnded:") || item.key.startsWith("roundFinalized:")) {
@@ -148,14 +148,16 @@ export function useNotifications() {
       }
 
       if (item.key.startsWith("refund:")) {
-        const refundAmt = refunds.isReady && refunds.total > 0n ? ` (${formatUsdcFixed(refunds.total)} USDC)` : "";
+        const targetRound = item.key.split(":")[1];
+        const amount = roundSnapshots.find(s=>s.roundAddress.toLowerCase()===targetRound)?.refundTotal ?? (round.roundAddress?.toLowerCase()===targetRound && refunds.isReady ? refunds.total : undefined);
+        const refundAmt = amount !== undefined ? ` (${formatUsdcFixed(Number(amount)/1_000_000)})` : "";
         result.push({
           key: item.key,
           scope: item.scope,
           type: "refund",
           title: t.notifications.refundTitle,
-          description: `${t.notifications.refundDesc}${refundAmt}`,
-          href: "/my",
+          description: `${t.notifications.refundDesc}${refundAmt} ${locale === "vi" ? "Khoản hoàn chỉ gồm tiền ví bạn đã góp, không gồm matching." : "Your refund includes only your own contributions, without matching."}`,
+          href: `/round/${targetRound}#refund`,
           isRead,
         });
         continue;
@@ -224,8 +226,8 @@ export function useNotifications() {
           scope: item.scope,
           type: "claim",
           title: t.notifications.claimReadyTitle,
-          description: t.notifications.claimReadyDesc.replace("{name}", name),
-          href: "/my",
+          description: `${t.notifications.claimReadyDesc.replace("{name}", name)} ${locale === "vi" ? "Dùng ví chủ dự án để nhận tiền góp trực tiếp và matching đã chốt." : "Use the project owner's wallet to receive direct contributions and settled matching."}`,
+          href: `/round/${parts[1]}/project/${projectId}#claim`,
           projectName: name,
           projectId,
           isRead,

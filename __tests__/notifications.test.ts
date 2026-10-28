@@ -3,7 +3,7 @@ import { buildNotificationItems, countUnseenNotifications, createNotificationSee
 
 const wallet = "0xAbC";
 const round = { roundAddress: "0xRoUnd", admin: "0xAdmin", finalized: false, isCancelled: false };
-const project = { id: "1", ownerAddress: wallet, approved: true, rejected: false, claimed: false, totalDonatedRaw: 10n, estimatedMatchingRaw: 20n };
+const project = { id: "1", ownerAddress: wallet, approved: true, rejected: false, claimed: false, totalDonatedRaw: 10n, estimatedMatchingRaw: 20n, finalMatchingRaw:20n };
 const two: NotificationItem[] = [
   { key: "projectApproved:0xround:1", scope: "activity" },
   { key: "claim:0xround:1", scope: "activity" },
@@ -34,7 +34,7 @@ describe("wallet notification sources", () => {
     expect(buildNotificationItems({ address: wallet, round, projects: [{ ...project, approved: false }] })).toEqual([]);
   });
   it.each([
-    { ...project, claimed: true }, { ...project, totalDonatedRaw: 0n, estimatedMatchingRaw: 0n },
+    { ...project, claimed: true }, { ...project, totalDonatedRaw: 0n, estimatedMatchingRaw: 0n, finalMatchingRaw:0n },
     { ...project, approved: false }, { ...project, rejected: true },
   ])("does not count an unavailable claim: %s", p => {
     expect(buildNotificationItems({ address: wallet, round: { ...round, finalized: true }, projects: [p] }).some(item => item.key.startsWith("claim:"))).toBe(false);

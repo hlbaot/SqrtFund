@@ -9,7 +9,7 @@ import { buildNotificationItems, countUnseenNotifications } from "@/lib/notifica
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import type { WalletRole } from "@/hooks/useRole";
 import { useRoundNotifications } from "@/hooks/useRoundNotifications";
-import { roundLifecycleNotificationItems } from "@/lib/roundNotifications";
+import { roundLifecycleNotificationItems, roundProjectNotificationItems } from "@/lib/roundNotifications";
 import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
 
 export function useNotificationCounts(role: WalletRole, { markViewed = false } = {}) {
@@ -27,7 +27,7 @@ export function useNotificationCounts(role: WalletRole, { markViewed = false } =
     address: enabled ? address : undefined, round,
     projects: !isLoading && !isError ? projects : [],
     refundTotal: refunds.isReady ? refunds.total : 0n,
-  }), ...snapshots.flatMap(snapshot => enabled && address ? roundLifecycleNotificationItems(snapshot, address, now) : [])]
+  }), ...snapshots.flatMap(snapshot => enabled && address ? [...roundLifecycleNotificationItems(snapshot, address, now), ...roundProjectNotificationItems(snapshot,address,now)] : [])]
     .filter(item => item.scope !== "admin" || role === "admin" || role === "platform_owner" || role === "organizer");
   // Depend on stable keys so polling does not repeatedly acknowledge unchanged items.
   const serializedKeys = JSON.stringify(items.map(item => item.key));

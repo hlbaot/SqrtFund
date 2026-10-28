@@ -56,3 +56,28 @@ describe("notification snapshots across rounds", () => {
     }, round, owner)).rejects.toThrow("RPC down");
   });
 });
+it("loads settled matching and claimed state for claim notices across any round", async()=>{
+  const reader=vi.fn(async(call:{functionName:string;args?:readonly unknown[]})=>{
+    if(call.functionName==="admin")return admin;
+    if(call.functionName==="endTime")return 1000n;
+    if(call.functionName==="finalized")return true;
+    if(call.functionName==="getProjects")return [[{id:1n,name:"Funded",owner,approved:true,claimed:false,totalDonated:5n}],1n];
+    if(call.functionName==="payoutOf")return 7n;
+    if(call.functionName==="donationOf")return 0n;
+    return false;
+  });
+  const snapshot=await loadRoundNotificationSnapshot(reader,round,owner);
+  expect(snapshot.projects[0].finalMatchingRaw).toBe(7n);
+  expect(roundProjectNotificationItems(snapshot,owner,1001).some(x=>x.key===`claim:${round}:1`)).toBe(true);
+  reader.mockImplementation(async call=>call.functionName==="getProjects"?[[{id:1n,name:"Funded",owner,approved:true,claimed:true,totalDonated:5n}],1n]:call.functionName==="admin"?admin:call.functionName==="endTime"?1000n:call.functionName==="donationOf"?0n:call.functionName==="finalized");
+  expect(roundProjectNotificationItems(await loadRoundNotificationSnapshot(reader,round,owner),owner,1001).some(x=>x.key.startsWith("claim:"))).toBe(false);
+});
+it("notifies only the donating wallet about its outstanding cancelled-round refund",async()=>{
+  const base=read();
+  const reader=async(call:Parameters<Parameters<typeof loadRoundNotificationSnapshot>[0]>[0])=>call.functionName==="isCancelled"?true:call.functionName==="donationOf"?(call.args?.[1]===1n?4n:0n):base(call);
+  const snapshot=await loadRoundNotificationSnapshot(reader,round,owner);
+  expect(snapshot.refundTotal).toBe(4n);
+  expect(roundProjectNotificationItems(snapshot,owner,1001).some(x=>x.key===`refund:${round}`)).toBe(true);
+  const refunded=await loadRoundNotificationSnapshot(async call=>call.functionName==="donationOf"?0n:reader(call),round,owner);
+  expect(roundProjectNotificationItems(refunded,owner,1001).some(x=>x.key.startsWith("refund:"))).toBe(false);
+});

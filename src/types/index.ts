@@ -50,6 +50,8 @@ export type Project = {
   supporterCount: number;
   totalDonated: number; // in USDC
   estimatedMatching: number; // in USDC
+  fundingState?: "estimated" | "finalized" | "cancelled";
+  matchingUnavailable?: boolean;
   finalMatching?: number; // Confirmed payoutOf(projectId), in USDC; undefined until read successfully.
   status: ProjectStatus;
   rejected?: boolean;

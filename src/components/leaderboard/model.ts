@@ -19,7 +19,7 @@ export function roundDate(value: string, locale: Locale) {
   }).format(new Date(value));
 }
 export function matchingValue(project: LeaderboardProject, finalized: boolean) {
-  return finalized ? project.finalMatching : project.estimatedMatching;
+  return finalized ? project.finalMatching : project.matchingUnavailable ? undefined : project.estimatedMatching;
 }
 // So sánh BigInt để không mất chênh lệch 0.000001 USDC khi tổng tiền lớn.
 const descending = (a: bigint, b: bigint) => a === b ? 0 : a > b ? -1 : 1;

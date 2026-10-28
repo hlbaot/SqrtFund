@@ -19,5 +19,5 @@ export function useRoundNotifications(wallet?: Address) {
     refetchOnWindowFocus: true,
     retry: 2,
   })) });
-  return queries.flatMap(query => query.data ? [query.data] : []);
+  return queries.flatMap(query => query.data && !query.isError ? [query.data] : []);
 }

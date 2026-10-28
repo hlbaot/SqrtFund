@@ -3,7 +3,7 @@ import { isPendingProject, isPublicProject } from "@/lib/projectVisibility";
 export type NotificationItem = { key: string; scope: "activity" | "admin" };
 type NotificationProject = {
   id: string; ownerAddress: string; approved: boolean; rejected?: boolean; claimed: boolean;
-  totalDonatedRaw: bigint; estimatedMatchingRaw: bigint;
+  totalDonatedRaw: bigint; estimatedMatchingRaw: bigint; finalMatchingRaw?: bigint;
 };
 
 /** Faucet availability is a standing shortcut, not a new wallet event. */
@@ -26,7 +26,7 @@ export function buildNotificationItems({ address, round, projects = [], refundTo
     if (project.rejected) add(`projectRejected:${id}`);
     else if (isPublicProject(project)) add(`projectApproved:${id}`);
     if (round.finalized && !round.isCancelled && isPublicProject(project) && !project.claimed
-      && project.totalDonatedRaw + project.estimatedMatchingRaw > 0n) add(`claim:${id}`);
+      && project.finalMatchingRaw !== undefined && project.totalDonatedRaw + project.finalMatchingRaw > 0n) add(`claim:${id}`);
   }
   return items;
 }
