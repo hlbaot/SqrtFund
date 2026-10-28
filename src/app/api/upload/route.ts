@@ -5,8 +5,23 @@ import { MAX_UPLOAD_BYTES, imageMatchesMime } from "@/lib/uploadPermit";
 import { validateUploadImage } from "@/lib/server/uploadImage";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
 import { VerificationError } from "@/lib/verify/errors";
+import { cloudinaryConfig } from "@/lib/server/cloudinaryConfig";
 export const runtime = "nodejs";
 const MAX_BODY = MAX_UPLOAD_BYTES + 64 * 1024;
+/** Classify provider diagnostics without copying arbitrary text into server logs. */
+function providerFailureReason(message: unknown): string {
+  if (typeof message !== "string") return "NO_PROVIDER_ERROR_MESSAGE";
+  if (/missing permissions/i.test(message) && /actions=\["create"\]/i.test(message)) return "MISSING_CREATE_PERMISSION";
+  if (/cloud.{0,60}disabled/i.test(message)) return "CLOUD_DISABLED";
+  if (/account.{0,60}(disabled|suspended|blocked)/i.test(message)) return "ACCOUNT_DISABLED";
+  if (/api.?key.{0,60}disabled/i.test(message)) return "API_KEY_DISABLED";
+  if (/invalid.{0,20}api.?key/i.test(message)) return "INVALID_API_KEY";
+  if (/invalid.{0,20}signature/i.test(message)) return "INVALID_SIGNATURE";
+  if (/upload.?preset/i.test(message)) return "UPLOAD_PRESET_RESTRICTION";
+  if (/quota|rate.?limit|usage.?limit/i.test(message)) return "PROVIDER_LIMIT";
+  if (/not allowed|forbidden|restricted|denied|permission/i.test(message)) return "UPLOAD_NOT_ALLOWED";
+  return "UNCLASSIFIED_PROVIDER_ERROR";
+}
 function reply(error: string, status: number, retryAfter?: number) {
   return NextResponse.json(
     { error },
@@ -55,13 +70,40 @@ async function readForm(request: Request) {
   }
 }
 export async function POST(request: Request) {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
+  let stage = "origin";
+  let providerStatus: number | undefined;
+  let providerReason: string | undefined;
+  let databaseCode: string | undefined;
+  const configNames = new Set([
+    "CLOUDINARY_URL", "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY",
+    "NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS", "NEXT_PUBLIC_CHAIN_ID",
+  ]);
+  const fail = (code: string, status: number, retryAfter?: number, missing?: string[]) => {
+    // Explicit fields only: never log request bodies, wallet signatures, credentials,
+    // provider messages, raw exceptions or URLs (which can contain credentials).
+    console.error("[project-image-upload]", {
+      requestId, stage, code, status, elapsedMs: Date.now() - startedAt,
+      ...(missing?.length ? { missingOrInvalid: missing.filter(name => configNames.has(name)) } : {}),
+      ...(databaseCode ? { databaseCode } : {}),
+      ...(providerStatus !== undefined ? { providerStatus } : {}),
+      ...(providerReason ? { providerReason } : {}),
+    });
+    const response = reply(code, status, retryAfter);
+    response.headers.set("X-Request-ID", requestId);
+    return response;
+  };
   try {
     if (
       request.headers.get("origin") &&
       request.headers.get("origin") !== new URL(request.url).origin
     )
-      return reply("UPLOAD_AUTH_INVALID", 401);
+      return fail("UPLOAD_AUTH_INVALID", 401);
+    stage = "authorization";
     const permit = await authorizeUpload(request);
+    stage = "multipart";
     const form = await readForm(request);
     const files = form.getAll("file");
     const file = files[0];
@@ -71,19 +113,18 @@ export async function POST(request: Request) {
       file.size !== permit.size ||
       file.type !== permit.mime
     )
-      return reply("UPLOAD_INVALID_FILE", 400);
+      return fail("UPLOAD_INVALID_FILE", 400);
+    stage = "file-integrity";
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (
       !imageMatchesMime(bytes, file.type) ||
       crypto.createHash("sha256").update(bytes).digest("hex") !== permit.digest
     )
-      return reply("UPLOAD_INVALID_FILE", 400);
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const secret = process.env.CLOUDINARY_API_SECRET;
+      return fail("UPLOAD_INVALID_FILE", 400);
     // Unsigned presets bypass this endpoint's authorization/quota; never use one here.
-    if (!cloudName || !/^[a-zA-Z0-9_-]+$/.test(cloudName) || !apiKey || !secret)
-      return reply("UPLOAD_CONFIG_MISSING", 503);
+    stage = "cloudinary-config";
+    const { cloudName, apiKey, secret } = cloudinaryConfig();
+    stage = "quota";
     const { data, error } = await supabaseAdmin().rpc(
       "reserve_project_upload",
       {
@@ -92,17 +133,21 @@ export async function POST(request: Request) {
         p_bytes: file.size,
       },
     );
-    if (error || !data) return reply("UPLOAD_QUOTA_UNAVAILABLE", 503);
-    if (data.status === "REPLAY") return reply("UPLOAD_ALREADY_USED", 409);
+    if (error || !data) {
+      if (typeof error?.code === "string" && /^(?:PGRST\d{3}|[A-Z0-9]{5})$/.test(error.code)) databaseCode = error.code;
+      return fail("UPLOAD_QUOTA_UNAVAILABLE", 503);
+    }
+    if (data.status === "REPLAY") return fail("UPLOAD_ALREADY_USED", 409);
     if (data.status === "RATE_LIMITED")
-      return reply(
+      return fail(
         "UPLOAD_QUOTA_EXCEEDED",
         429,
         Number(data.retryAfter) || 3600,
       );
-    if (data.status !== "OK") return reply("UPLOAD_QUOTA_UNAVAILABLE", 503);
+    if (data.status !== "OK") return fail("UPLOAD_QUOTA_UNAVAILABLE", 503);
     // Charge expensive attempts before decoding. Replays/quota denials must not
     // repeatedly invoke the decoder; invalid content also burns this nonce/quota.
+    stage = "image-decode";
     await validateUploadImage(bytes, file.type);
     // Reservation stays charged if decoding or Cloudinary fails. Never retry automatically.
     const timestamp = Math.floor(Date.now() / 1000).toString();
@@ -117,24 +162,31 @@ export async function POST(request: Request) {
         .update(`timestamp=${timestamp}${secret}`)
         .digest("hex"),
     );
+    stage = "cloudinary-upload";
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
       { method: "POST", body, signal: AbortSignal.timeout(20_000) },
     );
-    if (!res.ok) return reply("UPLOAD_PROVIDER_FAILED", 502);
+    providerStatus = res.status;
+    if (!res.ok) {
+      const diagnostic = await res.json().catch(() => null);
+      providerReason = providerFailureReason(diagnostic?.error?.message);
+      return fail(providerReason === "MISSING_CREATE_PERMISSION" ? "UPLOAD_PROVIDER_PERMISSION_DENIED" : "UPLOAD_PROVIDER_FAILED", 502);
+    }
+    stage = "cloudinary-response";
     const result = await res.json();
     if (
       typeof result.secure_url !== "string" ||
       !result.secure_url.startsWith("https://res.cloudinary.com/")
     )
-      return reply("UPLOAD_PROVIDER_FAILED", 502);
+      return fail("UPLOAD_PROVIDER_FAILED", 502);
     return NextResponse.json(
       { url: result.secure_url },
-      { headers: { "Cache-Control": "no-store" } },
+      { headers: { "Cache-Control": "no-store", "X-Request-ID": requestId } },
     );
   } catch (error) {
     return error instanceof VerificationError
-      ? reply(error.code, error.status)
-      : reply("UPLOAD_UNAVAILABLE", 503);
+      ? fail(error.code, error.status, undefined, error.missing)
+      : fail("UPLOAD_UNAVAILABLE", 503);
   }
 }

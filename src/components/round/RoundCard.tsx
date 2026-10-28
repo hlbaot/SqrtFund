@@ -1,28 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import type { Round } from "@/types";
-import { formatUsdc, formatNumber, shortAddress } from "@/lib/format";
+import { formatUsdc, formatNumber } from "@/lib/format";
 import { useLocale } from "@/lib/context/locale";
 import { ExplorerLink } from "@/components/tx/ExplorerLink";
 import { CountdownTimer } from "./CountdownTimer";
 import { Badge } from "@/components/ui/Badge";
 import { Frame } from "@/components/ui/Frame";
-import { ArrowRight, Check, Copy } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Stat, StatGroup } from "@/components/common/Stat";
 
 export interface RoundCardProps {
   round: Round;
   className?: string;
-  adminAddress?: string;
   roundIndex?: number;
 }
 
-export function RoundCard({ round, className = "", adminAddress, roundIndex }: RoundCardProps) {
+export function RoundCard({ round, className = "", roundIndex }: RoundCardProps) {
   const { t } = useLocale();
   const effectiveStatus = round.status;
-  const [copied, setCopied] = useState(false);
 
   const fallbackTitle = roundIndex
     ? `${t.homeIntro.roundTitle} #${roundIndex}`
@@ -35,16 +33,6 @@ export function RoundCard({ round, className = "", adminAddress, roundIndex }: R
   const displayOrganizer = round.organizer && round.organizer.trim().length > 0
     ? round.organizer.trim()
     : null;
-
-  const handleCopyAdmin = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (adminAddress) {
-      navigator.clipboard.writeText(adminAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   return (
     <Frame className={`p-6 ${className}`} interactive>
@@ -60,25 +48,6 @@ export function RoundCard({ round, className = "", adminAddress, roundIndex }: R
 
           <ExplorerLink address={round.id} iconOnly label={t.onChain.roundContract} />
 
-          {adminAddress && (
-            <div className="mono-label flex items-center gap-1.5 border border-line bg-surface px-2.5 py-1 text-xs">
-              <span className="text-muted">{t.homeIntro.roundAdminLabel}:</span>
-              <span className="tabular-mono text-foreground">{shortAddress(adminAddress)}</span>
-              <button
-                type="button"
-                onClick={handleCopyAdmin}
-                className="ml-0.5 text-muted hover:text-foreground focus:outline-none"
-                title={copied ? t.homeIntro.copied : t.common.copyAddress}
-                aria-label={t.common.copyAddress}
-              >
-                {copied ? (
-                  <Check className="h-3 w-3 text-money" />
-                ) : (
-                  <Copy className="h-3 w-3" />
-                )}
-              </button>
-            </div>
-          )}
         </div>
 
         <CountdownTimer endTime={round.endTime} statusOverride={effectiveStatus} />

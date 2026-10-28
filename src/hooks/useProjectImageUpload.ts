@@ -4,6 +4,7 @@ import { useSignMessage } from "wagmi";
 import type { Address } from "viem";
 import {
   createUploadPermit,
+  imageMatchesMime,
   MAX_UPLOAD_BYTES,
   UPLOAD_TYPES,
   uploadMessage,
@@ -54,10 +55,7 @@ export function useProjectImageUpload({
       setError("UPLOAD_FORBIDDEN");
       return;
     }
-    if (
-      !UPLOAD_TYPES.includes(file.type as (typeof UPLOAD_TYPES)[number]) ||
-      file.size === 0
-    ) {
+    if (file.size === 0) {
       setError("UPLOAD_INVALID_FILE");
       return;
     }
@@ -73,6 +71,21 @@ export function useProjectImageUpload({
     setIsUploading(true);
     setError(null);
     try {
+      // Some OS/browser file pickers leave MIME empty or use the image/jpg alias.
+      if (!file.type || file.type === "image/jpg") {
+        const prefix = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+        if (!active()) return;
+        const mime = UPLOAD_TYPES.find(type => imageMatchesMime(prefix, type));
+        if (!mime) {
+          setError("UPLOAD_INVALID_FILE");
+          return;
+        }
+        file = new File([file], file.name, { type: mime, lastModified: file.lastModified });
+      }
+      if (!UPLOAD_TYPES.includes(file.type as (typeof UPLOAD_TYPES)[number])) {
+        setError("UPLOAD_INVALID_FILE");
+        return;
+      }
       const permit = await createUploadPermit(file, wallet, registry);
       if (!active()) return;
       const signature = await signMessageAsync({
@@ -90,16 +103,18 @@ export function useProjectImageUpload({
         body: form,
         signal: abort.signal,
       });
-      const data = await response.json();
+      // Infrastructure errors (e.g. a body-size rejection) may return plain text.
+      const data = await response.json().catch(() => null);
       if (!active()) return;
       if (!response.ok) {
         setError(
-          typeof data.error === "string" ? data.error : "UPLOAD_UNAVAILABLE",
+          response.status === 413 ? "UPLOAD_TOO_LARGE"
+            : typeof data?.error === "string" ? data.error : "UPLOAD_UNAVAILABLE",
         );
         return;
       }
       if (
-        typeof data.url !== "string" ||
+        typeof data?.url !== "string" ||
         !data.url.startsWith("https://res.cloudinary.com/")
       ) {
         setError("UPLOAD_UNAVAILABLE");
