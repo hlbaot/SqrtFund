@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { privateKeyToAccount } from "viem/accounts";
 import * as imageValidation from "@/lib/server/uploadImage";
 import { POST } from "@/app/api/upload/route";
+import { VerificationError } from "@/lib/verify/errors";
 import {
   UPLOAD_TTL_MS,
   MAX_UPLOAD_BYTES,
@@ -68,12 +69,14 @@ async function req(auth?: string, data = bytes, mime = "image/png") {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(console, "error").mockImplementation(() => {});
   vi.stubGlobal("fetch", f.provider);
   vi.stubEnv("NEXT_PUBLIC_CHAIN_ID", "43113");
   vi.stubEnv("NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS", registry);
   vi.stubEnv("NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME", "fixture");
   vi.stubEnv("CLOUDINARY_API_KEY", "fixture");
   vi.stubEnv("CLOUDINARY_API_SECRET", "fixture-secret");
+  vi.stubEnv("CLOUDINARY_URL", "");
   f.chain.mockResolvedValue(43113);
   f.read.mockResolvedValue(true);
   f.quota.mockResolvedValue({ data: { status: "OK" }, error: null });
@@ -88,8 +91,82 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
+});
+
+it("logs the missing Cloudinary variable and stage without credential values", async () => {
+  vi.stubEnv("CLOUDINARY_API_KEY", "");
+  vi.stubEnv("CLOUDINARY_API_SECRET", "private-fixture-secret");
+  const response = await POST(await req(await token()));
+  expect(response.status).toBe(503);
+  expect(console.error).toHaveBeenCalledWith("[project-image-upload]", expect.objectContaining({
+    requestId: response.headers.get("X-Request-ID"), stage: "cloudinary-config",
+    code: "UPLOAD_CONFIG_MISSING", missingOrInvalid: ["CLOUDINARY_API_KEY"],
+  }));
+  expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("private-fixture-secret");
+});
+
+it("distinguishes missing Supabase configuration in upload logs", async () => {
+  f.quota.mockRejectedValueOnce(new VerificationError("CONFIG_MISSING", 503, { missing: ["SUPABASE_SERVICE_ROLE_KEY"] }));
+  const response = await POST(await req(await token()));
+  expect(response.status).toBe(503);
+  expect(console.error).toHaveBeenCalledWith("[project-image-upload]", expect.objectContaining({
+    stage: "quota", code: "CONFIG_MISSING", missingOrInvalid: ["SUPABASE_SERVICE_ROLE_KEY"],
+  }));
+});
+
+it("logs a quota database code without raw diagnostics", async () => {
+  f.quota.mockResolvedValueOnce({ data: null, error: { code: "PGRST202", message: "private database diagnostics" } });
+  await POST(await req(await token()));
+  expect(console.error).toHaveBeenCalledWith("[project-image-upload]", expect.objectContaining({
+    stage: "quota", databaseCode: "PGRST202", code: "UPLOAD_QUOTA_UNAVAILABLE",
+  }));
+  expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("private database diagnostics");
+});
+
+it("logs provider HTTP status without leaking provider response or signed request", async () => {
+  f.provider.mockResolvedValueOnce(new Response("private provider diagnostics", { status: 401 }));
+  await POST(await req(await token()));
+  expect(console.error).toHaveBeenCalledWith("[project-image-upload]", expect.objectContaining({
+    stage: "cloudinary-upload", providerStatus: 401, code: "UPLOAD_PROVIDER_FAILED",
+  }));
+  const logs = JSON.stringify(vi.mocked(console.error).mock.calls);
+  expect(logs).not.toContain("private provider diagnostics");
+  expect(logs).not.toContain(account.address.toLowerCase());
+  expect(logs).not.toContain("fixture-secret");
+});
+
+it("identifies the actual missing create permission returned by Cloudinary", async () => {
+  const message = '[prodenv:private-environment-id] Request forbidden due to missing permissions (actions=["create"])';
+  f.provider.mockResolvedValueOnce(new Response(JSON.stringify({ error: { message } }), { status: 403 }));
+  const response = await POST(await req(await token()));
+  expect(response.status).toBe(502);
+  expect(await response.json()).toEqual({ error: "UPLOAD_PROVIDER_PERMISSION_DENIED" });
+  expect(console.error).toHaveBeenCalledWith("[project-image-upload]", expect.objectContaining({
+    stage: "cloudinary-upload", providerStatus: 403, providerReason: "MISSING_CREATE_PERMISSION",
+  }));
+  expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("private-environment-id");
+  expect(f.provider).toHaveBeenCalledOnce();
+});
+
+it.each([
+  ["cloud_name is disabled", "CLOUD_DISABLED"],
+  ["API key is disabled", "API_KEY_DISABLED"],
+  ["Invalid Signature private-signature", "INVALID_SIGNATURE"],
+  ["Upload preset is restricted", "UPLOAD_PRESET_RESTRICTION"],
+  ["Not allowed", "UPLOAD_NOT_ALLOWED"],
+  ["Unknown private provider diagnostics", "UNCLASSIFIED_PROVIDER_ERROR"],
+])("classifies provider refusal %s without logging the raw message", async (message, reason) => {
+  f.provider.mockResolvedValueOnce(new Response(JSON.stringify({ error: { message } }), { status: 403 }));
+  const response = await POST(await req(await token()));
+  expect(response.status).toBe(502);
+  expect(console.error).toHaveBeenCalledWith("[project-image-upload]", expect.objectContaining({
+    stage: "cloudinary-upload", providerStatus: 403, providerReason: reason,
+  }));
+  expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(message);
+  expect(await response.json()).toEqual({ error: "UPLOAD_PROVIDER_FAILED" });
 });
 async function denied(r: Request, status: number) {
   expect((await POST(r)).status).toBe(status);
@@ -223,6 +300,32 @@ it("uploads exactly once after ownership, eligibility, file and quota checks", a
   const body = f.provider.mock.calls[0][1].body as FormData;
   expect(body.has("signature")).toBe(true);
   expect(body.has("upload_preset")).toBe(false);
+});
+
+it("uploads using the standard CLOUDINARY_URL when separate credentials are missing", async () => {
+  vi.stubEnv("NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME", "");
+  vi.stubEnv("CLOUDINARY_API_KEY", "");
+  vi.stubEnv("CLOUDINARY_API_SECRET", "");
+  vi.stubEnv("CLOUDINARY_URL", "cloudinary://fixture:fixture%2Bsecret@fixture");
+  const response = await POST(await req(await token()));
+  expect(response.status).toBe(200);
+  expect(f.provider).toHaveBeenCalledOnce();
+  const [url, options] = f.provider.mock.calls[0];
+  expect(url).toBe("https://api.cloudinary.com/v1_1/fixture/image/upload");
+  expect(options.body.get("api_key")).toBe("fixture");
+  const timestamp = options.body.get("timestamp");
+  expect(options.body.get("signature")).toBe(createHash("sha1").update(`timestamp=${timestamp}fixture+secret`).digest("hex"));
+  expect(await response.text()).not.toContain("fixture+secret");
+});
+
+it("rejects invalid CLOUDINARY_URL without consuming quota", async () => {
+  vi.stubEnv("CLOUDINARY_API_SECRET", "");
+  vi.stubEnv("CLOUDINARY_URL", "https://fixture:private@evil.test");
+  const response = await POST(await req(await token()));
+  expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({ error: "UPLOAD_CONFIG_MISSING" });
+  expect(f.quota).not.toHaveBeenCalled();
+  expect(f.provider).not.toHaveBeenCalled();
 });
 it("sanitizes provider errors and does not retry or refund quota", async () => {
   f.provider.mockResolvedValue(

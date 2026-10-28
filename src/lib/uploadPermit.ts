@@ -1,3 +1,5 @@
+import { sha256 } from "viem";
+
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 export const UPLOAD_TTL_MS = 5 * 60_000;
 export const UPLOAD_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
@@ -49,12 +51,8 @@ export async function createUploadPermit(
   registry: string,
 ): Promise<UploadPermit> {
   const issuedAt = Date.now();
-  const digest = Array.from(
-    new Uint8Array(
-      await crypto.subtle.digest("SHA-256", await file.arrayBuffer()),
-    ),
-    (b) => b.toString(16).padStart(2, "0"),
-  ).join("");
+  // subtle is unavailable on HTTP LAN development origins; viem hashes the same bytes.
+  const digest = sha256(new Uint8Array(await file.arrayBuffer())).slice(2);
   return {
     wallet: wallet.toLowerCase(),
     origin: window.location.origin,

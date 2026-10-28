@@ -33,3 +33,11 @@ it("constructs an origin-bound permit for exactly the selected bytes and normali
   expect(uploadMessage(p)).toContain("Upload project image");
   expect(uploadMessage(p)).toContain(`Bytes: ${bytes.length}`);
 });
+
+it("can hash a selected image when Web Crypto subtle is unavailable", async () => {
+  vi.stubGlobal("crypto", { getRandomValues: webcrypto.getRandomValues.bind(webcrypto) });
+  const bytes = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  const file = { arrayBuffer: async () => bytes.buffer, size: bytes.length, type: "image/png" } as File;
+  const p = await createUploadPermit(file, `0x${"ab".repeat(20)}`, `0x${"cd".repeat(20)}`);
+  expect(p.digest).toBe(createHash("sha256").update(bytes).digest("hex"));
+});

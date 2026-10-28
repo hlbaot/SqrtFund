@@ -63,7 +63,12 @@ export async function authorizeUpload(request: Request): Promise<UploadPermit> {
     !isAddress(registry) ||
     Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 43113) !== 43113
   )
-    throw new VerificationError("UPLOAD_CONFIG_MISSING", 503);
+    throw new VerificationError("UPLOAD_CONFIG_MISSING", 503, {
+      missing: [
+        ...(!registry || !isAddress(registry) ? ["NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS"] : []),
+        ...(Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 43113) !== 43113 ? ["NEXT_PUBLIC_CHAIN_ID"] : []),
+      ],
+    });
   if (p.registry !== registry.toLowerCase()) throw invalid();
   try {
     if (
