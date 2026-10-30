@@ -1,4 +1,5 @@
 "use client";
+import { ReviewOutcomePanel } from "@/components/policy/ReviewOutcomePanel";
 import { projectFunding } from "@/lib/projectFunding";
 import { ContributionOverview } from "@/components/project/ContributionGuide";
 import { ProjectClaimPanel } from "@/components/project/ProjectClaimPanel";
@@ -175,6 +176,7 @@ export function ProjectDetailView() {
 
             <FundingBreakdown project={project} finalized={finalized} cancelled={isCancelled} />
             <p className="text-sm text-muted">{project.supporterCount} {t.common.supporters}</p>
+            {roundAddress && <ReviewOutcomePanel key={`${roundAddress}:${project.id}`} roundAddress={roundAddress} projectId={project.id} approved={project.approved} rejected={project.rejected} />}
             <ProjectProfilePanel project={project} roundAddress={roundAddress} />
             <ProjectClaimPanel project={project} round={roundAddress} finalized={finalized} cancelled={isCancelled} onClaimed={()=>void refetch()} />
 

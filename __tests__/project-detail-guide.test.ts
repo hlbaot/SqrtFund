@@ -98,3 +98,6 @@ it("replaces the mobile contribution action with the correct claim destination a
     host.querySelector('a[href="#claim"]')!.getAttribute("href"),
   ).not.toContain(round);
 });
+
+vi.mock("@/hooks/useRoundGovernance", () => ({ useRoundGovernance: () => ({ data: [], isLoading: false, isError: false }), usePublishGovernance: () => vi.fn() }));
+vi.mock("wagmi", () => ({ useAccount: () => ({ isConnected: false }) }));

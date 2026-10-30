@@ -15,6 +15,7 @@ const f = vi.hoisted(() => ({
   submit: undefined as ((event: { preventDefault: () => void }) => Promise<unknown>) | undefined,
   write: vi.fn(), receipt: vi.fn(), role: vi.fn(), round: vi.fn(), initial: vi.fn(), begin: vi.fn(),
 }));
+vi.mock("@/hooks/useRoundGovernance", () => ({ useRoundGovernance: () => ({ data: [], isLoading: false, isError: false }), usePublishGovernance: () => vi.fn() }));
 const first = `0x${"1".repeat(40)}` as Address;
 const second = `0x${"2".repeat(40)}` as Address;
 vi.mock("@/hooks/useProjectImageUpload", () => ({ useProjectImageUpload: () => ({
