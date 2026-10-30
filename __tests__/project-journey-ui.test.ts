@@ -177,3 +177,4 @@ it("keeps the public guide reachable without an account or an active round",()=>
  expect(html).toContain("chưa có round đang mở");expect(html).toContain('href="/verify"');expect(html).toContain('href="/round"');expect(html).toContain('href="/my#claim-usdc"');expect(html).toContain("Matching thay đổi");
  expect((html.match(/<h2/g)??[]).length).toBe(7);
 });
+vi.mock("@/hooks/useClaimTiming", () => ({ useClaimTiming: () => ({ data: undefined }) }));

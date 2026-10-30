@@ -1,5 +1,8 @@
 "use client";
 
+import { useCurrentTimestamp } from "@/hooks/useCurrentTimestamp";
+import { isClaimOverdue } from "@/lib/claimWindow";
+import { CATEGORY_IDS, CATEGORY_LABELS } from "@/lib/projectCategories";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
@@ -122,8 +125,10 @@ export function Leaderboard(props: LeaderboardProps) {
   const [sort, setSort] = useState<LeaderboardSort>("supporters");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const now = useCurrentTimestamp();
   const ranked = useMemo(() => rankProjects(projects), [projects]);
-  const rows = useMemo(() => sortProjects(ranked, sort, finalized).filter(project => (project.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()) || project.shortDescription.toLocaleLowerCase().includes(search.toLocaleLowerCase())) && (category === "all" || project.category === category)), [ranked, sort, finalized, search, category]);
+  const filtered = useMemo(() => ranked.filter(project => (project.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()) || project.shortDescription.toLocaleLowerCase().includes(search.toLocaleLowerCase())) && (category === "all" || project.category === category)), [ranked, search, category]);
+  const rows = useMemo(() => sortProjects(filtered, sort, finalized).sort((a, b) => sort === "supporters" ? Number(isClaimOverdue(a, now)) - Number(isClaimOverdue(b, now)) : 0), [filtered, sort, finalized, now]);
   const max = Math.max(0, ...ranked.map(project => project.supporterCount));
   const columns = [{ key: "rank", label: c.rank }, { key: "project", label: c.project }, { key: "supporters", label: c.supporters }, { key: "direct", label: `${c.direct} · ${c.currency}` }, { key: "matching", label: `${c.matching} · ${c.currency}` }, { key: "total", label: `${c.total} · ${c.currency}` }];
   if (state === "error") return <PresentationState state="error" onRetry={onRetry} />;
@@ -131,7 +136,7 @@ export function Leaderboard(props: LeaderboardProps) {
   if (!ranked.length) return <PresentationState state="empty"><h2 className="font-semibold">{c.noProjects}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted">{isAdmin ? c.adminHint : c.noProjectsHint}</p>{!cancelled && <Link href={isAdmin ? "/admin" : `/register?round=${encodeURIComponent(roundId)}`} className="competition-action mt-6 inline-flex">{isAdmin ? c.admin : c.register}</Link>}</PresentationState>;
   return <div className="min-w-0 space-y-8">
     <Podium
-      projects={ranked}
+      projects={filtered.filter(project => !isClaimOverdue(project, now))}
       roundId={roundId}
       pool={pool}
       finalized={finalized}
@@ -139,7 +144,9 @@ export function Leaderboard(props: LeaderboardProps) {
     />
     <section aria-label={c.leaderboard} className="min-w-0 space-y-5">
       <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center"><h2 className="text-xl font-bold">{c.leaderboard} <span className="tabular-mono text-sm font-normal text-muted">/ {displayNumber(ranked.length, locale, 0)}</span></h2><div role="group" aria-label={c.leaderboard} className="competition-segment flex max-w-full flex-wrap self-start border border-line bg-bg">{(["supporters", "direct", "matching"] as const).map(key => <button type="button" key={key} aria-pressed={sort === key} onClick={() => setSort(key)} className="competition-focus min-h-11 px-3 py-2 text-xs">{key === "supporters" ? c.sortSupporters : key === "direct" ? c.sortDirect : c.sortMatching}</button>)}</div></div>
-      <div className="flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><span className="sr-only">{c.search}</span><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted" /><input className="competition-focus min-h-11 w-full border border-line bg-bg py-2 pl-10 pr-3 text-sm" value={search} onChange={event => setSearch(event.target.value)} placeholder={c.search} /></label><select value={category} aria-label={c.categories} onChange={event => setCategory(event.target.value)} className="competition-focus min-h-11 max-w-full border border-line bg-bg px-3 text-xs"><option value="all">{c.categories}</option>{(["technology", "education", "environment", "arts"] as const).map(key => <option key={key} value={key}>{c[key]}</option>)}</select></div>
+      <div className="flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><span className="sr-only">{c.search}</span><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted" /><input className="competition-focus min-h-11 w-full border border-line bg-bg py-2 pl-10 pr-3 text-sm" value={search} onChange={event => setSearch(event.target.value)} placeholder={c.search} /></label><select value={category} aria-label={c.categories} onChange={event => setCategory(event.target.value)} className="competition-focus min-h-11 max-w-full border border-line bg-bg px-3 text-xs"><option value="all">{c.categories}</option>{([...CATEGORY_IDS, "uncategorized"] as const).map(key => <option key={key} value={key}>{CATEGORY_LABELS[locale][key]}</option>)}</select></div>
+      {finalized && <p className="text-xs text-muted">{locale === "vi" ? "Dự án quá hạn khuyến nghị nhận tiền không xuất hiện ở phần nổi bật và được đưa cuối danh sách mặc định. Hạng theo người ủng hộ vẫn được giữ; claim muộn sẽ khôi phục hiển thị bình thường." : "Projects past the recommended claim date are excluded from highlights and placed last in the default list. Supporter ranks are preserved; claiming late restores normal visibility."}</p>}
+      <p className="text-xs text-muted">{locale === "vi" ? "Lọc lĩnh vực chỉ thay đổi danh sách hiển thị. Các dự án trong round vẫn dùng chung quỹ đối ứng và thứ hạng toàn vòng." : "Category filters only change the displayed list. Projects still share the round matching pool and retain their round-wide ranks."}</p>
       {!rows.length ? <PresentationState state="empty"><h3>{c.noMatches}</h3><button className="competition-action mt-5" onClick={() => { setSearch(""); setCategory("all"); }}>{c.clear}</button></PresentationState> : <>
         <div className="competition-scroll hidden max-h-[70vh] min-w-0 overflow-auto border border-line md:block" tabIndex={0} role="region" aria-label={c.leaderboard}>
           <table className="w-full min-w-[960px] table-fixed border-separate border-spacing-0 text-left"><caption className="sr-only">{c.leaderboard}</caption><colgroup>{["9%", "27%", "17%", "15%", "17%", "15%"].map((width, index) => <col key={index} style={{ width }} />)}</colgroup><thead className="sticky top-0 z-20 bg-bg"><tr>{columns.map(column => <th key={column.key} scope="col" aria-sort={column.key === sort ? "descending" : undefined} className="role-label border-b border-line px-4 py-4 text-left font-medium text-muted">{column.label}</th>)}</tr></thead><tbody>{rows.map(project => <DesktopRow key={project.id} {...props} project={project} max={max} />)}</tbody></table>

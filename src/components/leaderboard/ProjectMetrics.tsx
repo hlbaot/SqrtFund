@@ -1,5 +1,7 @@
 "use client";
 
+import { ClaimOverdueBadge } from "@/components/project/ClaimReminder";
+import { CATEGORY_LABELS } from "@/lib/projectCategories";
 import Link from "next/link";
 import { useLocale } from "@/lib/context/locale";
 import { fmt } from "@/lib/copy";
@@ -13,13 +15,15 @@ export function RankBadge({ project, large = false }: { project: RankedProject; 
 }
 
 export function ProjectIdentity({ project, roundId, wallet, stretched = false }: { project: RankedProject; roundId: string; wallet?: string; stretched?: boolean }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const owner = wallet && wallet.toLowerCase() === project.ownerAddress.toLowerCase();
   return <div className="flex min-w-0 items-center gap-3">
     <span aria-hidden="true" className="tabular-mono flex h-10 w-10 shrink-0 items-center justify-center border border-line-strong bg-bg text-base font-semibold text-muted">{project.name.slice(0, 1).toUpperCase()}</span>
     <div className="min-w-0 flex-1">
       <div className="flex min-w-0 items-center gap-1"><Link href={`/round/${roundId}/project/${project.id}`} title={project.name} className={`competition-focus block min-w-0 flex-1 truncate text-sm font-semibold text-foreground hover:text-primary transition-colors cursor-pointer ${stretched ? "after:absolute after:inset-0" : ""}`}>{project.name}</Link>{project.name.length > 32 && <InfoTooltip label={project.name}>{project.name}</InfoTooltip>}</div>
       <div className="relative z-10 mt-1 flex w-fit max-w-full items-center gap-1 text-muted"><span className="tabular-mono truncate text-xs" title={project.ownerAddress}>{shortAddress(project.ownerAddress)}</span><CopyAddress address={project.ownerAddress} /></div>
+      <ClaimOverdueBadge project={project} />
+      <p className="mt-1 text-xs text-muted">{CATEGORY_LABELS[locale][project.category]}</p>
       {(owner || project.supportedByWallet) && <div className="mt-1 flex flex-wrap gap-1">{owner && <span className="border border-primary/40 px-1.5 py-0.5 text-xs text-primary">{t.competition.yourProject}</span>}{project.supportedByWallet && <span className="border border-line-strong px-1.5 py-0.5 text-xs text-muted">{t.competition.supported}</span>}</div>}
     </div>
   </div>;

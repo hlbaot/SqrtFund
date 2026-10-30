@@ -1,6 +1,8 @@
 import "server-only";
 import { createPublicClient, http, isAddress, parseEventLogs, verifyMessage, type Address, type Hex } from "viem";
 import { avalancheFuji } from "viem/chains";
+import { legacyProjectAbi } from "@/lib/contracts/legacyProjectAbi";
+import { isVersionReadError } from "@/lib/contracts/roundReads";
 import { qfRoundAbi, roundFactoryAbi } from "@/lib/contracts/abis";
 import { PROFILE_TTL, type ProfilePermit } from "@/lib/projectProfile";
 import { governanceMessage, type GovernanceChange } from "@/lib/roundGovernance";
@@ -24,6 +26,16 @@ export async function authorizeGovernance(request: Request, change: GovernanceCh
   const client = await governanceChain(change.round);
   const address = change.round as Address;
   const admin = await client.readContract({ address, abi: qfRoundAbi, functionName: "admin" });
+  if (change.kind === "category") {
+    let rejectionSupported = true;
+    try { await client.readContract({ address, abi: qfRoundAbi, functionName: "rejected", args: [0n] }); }
+    catch (e) { if (isVersionReadError(e)) rejectionSupported = false; else throw e; }
+    const [page] = await client.readContract({ address, abi: rejectionSupported ? qfRoundAbi : legacyProjectAbi, functionName: "getProjects", args: [BigInt(change.projectId) - 1n, 1n] });
+    const project = page[0];
+    if (!project || project.id !== BigInt(change.projectId)) throw new VerificationError("PROJECT_NOT_FOUND", 404);
+    if (project.owner.toLowerCase() !== permit.wallet.toLowerCase()) throw new VerificationError("GOVERNANCE_FORBIDDEN", 403);
+    return permit.wallet.toLowerCase();
+  }
   if (admin.toLowerCase() !== permit.wallet.toLowerCase()) throw new VerificationError("GOVERNANCE_FORBIDDEN", 403);
   if (change.kind === "policy") {
     const [count, end, finalized, cancelled, block] = await Promise.all([

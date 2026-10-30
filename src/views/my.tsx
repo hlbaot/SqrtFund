@@ -5,6 +5,7 @@ import type { Address } from "viem";
 import { projectsStore } from "@/lib/store/projectsStore";
 import { roundsStore } from "@/lib/store/roundsStore";
 import { useShallow } from "zustand/react/shallow";
+import { ClaimReminder } from "@/components/project/ClaimReminder";
 import { RoundCancellationPanel } from "@/components/round/RoundCancellationPanel";
 import { StudentVerifyBox } from "@/components/verify/DeferredStudentVerifyBox";
 
@@ -474,7 +475,7 @@ export function MyView() {
                             </div>
                           </div>
 
-                          <div className="min-w-0"><FundingBreakdown project={proj} compact finalized={projectFinalized} cancelled={projectCancelled} /><Link className="text-xs text-primary underline" href={`/round/${proj.roundId}/project/${proj.id}#claim`}>{locale === "vi" ? "Hồ sơ, lý do xét duyệt và nhận tiền" : "Proposal, review explanation and claim funds"}</Link></div>
+                          <div className="min-w-0"><ClaimReminder project={proj} round={proj.roundId} finalized={projectFinalized} cancelled={projectCancelled} /><FundingBreakdown project={proj} compact finalized={projectFinalized} cancelled={projectCancelled} /><Link className="text-xs text-primary underline" href={`/round/${proj.roundId}/project/${proj.id}#claim`}>{locale === "vi" ? "Hồ sơ, lý do xét duyệt và nhận tiền" : "Proposal, review explanation and claim funds"}</Link></div>
                           {/* Financial payout & claim button */}
                           <div className="flex items-center gap-4">
                             {/* Claim Button */}

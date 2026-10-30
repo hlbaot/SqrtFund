@@ -1,5 +1,7 @@
 "use client";
 
+import { ClaimOverdueBadge } from "@/components/project/ClaimReminder";
+import { CATEGORY_LABELS } from "@/lib/projectCategories";
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -110,6 +112,8 @@ export function Podium({
                     {project.name}
                   </Link>
                 </h3>
+                <ClaimOverdueBadge project={project} />
+                <p className="mt-2 text-xs text-muted">{CATEGORY_LABELS[locale][project.category]}</p>
                 {project.name.length > 40 && <InfoTooltip label={project.name}>{project.name}</InfoTooltip>}
               </div>
 

@@ -640,10 +640,12 @@ const enData = {
       pasteUrlInstead: "Or paste image URL",
     },
     categories: {
-      technology: "Technology & Engineering",
-      education: "Education & Workshops",
-      environment: "Sustainability & Campus Green",
-      arts: "Arts, Sound & Creative",
+      technology: "Technology and research",
+      community: "Community and charity",
+      uncategorized: "Uncategorized",
+      education: "Education and learning",
+      environment: "Environment and sustainability",
+      arts: "Culture and arts",
     },
     myActivity: {
       title: "My activity",
@@ -1713,10 +1715,12 @@ const viData: Translations = {
       pasteUrlInstead: "Hoặc nhập đường dẫn ảnh",
     },
     categories: {
-      technology: "Công nghệ & Kỹ thuật",
-      education: "Giáo dục & Hội thảo",
-      environment: "Bền vững & Xanh",
-      arts: "Nghệ thuật & Sáng tạo",
+      technology: "Công nghệ và nghiên cứu",
+      community: "Cộng đồng và thiện nguyện",
+      uncategorized: "Chưa phân loại",
+      education: "Giáo dục và học thuật",
+      environment: "Môi trường và phát triển bền vững",
+      arts: "Văn hóa và nghệ thuật",
     },
     myActivity: {
       title: "Hoạt động của tôi",

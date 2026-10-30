@@ -27,6 +27,7 @@ export function useNotificationCounts(role: WalletRole, { markViewed = false } =
     address: enabled ? address : undefined, round,
     projects: !isLoading && !isError ? projects : [],
     refundTotal: refunds.isReady ? refunds.total : 0n,
+      now,
   }), ...snapshots.flatMap(snapshot => enabled && address ? [...roundLifecycleNotificationItems(snapshot, address, now), ...roundProjectNotificationItems(snapshot,address,now)] : [])]
     .filter(item => item.scope !== "admin" || role === "admin" || role === "platform_owner" || role === "organizer");
   // Depend on stable keys so polling does not repeatedly acknowledge unchanged items.
