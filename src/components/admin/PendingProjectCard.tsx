@@ -1,5 +1,7 @@
 "use client";
 
+import { CATEGORY_LABELS, CATEGORY_GUIDANCE, isFundingCategory } from "@/lib/projectCategories";
+import type { ProjectCategory } from "@/types";
 import { ReviewOutcomePanel } from "@/components/policy/ReviewOutcomePanel";
 import type { Address } from "viem";
 import { useId, useState } from "react";
@@ -13,7 +15,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ProjectModerationActions } from "./ProjectModerationActions";
 
 type ActionsProps = Parameters<typeof ProjectModerationActions>[0];
-export type ReviewProject = ActionsProps["project"] & Pick<Project, "id" | "name" | "ownerName" | "description" | "ownerAddress" | "contactUrl"> & { registeredAt?: string; roundId?: string };
+export type ReviewProject = ActionsProps["project"] & Pick<Project, "id" | "name" | "ownerName" | "description" | "ownerAddress" | "contactUrl"> & { registeredAt?: string; roundId?: string; category?: ProjectCategory };
 export type PendingProjectCardProps = Omit<ActionsProps, "project" | "compact"> & { project: ReviewProject; expanded: boolean; onToggle: () => void };
 
 export function WalletAddressCopy({ address }: { address: string }) {
@@ -89,6 +91,7 @@ export function PendingProjectCard({ project, expanded, onToggle, ...actions }: 
       {state.reason === "legacy" && <StatusAlert tone="info" title={t.moderation.legacy} />}
       {state.reason && ["finalized", "cancelled", "loading"].includes(state.reason) && <StatusAlert tone="info" title={t.moderation[state.reason]} />}
       {expanded && project.roundId && <ReviewOutcomePanel roundAddress={project.roundId as Address} projectId={project.id} approved={project.approved} rejected={project.rejected} />}
+      <div className="space-y-1"><p className="text-xs font-semibold">{CATEGORY_LABELS[locale][project.category ?? "uncategorized"]}</p>{isFundingCategory(project.category) && <p className="text-xs text-muted">{CATEGORY_GUIDANCE[locale][project.category]}</p>}</div>
       <dl className="space-y-4">
         <div><dt className="mb-1 text-[10px] font-medium text-muted">{t.moderation.description}</dt><dd className="whitespace-pre-wrap break-words text-foreground">{project.description || "—"}</dd></div>
         <div>

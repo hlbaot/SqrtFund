@@ -41,7 +41,7 @@ beforeEach(() => {
   vi.clearAllMocks(); f.click.clear();
   Object.assign(f, { now: 1000, wallet: admin, connected: true, chainId: 43113, locale: "vi" });
   round = {
-    confirmedBlock: undefined, roundAddress, allRounds: [roundAddress], admin, token: usdcAddress, name: "Selected round", startTime: 500n, endTime: 2000n,
+    confirmedBlock: undefined, finalizedAt: undefined, roundAddress, allRounds: [roundAddress], admin, token: usdcAddress, name: "Selected round", startTime: 500n, endTime: 2000n,
     finalized: false, isCancelled: false, supportsPhase2: true, pool: 1_000_000n, maxMatchBps: 3000n,
     leftover: 700_000n, leftoverWithdrawn: false, cancelledPoolWithdrawn: false,
     financials: { pool: 1_000_000n, leftover: 700_000n, status: "open" }, refetch: vi.fn(), isLoading: false, isError: false,

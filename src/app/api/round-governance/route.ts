@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { governanceRound, parseGovernance } from "@/lib/roundGovernance";
+import { governanceRound, parseGovernance, type GovernanceChange } from "@/lib/roundGovernance";
 import { authorizeGovernance, governanceChain } from "@/lib/server/roundGovernance";
 import { supabaseAdmin } from "@/lib/verify/supabaseAdmin";
 import { VerificationError } from "@/lib/verify/errors";
@@ -29,7 +29,13 @@ export async function POST(request: Request) {
   } catch { return json({ code: "INVALID_GOVERNANCE" }, 400); }
   try {
     const owner = await authorizeGovernance(request, change, body.permit as ProfilePermit, body.signature, body.transactionHash);
-    const row = { chain_id: 43113, round_address: change.round, kind: change.kind, entry_key: change.kind === "policy" ? "policy" : `review:${change.review.projectId}`, owner_address: owner, payload: change, transaction_hash: change.kind === "review" ? body.transactionHash.toLowerCase() : null };
+    if (change.kind === "category") {
+      const { data: policyRow, error: policyError } = await supabaseAdmin().from("round_governance").select("payload").eq("chain_id", 43113).eq("round_address", change.round).eq("entry_key", "policy").maybeSingle();
+      if (policyError) throw policyError;
+      const policy = policyRow?.payload as GovernanceChange | undefined;
+      if (policy?.kind === "policy" && policy.policy.categories && !policy.policy.categories.includes(change.category)) return json({ code: "CATEGORY_NOT_ALLOWED" }, 409);
+    }
+    const row = { chain_id: 43113, round_address: change.round, kind: change.kind, entry_key: change.kind === "policy" ? "policy" : change.kind === "review" ? `review:${change.review.projectId}` : `category:${change.projectId}`, owner_address: owner, payload: change, transaction_hash: change.kind === "review" ? body.transactionHash.toLowerCase() : null };
     const { data, error } = await supabaseAdmin().from("round_governance").insert(row).select("id,kind,payload,owner_address,transaction_hash,created_at").single();
     if (error?.code === "23505") return json({ code: "GOVERNANCE_ALREADY_PUBLISHED" }, 409);
     if (error || !data) throw error ?? Error("Missing acknowledgment");

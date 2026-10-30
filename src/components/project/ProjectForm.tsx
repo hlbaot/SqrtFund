@@ -1,4 +1,7 @@
 "use client";
+import { useRoundGovernance, usePublishGovernance } from "@/hooks/useRoundGovernance";
+import { RULES_VERSION } from "@/lib/roundGovernance";
+import { CATEGORY_IDS, CATEGORY_LABELS, CATEGORY_GUIDANCE, isFundingCategory } from "@/lib/projectCategories";
 import { PlatformRules } from "@/components/policy/PlatformRules";
 import { RoundPolicyPanel } from "@/components/policy/RoundPolicyPanel";
 import { useProjectImageUpload } from "@/hooks/useProjectImageUpload";
@@ -28,7 +31,7 @@ import { useRole } from "@/hooks/useRole";
 import { CheckCircle2, AlertCircle, Upload, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 
-const PROJECT_DEFAULTS = { name: "", category: "technology", description: "", contactUrl: "", imageUrl: "" };
+const PROJECT_DEFAULTS = { name: "", category: "", description: "", contactUrl: "", imageUrl: "" };
 const SELECTION_DEFAULTS = { roundAddress: "" };
 
 export function ProjectForm({ initialRound }: { initialRound?: string }) {
@@ -49,14 +52,18 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
     selectRound(initialRound || rememberedRound.values.roundAddress || undefined);
   }, [rememberedRound.ready, rememberedRound.values.roundAddress, selectionScope, initialRound, selectRound]);
   const selectedAddress = selection.roundAddress;
+  const governance = useRoundGovernance(selectedAddress);
+  const publishGovernance = usePublishGovernance();
+  const policyRecord = governance.data?.find(r => r.payload.kind === "policy");
+  const allowedCategories = policyRecord?.payload.kind === "policy" ? policyRecord.payload.policy.categories ?? CATEGORY_IDS : CATEGORY_IDS;
+  const [categoryWarning, setCategoryWarning] = useState("");
   const { roundAddress, endTime, status: roundStatus, isCancelled, isLoading: isRoundLoading, isError: isRoundError, refetch: refetchRound } = useRound(selectedAddress);
   const { isStudent, canParticipate } = useRole(selectedAddress);
 
   const draftKey = formDraftKey("project", TARGET_CHAIN_ID, factoryAddress, address, selectedAddress);
   const draft = useFormDraft(draftKey, PROJECT_DEFAULTS);
   const { name, description, contactUrl, imageUrl } = draft.values;
-  const category = (["technology", "education", "environment", "arts"].includes(draft.values.category)
-    ? draft.values.category : "technology") as ProjectCategory;
+  const category: ProjectCategory = isFundingCategory(draft.values.category) ? draft.values.category : "uncategorized";
   const setField = (field: keyof typeof PROJECT_DEFAULTS, value: string) => {
     if (selectedAddress) rememberedRound.setField("roundAddress", selectedAddress);
     draft.setField(field, value);
@@ -114,6 +121,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
 
   const validate = () => {
     const errs: Record<string, string> = {};
+    if (!isFundingCategory(category) || !allowedCategories.includes(category)) errs.category = locale === "vi" ? "Chọn một lĩnh vực nằm trong phạm vi round." : "Choose a category allowed by this round.";
     const nameBytes = new TextEncoder().encode(name.trim()).length;
     const descBytes = new TextEncoder().encode(description.trim()).length;
     const contactBytes = new TextEncoder().encode(contactUrl.trim()).length;
@@ -153,6 +161,8 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
     if (!selectedAddress || roundAddress?.toLowerCase() !== selectedAddress.toLowerCase()
       || selection.isLoading || isRoundLoading || isRoundError || !publicClient
       || isCancelled || roundStatus !== "open" || endTime === undefined
+      // Recheck the wall clock inside the submit event, never during render.
+      // eslint-disable-next-line react-hooks/purity
       || BigInt(Math.floor(Date.now() / 1000)) >= endTime) {
       txToast.error(toastId, t.register.roundNotReady);
       return;
@@ -161,11 +171,15 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
       txToast.error(toastId, t.verification.title, t.verification.roundNotEligible);
       return;
     }
+    if (governance.isLoading || governance.isError || !governance.data) {
+      txToast.error(toastId, locale === "vi" ? "Chưa xác nhận được lĩnh vực round" : "Round categories unavailable", locale === "vi" ? "Tải lại tiêu chí trước khi gửi giao dịch." : "Reload the criteria before submitting a transaction.");
+      return;
+    }
     if (!draft.ready || isUploadingImage || !validate()) return;
     const flow = beginFlow("register-project", { patch: receipt => {
       const event = parseEventLogs({ abi: qfRoundAbi, eventName: "ProjectRegistered", logs: receipt.logs.filter(log => log.address.toLowerCase() === selectedAddress.toLowerCase()) })[0];
       return event ? [projectsStore.getState().patch(projectKey(selectedAddress, event.args.id), {
-        description: description.trim(), shortDescription: description.trim().slice(0, 100), imageUrl: imageUrl.trim() || "/images/placeholder.svg", contactUrl: contactUrl.trim(), category,
+        description: description.trim(), shortDescription: description.trim().slice(0, 100), imageUrl: imageUrl.trim() || "/images/placeholder.svg", contactUrl: contactUrl.trim(), category: "uncategorized",
       }, true)] : [];
     } });
 
@@ -197,6 +211,14 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
         throw new Error("Registration transaction reverted.");
       }
 
+      try {
+        const registered = parseEventLogs({ abi: qfRoundAbi, eventName: "ProjectRegistered", logs: receipt.logs.filter(log => log.address.toLowerCase() === selectedAddress.toLowerCase()) })[0];
+        if (!registered || !isFundingCategory(category)) throw Error("CATEGORY_NOT_SAVED");
+        await flow.wait(() => publishGovernance({ kind: "category", round: selectedAddress, rulesVersion: RULES_VERSION, projectId: registered.args.id.toString(), category }));
+        setCategoryWarning("");
+      } catch {
+        setCategoryWarning(locale === "vi" ? `Dự án đã đăng ký trên blockchain nhưng chưa lưu được lĩnh vực “${CATEGORY_LABELS.vi[category]}”. Mở dự án trong Hoạt động của tôi để ký lưu lại; không đăng ký lại dự án.` : `Your project was registered on-chain, but its category “${CATEGORY_LABELS.en[category]}” was not saved. Open it in My activity to sign and save the category; do not register it again.`);
+      }
       draft.clearSubmitted();
       setSubmittedScope(draftKey);
       flow.toast.success(
@@ -252,6 +274,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
         <p className="text-sm text-foreground leading-relaxed">
           {t.register.submittedDesc}
         </p>
+        {categoryWarning && <p role="alert" className="whitespace-pre-wrap text-sm text-primary">{categoryWarning}</p>}
         <p className="mono-label text-xs text-muted">
           {t.common.statusPendingAdmin}
         </p>
@@ -358,11 +381,12 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
                 onChange={(e) => setCategory(e.target.value as ProjectCategory)}
                 className="w-full border border-line-strong bg-bg px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="technology">{t.categories.technology}</option>
-                <option value="education">{t.categories.education}</option>
-                <option value="environment">{t.categories.environment}</option>
-                <option value="arts">{t.categories.arts}</option>
+                <option value="uncategorized">{locale === "vi" ? "Chọn lĩnh vực chính…" : "Choose a primary category…"}</option>
+                {allowedCategories.map(id => <option key={id} value={id}>{CATEGORY_LABELS[locale][id]}</option>)}
               </select>
+              {errors.category && <p role="alert" className="text-xs text-primary">{errors.category}</p>}
+              {isFundingCategory(category) && <p className="text-xs text-muted">{CATEGORY_GUIDANCE[locale][category]}</p>}
+              <p className="text-xs text-muted">{locale === "vi" ? "Sau khi đăng ký thành công, ký thêm để lưu lĩnh vực. Lựa chọn chỉ được công bố một lần và không đổi sau khi lưu." : "After registration succeeds, sign again to save the category. It is published once and cannot be changed after saving."}</p>
             </div>
 
             <div className="space-y-1.5">

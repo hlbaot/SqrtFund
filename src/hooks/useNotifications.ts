@@ -1,5 +1,7 @@
 "use client";
 
+import { CLAIM_RECOMMENDATION_SECONDS } from "@/lib/claimWindow";
+import { roundDate } from "@/components/leaderboard/model";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useRound } from "@/hooks/useRound";
@@ -22,6 +24,7 @@ export type NotificationType =
   | "project_approved"
   | "project_rejected"
   | "project_pending"
+  | "claim_reminder"
   | "claim"
   | "refund"
   | "organizer_requested"
@@ -68,6 +71,7 @@ export function useNotifications() {
       round,
       projects: !isProjectsLoading && !isProjectsError ? projects : [],
       refundTotal: refunds.isReady ? refunds.total : 0n,
+      now,
     }).filter(
       item =>
         item.scope !== "admin" ||
@@ -217,6 +221,18 @@ export function useNotifications() {
         continue;
       }
 
+      if (item.key.startsWith("claimReminder:")) {
+        const [, roundAddress, projectId, stage, finalizedAt] = item.key.split(":");
+        const name = projectMap.get(`${roundAddress}:${projectId}`) || projectMap.get(projectId) || `#${projectId}`;
+        const deadline = roundDate(new Date((Number(finalizedAt) + CLAIM_RECOMMENDATION_SECONDS) * 1000).toISOString(), locale);
+        const overdue = stage === "overdue";
+        result.push({ key: item.key, scope: item.scope, type: "claim_reminder", isRead, projectName: name, projectId,
+          title: locale === "vi" ? overdue ? "Quá hạn khuyến nghị nhận kinh phí" : `Nhắc nhận kinh phí: còn tối đa ${stage.slice(0, -1)} ngày` : overdue ? "Recommended claim date passed" : `Claim reminder: within ${stage.slice(0, -1)} days`,
+          description: locale === "vi" ? `${name}: khuyến nghị nhận trước ${deadline} (GMT+7). Bạn vẫn có thể claim muộn; tiền không bị thu hồi.` : `${name}: recommended claim date ${deadline} (GMT+7). Late claims remain available; funds are not reclaimed.`,
+          href: `/round/${roundAddress}/project/${projectId}#claim`,
+        });
+        continue;
+      }
       if (item.key.startsWith("claim:")) {
         const parts = item.key.split(":");
         const projectId = parts[2] || "";

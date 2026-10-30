@@ -1,4 +1,5 @@
 "use client";
+import { useClaimTiming } from "@/hooks/useClaimTiming";
 import { useShallow } from "zustand/react/shallow";
 import { roundsStore } from "@/lib/store/roundsStore";
 import { organizerStore } from "@/lib/store/organizerStore";
@@ -117,10 +118,12 @@ export function useRound(customRoundAddress?: Address, userAddress?: Address) {
     ? isCancelled ? "cancelled" : finalized ? "finalized"
       : endTime !== undefined && nowSec > 0 ? (BigInt(nowSec) >= endTime ? "closed" : "open") : undefined
     : undefined;
+  const claimTiming = useClaimTiming(roundAddress, finalized && !isCancelled);
   const refetch = useCallback(() => { void refetchFactory(); if (roundAddress) void refetchRound(); }, [refetchFactory, roundAddress, refetchRound]);
   return {
     roundAddress, allRounds, confirmedBlock, factoryOwner, isOrganizer, isAuthorizationLoading, isAuthorizationError, isLegacyFactory, admin, token, name, organizer, startTime, endTime,
     minDonation, maxDonation, maxMatchBps, maxPerRound: roundData?.[14]?.result as bigint | undefined,
+    finalizedAt: finalized && !isCancelled ? claimTiming.data?.finalizedAt : undefined,
     pool: pool ?? 0n, finalized, leftover: leftover ?? 0n, leftoverWithdrawn,
     projectCount: projectCount ?? 0n, status,
     // Preserve missing reads for financial summaries instead of displaying fallback zeros.

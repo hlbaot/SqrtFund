@@ -1,4 +1,5 @@
 "use client";
+import { ClaimReminder } from "@/components/project/ClaimReminder";
 import { useAccount } from "wagmi";
 import type { Address } from "viem";
 import type { Project } from "@/types";
@@ -71,6 +72,7 @@ export function ProjectClaimPanel({
       <h2 className="font-semibold">
         {vi ? "Nhận tiền tài trợ (claim)" : "Receive project funding (claim)"}
       </h2>
+      <ClaimReminder project={project} round={round} finalized={finalized} cancelled={cancelled} />
       {reason ? (
         <p role="status" className="text-sm text-muted">
           {reason}
