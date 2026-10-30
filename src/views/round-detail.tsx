@@ -1,4 +1,5 @@
 "use client";
+import { RoundPolicyPanel } from "@/components/policy/RoundPolicyPanel";
 import { ExplorerLink } from "@/components/tx/ExplorerLink";
 import { isPublicProject } from "@/lib/projectVisibility";
 import { calculateRoundStats } from "@/lib/roundStats";
@@ -73,6 +74,7 @@ export function RoundDetailView() {
         <ExplorerLink address={round.roundAddress} label={t.onChain.roundContract} />
         <ExplorerLink address={round.roundAddress} transactions label={t.onChain.allTransactions} />
       </div>
+      {round.roundAddress && <RoundPolicyPanel key={round.roundAddress} roundAddress={round.roundAddress} />}
       {!round.isCancelled && <MatchingPoolWarning totalRaw={approved.reduce((sum, p) => sum + computeRawMatching(p.sumSqrtRaw, p.totalDonatedRaw), 0n)} pool={round.pool} />}
       <Leaderboard
         cancelled={round.isCancelled}

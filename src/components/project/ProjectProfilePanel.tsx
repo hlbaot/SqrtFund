@@ -16,6 +16,7 @@ import {
   type ProjectProfile,
   type ProfilePermit,
 } from "@/lib/projectProfile";
+import { SponsorInterest } from "@/components/project/SponsorInterest";
 import { Button } from "@/components/ui/Button";
 async function loadProfile(url: string) {
   const r = await fetch(url, { cache: "no-store" });
@@ -57,7 +58,9 @@ export function ProjectProfilePanel({
     chainId === TARGET_CHAIN_ID;
   const labels: Record<keyof ProjectProfile, string> = {
     leadName: vi ? "Người phụ trách" : "Project lead",
-    goal: vi ? "Mục tiêu và người hưởng lợi" : "Goal and beneficiaries",
+    goal: vi ? "Vấn đề, mục tiêu và người hưởng lợi" : "Problem, goal and beneficiaries",
+    differentiator: vi ? "Điểm khác biệt của giải pháp (không bắt buộc)" : "What makes the solution different (optional)",
+    progress: vi ? "Sản phẩm mẫu và kết quả hiện tại (không bắt buộc)" : "Prototype and progress so far (optional)",
     budgetUsdc: vi ? "Ngân sách đề xuất (USDC)" : "Requested budget (USDC)",
     budgetPlan: vi ? "Kế hoạch sử dụng ngân sách" : "Budget breakdown",
     milestones: vi
@@ -75,10 +78,10 @@ export function ProjectProfilePanel({
   return (
     <section
       className="space-y-4 border-t border-line pt-4"
-      aria-label={vi ? "Hồ sơ dự án" : "Project proposal"}
+      aria-label={vi ? "Điểm nổi bật của dự án" : "Project highlights"}
     >
       <h2 className="font-bold">
-        {vi ? "Kế hoạch và trách nhiệm giải trình" : "Plan and accountability"}
+        {vi ? "Điểm nổi bật của dự án" : "Project highlights"}
       </h2>
       {query.isLoading ? (
         <p role="status">{vi ? "Đang tải hồ sơ…" : "Loading proposal…"}</p>
@@ -96,12 +99,12 @@ export function ProjectProfilePanel({
       ) : (
         <>
           {doc ? (
-            <dl className="space-y-4">
+            <dl className="grid gap-4 sm:grid-cols-2">
               {Object.entries(labels).map(([field, label]) => (
-                <div key={field}>
-                  <dt className="text-xs text-muted">{label}</dt>
+                <div key={field} className="min-w-0 rounded-sm border border-line bg-bg p-4">
+                  <dt className="text-xs text-muted">{label.replace(vi ? " (không bắt buộc)" : " (optional)", "")}</dt>
                   <dd className="whitespace-pre-line break-words text-sm">
-                    {doc.profile[field as keyof ProjectProfile]}
+                    {doc.profile[field as keyof ProjectProfile] || (vi ? "Nhóm chưa cập nhật" : "Not yet provided by the team")}
                   </dd>
                 </div>
               ))}
@@ -118,6 +121,7 @@ export function ProjectProfilePanel({
               ? "Nội dung do ví chủ dự án công bố; ngân sách đề xuất không phải cam kết matching hay khoản đã nhận."
               : "Published by the project owner's wallet. The requested budget is neither guaranteed matching nor funds received."}
           </p>
+          <SponsorInterest project={project} roundAddress={roundAddress!} />
           <h3 className="text-sm font-semibold">
             {vi
               ? "Cập nhật sau khi nhận tiền"
@@ -309,18 +313,18 @@ function ProfileEditor({
                 maxLength={field === "leadName" ? 100 : 24}
                 inputMode={field === "budgetUsdc" ? "decimal" : undefined}
                 className="mt-1 w-full border border-line bg-surface p-2"
-                value={profile[field as keyof ProjectProfile]}
+                value={profile[field as keyof ProjectProfile] ?? ""}
                 onChange={(e) =>
                   setProfile((p) => ({ ...p, [field]: e.target.value }))
                 }
               />
             ) : (
               <textarea
-                required
+                required={field !== "differentiator" && field !== "progress"}
                 maxLength={2000}
                 rows={3}
                 className="mt-1 w-full border border-line bg-surface p-2"
-                value={profile[field as keyof ProjectProfile]}
+                value={profile[field as keyof ProjectProfile] ?? ""}
                 onChange={(e) =>
                   setProfile((p) => ({ ...p, [field]: e.target.value }))
                 }

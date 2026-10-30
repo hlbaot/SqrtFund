@@ -36,7 +36,7 @@ export function Navbar() {
   const { profile } = useWalletProfile(address, chainId, defaultWalletProfile(isOrgRole, Boolean(isStudent)));
   const isOrganizerUser = isConnected && (isPlatformOwner || profile === "organizer" || (!isStudent && isOrgRole) || (profile !== "student" && isOrgRole));
   const counts = useNotificationCounts(isReady ? role : "guest");
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [previousPathname, setPreviousPathname] = useState(pathname);
@@ -49,6 +49,7 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: t.nav.home },
     { href: "/round", label: t.nav.round },
+    { href: "/rules", label: locale === "vi" ? "Quy định" : "Rules" },
     ...(isConnected && !isPlatformOwner && !isOrganizerUser ? [
       { href: "/register", label: t.nav.register },
     ] : []),

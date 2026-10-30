@@ -1,4 +1,6 @@
 "use client";
+import { PlatformRules } from "@/components/policy/PlatformRules";
+import { RoundPolicyPanel } from "@/components/policy/RoundPolicyPanel";
 import { useProjectImageUpload } from "@/hooks/useProjectImageUpload";
 import { parseEventLogs } from "viem";
 import { projectsStore, projectKey } from "@/lib/store/projectsStore";
@@ -312,6 +314,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
   return (
     <div className="space-y-6">
       {roundPicker}
+      <details className="border border-line p-4"><summary className="cursor-pointer font-semibold">{locale === "vi" ? "Đọc quy định trước khi đăng ký" : "Read the rules before applying"}</summary><div className="mt-4 space-y-4"><PlatformRules compact /><RoundPolicyPanel key={selectedAddress} roundAddress={selectedAddress} /></div></details>
       {selection.isError && <div role="alert" className="flex items-center gap-3 text-sm text-muted"><p>{t.register.roundsReadError}</p><Button type="button" variant="ghost" onClick={retryRounds}>{t.register.retryRounds}</Button></div>}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Form area */}

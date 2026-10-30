@@ -1,5 +1,7 @@
 "use client";
 
+import { ReviewOutcomePanel } from "@/components/policy/ReviewOutcomePanel";
+import type { Address } from "viem";
 import { useId, useState } from "react";
 import { Check, ChevronDown, Copy, ExternalLink } from "lucide-react";
 import type { Project } from "@/types";
@@ -11,7 +13,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ProjectModerationActions } from "./ProjectModerationActions";
 
 type ActionsProps = Parameters<typeof ProjectModerationActions>[0];
-export type ReviewProject = ActionsProps["project"] & Pick<Project, "id" | "name" | "ownerName" | "description" | "ownerAddress" | "contactUrl"> & { registeredAt?: string };
+export type ReviewProject = ActionsProps["project"] & Pick<Project, "id" | "name" | "ownerName" | "description" | "ownerAddress" | "contactUrl"> & { registeredAt?: string; roundId?: string };
 export type PendingProjectCardProps = Omit<ActionsProps, "project" | "compact"> & { project: ReviewProject; expanded: boolean; onToggle: () => void };
 
 export function WalletAddressCopy({ address }: { address: string }) {
@@ -86,6 +88,7 @@ export function PendingProjectCard({ project, expanded, onToggle, ...actions }: 
       {status === "expired" && <StatusAlert tone="warning" clock title={c.ended}>{c.endedDetail}</StatusAlert>}
       {state.reason === "legacy" && <StatusAlert tone="info" title={t.moderation.legacy} />}
       {state.reason && ["finalized", "cancelled", "loading"].includes(state.reason) && <StatusAlert tone="info" title={t.moderation[state.reason]} />}
+      {expanded && project.roundId && <ReviewOutcomePanel roundAddress={project.roundId as Address} projectId={project.id} approved={project.approved} rejected={project.rejected} />}
       <dl className="space-y-4">
         <div><dt className="mb-1 text-[10px] font-medium text-muted">{t.moderation.description}</dt><dd className="whitespace-pre-wrap break-words text-foreground">{project.description || "—"}</dd></div>
         <div>
