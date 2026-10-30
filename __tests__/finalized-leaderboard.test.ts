@@ -84,3 +84,5 @@ it("still displays confirmed payouts if matching preview is unavailable", () => 
   f.previewFailure = true;
   expect(probe().projects.map(project => project.finalMatching)).toEqual([6, 4, 0]);
 });
+
+vi.mock("@/hooks/useRoundGovernance", () => ({ useRoundGovernance: () => ({ data: [], isError: false }) }));

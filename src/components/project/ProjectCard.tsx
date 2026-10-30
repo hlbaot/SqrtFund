@@ -1,5 +1,7 @@
 "use client";
 
+import { ClaimOverdueBadge } from "@/components/project/ClaimReminder";
+import { CATEGORY_LABELS } from "@/lib/projectCategories";
 import { FundingBreakdown } from "./FundingBreakdown";
 import React, { useState } from "react";
 import Link from "next/link";
@@ -87,20 +89,18 @@ export function ProjectCard({
     technology: Cpu,
     environment: Leaf,
     arts: Music,
+    community: Sparkles,
+    uncategorized: Sparkles,
   }[project.category] || Sparkles;
 
-  const categoryLabels = {
-    education: locale === "vi" ? "Giáo dục" : "Education",
-    technology: locale === "vi" ? "Công nghệ" : "Technology",
-    environment: locale === "vi" ? "Môi trường" : "Environment",
-    arts: locale === "vi" ? "Nghệ thuật" : "Arts",
-  };
+  const categoryLabels = CATEGORY_LABELS[locale];
 
   const content = (
     <Frame
       className="group relative flex h-full flex-col justify-between overflow-hidden p-5"
       interactive
     >
+      <ClaimOverdueBadge project={project} />
       {/* 5. Rank Badge (top corner overlay) */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">

@@ -29,7 +29,7 @@ export type Round = {
   organizer?: string;
 };
 
-export type ProjectCategory = "education" | "technology" | "environment" | "arts";
+export type ProjectCategory = import("@/lib/projectCategories").FundingCategory | "uncategorized";
 
 export type ProjectStatus = "approved" | "pending" | "rejected";
 
@@ -50,6 +50,8 @@ export type Project = {
   supporterCount: number;
   totalDonated: number; // in USDC
   estimatedMatching: number; // in USDC
+  claimed?: boolean;
+  finalizedAt?: number; // Confirmed Finalized event block timestamp (seconds).
   fundingState?: "estimated" | "finalized" | "cancelled";
   matchingUnavailable?: boolean;
   finalMatching?: number; // Confirmed payoutOf(projectId), in USDC; undefined until read successfully.

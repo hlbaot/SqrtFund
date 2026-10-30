@@ -1,3 +1,4 @@
+import { claimCountdown } from "@/lib/claimWindow";
 import { isPendingProject, isPublicProject } from "@/lib/projectVisibility";
 
 export type NotificationItem = { key: string; scope: "activity" | "admin" };
@@ -7,11 +8,12 @@ type NotificationProject = {
 };
 
 /** Faucet availability is a standing shortcut, not a new wallet event. */
-export function buildNotificationItems({ address, round, projects = [], refundTotal = 0n }: {
+export function buildNotificationItems({ address, round, projects = [], refundTotal = 0n, now = 0 }: {
   address?: string;
-  round: { roundAddress?: string; admin?: string; finalized: boolean; isCancelled: boolean; isError?: boolean; status?: string };
+  round: { roundAddress?: string; admin?: string; finalized: boolean; isCancelled: boolean; isError?: boolean; status?: string; finalizedAt?: number };
   projects?: readonly NotificationProject[];
   refundTotal?: bigint;
+  now?: number;
 }): NotificationItem[] {
   if (!address || !round.roundAddress || round.isError) return [];
   const wallet = address.toLowerCase();
@@ -26,7 +28,11 @@ export function buildNotificationItems({ address, round, projects = [], refundTo
     if (project.rejected) add(`projectRejected:${id}`);
     else if (isPublicProject(project)) add(`projectApproved:${id}`);
     if (round.finalized && !round.isCancelled && isPublicProject(project) && !project.claimed
-      && project.finalMatchingRaw !== undefined && project.totalDonatedRaw + project.finalMatchingRaw > 0n) add(`claim:${id}`);
+      && project.finalMatchingRaw !== undefined && project.totalDonatedRaw + project.finalMatchingRaw > 0n) {
+      add(`claim:${id}`);
+      const window = claimCountdown(round.finalizedAt, now);
+      if (window && window.stage !== "pending") add(`claimReminder:${id}:${window.stage}:${round.finalizedAt}`);
+    }
   }
   return items;
 }

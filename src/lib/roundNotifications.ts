@@ -9,6 +9,7 @@ type Read = (call: { address: Address; abi: Abi; functionName: string; args?: re
 type RawProject = { id: bigint; owner: Address; name: string; approved: boolean; rejected?: boolean; claimed?:boolean; totalDonated?:bigint };
 export type RoundNotificationSnapshot = {
   roundAddress: Address; admin: Address; endTime: bigint; finalized: boolean; isCancelled: boolean;
+  finalizedAt?: number;
   hasDonated?: boolean; refundTotal?:bigint;
   projects: { id: string; name: string; ownerAddress: Address; approved: boolean; rejected: boolean;
     claimed: boolean; totalDonatedRaw: bigint; estimatedMatchingRaw: bigint; finalMatchingRaw?: bigint }[];
@@ -67,5 +68,5 @@ export function roundLifecycleNotificationItems(snapshot: RoundNotificationSnaps
 
 export function roundProjectNotificationItems(snapshot: RoundNotificationSnapshot, wallet: string, now: number) {
   return buildNotificationItems({ address: wallet, round: { ...snapshot,
-    status: now > 0 && BigInt(now) >= snapshot.endTime ? "closed" : "open" }, projects: snapshot.projects, refundTotal:snapshot.refundTotal });
+    status: now > 0 && BigInt(now) >= snapshot.endTime ? "closed" : "open" }, projects: snapshot.projects, refundTotal:snapshot.refundTotal, now });
 }

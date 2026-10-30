@@ -48,7 +48,7 @@ export function patchReceipt(receipt: TransactionReceipt) {
         case "ProjectRegistered": {
           const { id, owner, name } = event.args;
           changes.push(projectsStore.getState().upsert(storedProject({ id: id.toString(), contractId: id, roundId: log.address,
-            name, ownerAddress: owner, description: "", shortDescription: "", category: "technology", imageUrl: "/images/placeholder.svg", contactUrl: "",
+            name, ownerAddress: owner, description: "", shortDescription: "", category: "uncategorized", imageUrl: "/images/placeholder.svg", contactUrl: "",
             status: "pending", approved: false, rejected: false, claimed: false,
             sumSqrtRaw: 0n, totalDonatedRaw: 0n, estimatedMatchingRaw: 0n, totalDonated: 0, estimatedMatching: 0, supporterCount: 0,
           }), true));
@@ -109,7 +109,7 @@ export async function readMirrorProjects(client: PublicClient, address: Address,
     const finalMatchingRaw = finalized && payout?.status === "success" ? payout.result as bigint : undefined;
     return storedProject({ id: p.id.toString(), contractId: p.id, roundId: address, name: p.name,
       description: p.description, shortDescription: p.description.slice(0, 100), imageUrl: p.imageUrl || "/images/placeholder.svg",
-      contactUrl: p.link, category: "technology", ownerAddress: p.owner, approved: p.approved, rejected: p.rejected === true,
+      contactUrl: p.link, category: "uncategorized", ownerAddress: p.owner, approved: p.approved, rejected: p.rejected === true,
       status: p.rejected ? "rejected" : p.approved ? "approved" : "pending", claimed: p.claimed,
       supporterCount: Number(p.donorCount), totalDonatedRaw: p.totalDonated, sumSqrtRaw: p.sumSqrt,
       estimatedMatchingRaw, totalDonated: Number(p.totalDonated) / 1e6, estimatedMatching: Number(estimatedMatchingRaw) / 1e6,

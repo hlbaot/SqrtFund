@@ -37,12 +37,12 @@ export function RoundDetailView() {
   const params = useParams();
   const rawId = typeof params?.id === "string" ? params.id : "";
   const router = useRouter();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { address } = useAccount();
   const { role, isReady } = useRole();
   const now = useCurrentTimestamp();
   const round = useRound(isAddress(rawId) ? rawId : undefined);
-  const { projects, isLoading, isError, refetch } = useProjects(round.roundAddress);
+  const { projects, categoriesUnavailable, isLoading, isError, refetch } = useProjects(round.roundAddress);
   const [phases, setPhases] = useState<Record<string, RoundPhase>>({});
   const onData = useCallback((id: string, phase: RoundPhase) => { setPhases(current => current[id] === phase ? current : { ...current, [id]: phase }); }, []);
   const approved = useMemo(() => projects.filter(isPublicProject), [projects]);
@@ -76,6 +76,7 @@ export function RoundDetailView() {
       </div>
       {round.roundAddress && <RoundPolicyPanel key={round.roundAddress} roundAddress={round.roundAddress} />}
       {!round.isCancelled && <MatchingPoolWarning totalRaw={approved.reduce((sum, p) => sum + computeRawMatching(p.sumSqrtRaw, p.totalDonatedRaw), 0n)} pool={round.pool} />}
+      {categoriesUnavailable && <p role="alert" className="text-sm text-muted">{locale === "vi" ? "Chưa tải được danh mục đã lưu; nhãn và bộ lọc lĩnh vực có thể chưa đầy đủ. Vui lòng tải lại trang." : "Saved categories could not be loaded; labels and category filters may be incomplete. Please reload."}</p>}
       <Leaderboard
         cancelled={round.isCancelled}
         canDonate={!round.isCancelled && !round.finalized && round.status === "open"}

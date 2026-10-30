@@ -1,12 +1,16 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { encodeEventTopics, encodeAbiParameters } from "viem";
+import { qfRoundAbi } from "@/lib/contracts/abis";
+import type { GovernanceRecord } from "@/lib/roundGovernance";
 import type { Address } from "viem";
 import { ProjectForm } from "@/components/project/ProjectForm";
 import RegisterPage from "@/app/register/page";
 import { RegisterView } from "@/views/register";
 
 const f = vi.hoisted(() => ({
+  records: [] as GovernanceRecord[], publish: vi.fn(),
   selected: undefined as Address | undefined, rounds: [] as { address: Address; number: number; name: string }[],
   loading: false, error: false, unavailable: false, readError: false, wrongTarget: false,
   endTime: 2000n, chainId: 43113, fill: false, emptyStates: 0,
@@ -15,7 +19,7 @@ const f = vi.hoisted(() => ({
   submit: undefined as ((event: { preventDefault: () => void }) => Promise<unknown>) | undefined,
   write: vi.fn(), receipt: vi.fn(), role: vi.fn(), round: vi.fn(), initial: vi.fn(), begin: vi.fn(),
 }));
-vi.mock("@/hooks/useRoundGovernance", () => ({ useRoundGovernance: () => ({ data: [], isLoading: false, isError: false }), usePublishGovernance: () => vi.fn() }));
+vi.mock("@/hooks/useRoundGovernance", () => ({ useRoundGovernance: () => ({ data: f.records, isLoading: false, isError: false }), usePublishGovernance: () => f.publish }));
 const first = `0x${"1".repeat(40)}` as Address;
 const second = `0x${"2".repeat(40)}` as Address;
 vi.mock("@/hooks/useProjectImageUpload", () => ({ useProjectImageUpload: () => ({
@@ -23,7 +27,7 @@ vi.mock("@/hooks/useProjectImageUpload", () => ({ useProjectImageUpload: () => (
 }) }));
 vi.mock("@/hooks/useFormDraft", () => ({ useFormDraft: (_key: string, defaults: Record<string, string>) => ({
   ready: f.draftReady, hasDraft: f.fill, storageError: false,
-  values: f.fill && "name" in defaults ? { ...defaults, name: "Robotics club", description: "A detailed project description", contactUrl: "https://example.test" } : defaults,
+  values: f.fill && "name" in defaults ? { ...defaults, name: "Robotics club", category: "technology", description: "A detailed project description", contactUrl: "https://example.test" } : defaults,
   setField: vi.fn(), clear: vi.fn(), clearSubmitted: f.clearDraft,
 }) }));
 vi.mock("react", async importOriginal => {
@@ -71,7 +75,7 @@ vi.mock("@/lib/context/locale", async () => {
   return { useLocale: () => ({ t: copy.vi, locale: "vi" }) };
 });
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.clearAllMocks(); f.records = []; f.publish.mockResolvedValue({ id: 1 });
   Object.assign(f, { connected: true, selected: undefined, rounds: [], loading: false, error: false, unavailable: false,
     readError: false, wrongTarget: false, endTime: 2000n, chainId: 43113, fill: false, emptyStates: 0, submit: undefined, draftReady: true,
     uploading: false, uploadError: null });
@@ -179,4 +183,19 @@ it.each(["expired", "wrong-network", "wrong-target"])("blocks a stale or invalid
 it("passes a requested round from the page URL to the registration view", async () => {
   const page = await RegisterPage({ searchParams: Promise.resolve({ round: second }) });
   expect(page.props.initialRound).toBe(second);
+});
+
+it("blocks registration for a category outside the round's published scope", async () => {
+  chooseSecond(); f.fill = true;
+  f.records = [{ id: 1, kind: "policy", owner_address: `0x${"3".repeat(40)}`, transaction_hash: null, created_at: "2026-10-30T00:00:00Z", payload: { kind: "policy", round: second, rulesVersion: "2026-10-30", policy: { theme: "Art", eligibility: "Students", funding: "Materials", criteria: "Plan", categories: ["arts"] } } }];
+  render(second); await f.submit!({ preventDefault: vi.fn() });
+  expect(f.write).not.toHaveBeenCalled(); expect(f.clearDraft).not.toHaveBeenCalled();
+});
+it("publishes the selected category for the confirmed project ID without registering twice after save failure", async () => {
+  chooseSecond(); f.fill = true;
+  f.receipt.mockResolvedValue({ status: "success", logs: [{ address: second, topics: encodeEventTopics({ abi: qfRoundAbi, eventName: "ProjectRegistered", args: { id: 7n, owner: `0x${"3".repeat(40)}` } }), data: encodeAbiParameters([{ type: "string" }], ["Robotics club"]) }] });
+  f.publish.mockRejectedValueOnce(Error("DB unavailable"));
+  render(second); await f.submit!({ preventDefault: vi.fn() });
+  expect(f.publish).toHaveBeenCalledWith(expect.objectContaining({ kind: "category", round: second, projectId: "7", category: "technology" }));
+  expect(f.write).toHaveBeenCalledOnce(); expect(f.clearDraft).toHaveBeenCalledOnce();
 });

@@ -75,3 +75,26 @@ it("rejects missing policy fields, oversized reasons and invalid scope/version",
   expect(() => parseGovernance({ ...policy(), rulesVersion: "old" })).toThrow();
   expect(() => parseGovernance({ ...review(), review: { projectId: "1", action: "reject", criteria: ["fit"], reason: "x".repeat(2001) } })).toThrow();
 });
+it("validates round categories without changing legacy signed policy content", () => {
+  const old = policy(); expect(old.kind === "policy" && old.policy).not.toHaveProperty("categories");
+  const expanded = parseGovernance({ ...old, policy: { ...(old.kind === "policy" ? old.policy : {}), categories: ["community", "technology"] } });
+  expect(expanded.kind === "policy" && expanded.policy.categories).toEqual(["community", "technology"]);
+  for (const categories of [[], ["uncategorized"], ["technology", "technology"]]) expect(() => parseGovernance({ ...old, policy: { ...(old.kind === "policy" ? old.policy : {}), categories } })).toThrow();
+});
+it("lets the actual project owner publish a category and blocks other wallets", async () => {
+  const c = parseGovernance({ kind: "category", round, rulesVersion: RULES_VERSION, projectId: "1", category: "community" });
+  const base = f.read.getMockImplementation()!;
+  f.read.mockImplementation(async args => args.functionName === "getProjects" ? [[{ id: 1n, owner: owner.address }], 1n] : base(args));
+  const p = permit();
+  expect(await authorizeGovernance(request(), c, p, await owner.signMessage({ message: governanceMessage(c, p) }), undefined)).toBe(owner.address.toLowerCase());
+  const foreign = { ...p, wallet: other.address };
+  await expect(authorizeGovernance(request(), c, foreign, await other.signMessage({ message: governanceMessage(c, foreign) }), undefined)).rejects.toMatchObject({ status: 403 });
+  f.read.mockImplementation(async args => args.functionName === "getProjects" ? [[], 1n] : base(args));
+  await expect(authorizeGovernance(request(), c, p, await owner.signMessage({ message: governanceMessage(c, p) }), undefined)).rejects.toMatchObject({ status: 404 });
+});
+it("binds the category and project ID to its owner's signature", async () => {
+  const c = parseGovernance({ kind: "category", round, rulesVersion: RULES_VERSION, projectId: "1", category: "community" }), p = permit();
+  const sig = await owner.signMessage({ message: governanceMessage(c, p) });
+  await expect(authorizeGovernance(request(), parseGovernance({ ...c, category: "arts" }), p, sig, undefined)).rejects.toMatchObject({ status: 401 });
+  await expect(authorizeGovernance(request(), parseGovernance({ ...c, projectId: "2" }), p, sig, undefined)).rejects.toMatchObject({ status: 401 });
+});

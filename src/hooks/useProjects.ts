@@ -1,4 +1,5 @@
 "use client";
+import { useRoundGovernance } from "@/hooks/useRoundGovernance";
 import { useShallow } from "zustand/react/shallow";
 import { roundsStore } from "@/lib/store/roundsStore";
 import { projectsStore, storedProject } from "@/lib/store/projectsStore";
@@ -46,10 +47,11 @@ export type EnrichedProject = Project & {
 export function useProjects(customRoundAddress?: Address, options: { enabled?: boolean } = {}) {
   const enabled = options.enabled !== false;
   const polling = useVisiblePolling();
-  const { roundAddress: defaultRoundAddress, admin, finalized, isCancelled, confirmedBlock } = useRound(customRoundAddress);
+  const { roundAddress: defaultRoundAddress, admin, finalized, finalizedAt, isCancelled, confirmedBlock } = useRound(customRoundAddress);
   const { address, isConnected, chainId } = useAccount();
   const viewer = isConnected && chainId === TARGET_CHAIN_ID ? address : undefined;
   const roundAddress = customRoundAddress || defaultRoundAddress;
+  const governance = useRoundGovernance(enabled ? roundAddress : undefined);
   // Old rounds have shorter dynamic project tuples. Probe the getter before decoding.
   const rejectionProbe = useReadContract({
     address: roundAddress, abi: qfRoundAbi, functionName: "rejected", args: [0n], chainId: TARGET_CHAIN_ID,
@@ -160,7 +162,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
         name: p.name,
         shortDescription: p.description.slice(0, 100),
         description: p.description,
-        category: "technology" as ProjectCategory,
+        category: "uncategorized" as ProjectCategory,
         imageUrl: p.imageUrl || "/images/placeholder.svg",
         contactUrl: p.link,
         ownerAddress: p.owner,
@@ -198,11 +200,15 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     return source.map(p => ({ ...p, rank: ranks.get(p.id) }));
   }, [mirroredProjects, queriedProjects]);
 
-  const visibleProjects = useMemo(() => projects.filter(project => canViewProject(project, viewer, admin)), [projects, viewer, admin]);
+  const visibleProjects = useMemo(() => {
+    const categories = new Map((governance.data ?? []).flatMap(record => record.payload.kind === "category" ? [[record.payload.projectId, record.payload.category] as const] : []));
+    return projects.filter(project => canViewProject(project, viewer, admin)).map(project => ({ ...project, finalizedAt, fundingState: isCancelled ? "cancelled" as const : finalized ? "finalized" as const : "estimated" as const, category: categories.get(project.id) ?? "uncategorized" as ProjectCategory }));
+  }, [projects, viewer, admin, governance.data, finalizedAt, finalized, isCancelled]);
 
   return {
     projects: visibleProjects,
     supportsRejection,
+    categoriesUnavailable: governance.isError,
     readFailureKind: contractData?.some(result => result.status === "failure" && isVersionReadError(result.error)) ? "version" as const : "rpc" as const,
     isLoading: enabled && mirroredProjects === undefined && !knownEmptyRound && Boolean(roundAddress) && ((!probeResolved && !rejectionProbe.isError) || (probeResolved && isLoading)),
     isError: (!probeResolved && rejectionProbe.isError) || isError || contractData?.[0]?.status === "failure",
