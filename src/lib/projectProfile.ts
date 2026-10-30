@@ -7,6 +7,8 @@ export type ProjectProfile = {
   budgetUsdc: string;
   budgetPlan: string;
   milestones: string;
+  differentiator?: string;
+  progress?: string;
 };
 export type ProjectReport = { text: string; evidenceUrl: string };
 export type ProfileDocument = {
@@ -94,6 +96,8 @@ export function parseProfileChange(value: unknown): ProfileChange {
       budgetUsdc,
       budgetPlan: text(p.budgetPlan, 2000),
       milestones: text(p.milestones, 2000),
+      ...(p.differentiator !== undefined ? { differentiator: text(p.differentiator, 2000, false) } : {}),
+      ...(p.progress !== undefined ? { progress: text(p.progress, 2000, false) } : {}),
     },
     report,
   };

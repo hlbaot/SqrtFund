@@ -148,3 +148,5 @@ vi.mock("@/hooks/useOrganizerApplications", () => ({ useMyOrganizerApplication: 
   application: null, isPending: false, isApproved: false, isRejected: false, isRevoked: false,
   isLoading: false, isError: false, refetch: vi.fn(),
 }) }));
+
+vi.mock("@/hooks/useRoundGovernance", () => ({ useRoundGovernance: () => ({ data: [], isLoading: false, isError: false }), usePublishGovernance: () => vi.fn() }));

@@ -197,3 +197,17 @@ it("rejects executable evidence links and missing proposal fields", () => {
     }),
   ).toThrow();
 });
+it("keeps legacy proposals compatible and validates optional highlights", () => {
+  const legacy = change();
+  expect(legacy.profile).not.toHaveProperty("progress");
+  const expanded = parseProfileChange({ ...legacy, profile: { ...legacy.profile, differentiator: "  Open design  ", progress: "Prototype ready" } });
+  expect(expanded.profile.differentiator).toBe("Open design");
+  expect(expanded.profile.progress).toBe("Prototype ready");
+  expect(() => parseProfileChange({ ...legacy, profile: { ...legacy.profile, progress: "x".repeat(2001) } })).toThrow("INVALID_PROFILE");
+});
+it("binds sponsor highlights to the owner signature", async () => {
+  const c = parseProfileChange({ ...change(), profile: { ...change().profile, progress: "Prototype" } });
+  const p = permit();
+  const sig = await account.signMessage({ message: profileMessage(c, p) });
+  await expect(authorizeProfile(request(), { ...c, profile: { ...c.profile, progress: "Altered" } }, p, sig)).rejects.toMatchObject({ status: 401 });
+});

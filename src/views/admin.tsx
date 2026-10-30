@@ -1,4 +1,7 @@
 "use client";
+import { RoundPolicyPanel } from "@/components/policy/RoundPolicyPanel";
+import { usePublishGovernance } from "@/hooks/useRoundGovernance";
+import { RULES_VERSION, type ReviewNote } from "@/lib/roundGovernance";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RoundControls } from "@/components/admin/RoundControls";
@@ -39,6 +42,8 @@ import type { Address } from "viem";
 
 export function AdminView() {
   const beginFlow = useTxFlow();
+  const publishGovernance = usePublishGovernance();
+  const [governanceWarning, setGovernanceWarning] = useState("");
   const { t, locale } = useLocale();
   const router = useRouter();
   const { address, chainId, isConnected, status: accountStatus } = useAccount();
@@ -178,7 +183,7 @@ export function AdminView() {
     setReviewTarget({ project, action });
   }
 
-  async function confirmReview() {
+  async function confirmReview(note: Pick<ReviewNote, "criteria" | "reason">) {
     if (reviewBusy.current || !reviewTarget || !currentTarget || !roundAddress || !publicClient) return;
     const state = projectModerationState(currentTarget, moderationRound, viewer, Math.floor(Date.now() / 1000));
     if (reviewTarget.project.roundId.toLowerCase() !== roundAddress.toLowerCase()) {
@@ -211,6 +216,14 @@ export function AdminView() {
       const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
       if (receipt.status !== "success") throw new Error(t.moderation.reverted);
       flow.toast.success(toastId, action === "approve" ? t.toasts.projectApprovedTitle : t.rejection.success, currentTarget.name, hash);
+      try {
+        await publishGovernance({ kind: "review", round: roundAddress, rulesVersion: RULES_VERSION, review: { projectId: currentTarget.id, action, ...note } }, hash);
+        setGovernanceWarning("");
+      } catch {
+        setGovernanceWarning(locale === "vi"
+          ? `Giao dịch xét duyệt đã thành công (${hash}) nhưng chưa lưu được lời giải thích. Lý do đã nhập: ${note.reason}. Mở chi tiết dự án để ký lưu lại; không gửi lại giao dịch xét duyệt.`
+          : `Review transaction succeeded (${hash}), but its explanation was not saved. Entered reason: ${note.reason}. Open project details to publish it without repeating the transaction.`);
+      }
       setReviewTarget(null);
       await refetchProjects();
       refetchRound();
@@ -557,10 +570,12 @@ export function AdminView() {
                   setReviewError(undefined);
                 }
               }}
-              onConfirm={() => void confirmReview()}
+              onConfirm={note => void confirmReview(note)}
             />
           )}
 
+          {governanceWarning && <p role="alert" className="whitespace-pre-wrap break-words border border-primary/30 p-4 text-sm">{governanceWarning}</p>}
+          {roundAddress && <RoundPolicyPanel key={roundAddress} roundAddress={roundAddress} />}
           {/* Project Proposals Approval Queue (Actionable for Round Admin) */}
           {!isRoundLoading && roundAddress && (
             <ProjectReviewList

@@ -474,7 +474,7 @@ export function MyView() {
                             </div>
                           </div>
 
-                          <div className="min-w-0"><FundingBreakdown project={proj} compact finalized={projectFinalized} cancelled={projectCancelled} /><Link className="text-xs text-primary underline" href={`/round/${proj.roundId}/project/${proj.id}#claim`}>{locale === "vi" ? "Hồ sơ, nhận tiền và cập nhật kết quả" : "Proposal, claim funds and report outcomes"}</Link></div>
+                          <div className="min-w-0"><FundingBreakdown project={proj} compact finalized={projectFinalized} cancelled={projectCancelled} /><Link className="text-xs text-primary underline" href={`/round/${proj.roundId}/project/${proj.id}#claim`}>{locale === "vi" ? "Hồ sơ, lý do xét duyệt và nhận tiền" : "Proposal, review explanation and claim funds"}</Link></div>
                           {/* Financial payout & claim button */}
                           <div className="flex items-center gap-4">
                             {/* Claim Button */}

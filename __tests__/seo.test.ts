@@ -7,7 +7,7 @@ afterEach(() => vi.unstubAllEnvs());
 it("publishes only static public sitemap URLs with the default base", () => {
   vi.stubEnv("NEXT_PUBLIC_SITE_URL", "");
   const urls = sitemap().map(entry => entry.url);
-  expect(urls).toEqual([`${DEFAULT_SITE_URL}/`, `${DEFAULT_SITE_URL}/rounds`, `${DEFAULT_SITE_URL}/verify`, `${DEFAULT_SITE_URL}/guide`]);
+  expect(urls).toEqual([`${DEFAULT_SITE_URL}/`, `${DEFAULT_SITE_URL}/rounds`, `${DEFAULT_SITE_URL}/verify`, `${DEFAULT_SITE_URL}/guide`, `${DEFAULT_SITE_URL}/rules`]);
   expect(urls.some(url => /\/(admin|my|register|api)(?:\/|$)/.test(url))).toBe(false);
   expect(urls.some(url => url.includes("0x"))).toBe(false);
 });
