@@ -65,9 +65,10 @@ it.each(["organizer", "admin"])("hides project registration on navbar for %s but
   expect(html).not.toContain('href="/admin?tab=platform"');
 });
 
-it("does not include the guide link in the navbar", () => {
+it("links to the guide in the navbar before a wallet is connected", () => {
   f.connected = false;
   const html = renderToStaticMarkup(createElement(Navbar));
-  expect(html).not.toContain('href="/guide"');
+  expect(html).toContain('href="/support"');
+  expect(html).toContain("Hướng dẫn");
 });
 

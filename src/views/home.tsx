@@ -12,7 +12,7 @@ import {
   Rocket,
 } from "lucide-react";
 import { HowItWorksTimeline } from "@/components/home/HowItWorksTimeline";
-import { FeaturedRoundsSection, FeaturedProjectsSection } from "@/components/home/FeaturedRounds";
+import { FeaturedFundingSections } from "@/components/home/FeaturedRounds";
 import { NetworkStats } from "@/components/home/NetworkStats";
 import AeroShards from "@/components/home/DeferredAeroShards";
 import { ChainLatticeBackground } from "@/components/background/DeferredLattice";
@@ -256,13 +256,8 @@ export function HomeView() {
 
       {/* 3. How it works: Scroll-driven Blockchain Timeline */}
       <HowItWorksTimeline />
-      <Container className="pb-8"><Link href="/guide" className="inline-flex min-h-11 items-center gap-2 border border-primary bg-surface px-4 py-2 text-sm font-semibold text-primary">{t.nav.guide}<ArrowRight className="h-4 w-4" /></Link></Container>
 
-      {/* 4. Featured rounds (by open status, then matching pool) */}
-      <FeaturedRoundsSection />
-
-      {/* 5. Featured projects of each featured round (by supporters, then amount) */}
-      <FeaturedProjectsSection />
+      <FeaturedFundingSections />
     </div>
   );
 }

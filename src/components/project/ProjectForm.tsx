@@ -5,7 +5,7 @@ import { CATEGORY_IDS, CATEGORY_LABELS, CATEGORY_GUIDANCE, isFundingCategory } f
 import { PlatformRules } from "@/components/policy/PlatformRules";
 import { RoundPolicyPanel } from "@/components/policy/RoundPolicyPanel";
 import { useProjectImageUpload } from "@/hooks/useProjectImageUpload";
-import { parseEventLogs } from "viem";
+import { parseEventLogs, type Address } from "viem";
 import { projectsStore, projectKey } from "@/lib/store/projectsStore";
 
 import { useRegistrationRounds } from "@/hooks/useRegistrationRounds";
@@ -24,6 +24,7 @@ import { useLocale } from "@/lib/context/locale";
 import { fmt } from "@/lib/copy";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import type { Project, ProjectCategory } from "@/types";
 import { StudentAccessGate } from "@/components/verify/StudentAccessGate";
@@ -33,6 +34,37 @@ import Link from "next/link";
 
 const PROJECT_DEFAULTS = { name: "", category: "", description: "", contactUrl: "", imageUrl: "" };
 const SELECTION_DEFAULTS = { roundAddress: "" };
+
+function RegistrationRules({ roundAddress, roundName }: { roundAddress: Address; roundName?: string }) {
+  const { locale } = useLocale();
+  const vi = locale === "vi";
+  const [isOpen, setIsOpen] = useState(true);
+  const close = () => setIsOpen(false);
+  const title = vi ? "Quy định trước khi đăng ký dự án" : "Rules before registering a project";
+
+  return (
+    <>
+      <Button type="button" variant="outline" aria-haspopup="dialog" onClick={() => setIsOpen(true)}>
+        {vi ? "Xem lại quy định" : "Review rules"}
+      </Button>
+      <Dialog isOpen={isOpen} onClose={close} title={title} description={roundName} className="max-w-3xl">
+        <div
+          data-autofocus
+          tabIndex={0}
+          role="region"
+          aria-label={vi ? "Nội dung quy định" : "Registration rules"}
+          className="max-h-[min(56dvh,32rem)] space-y-4 overflow-y-auto overscroll-contain focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+        >
+          <RoundPolicyPanel roundAddress={roundAddress} readOnly />
+          <PlatformRules compact />
+        </div>
+        <div className="mt-4 flex justify-end border-t border-line pt-3">
+          <Button type="button" variant="primary" onClick={close}>{vi ? "Tiếp tục đăng ký" : "Continue to registration"}</Button>
+        </div>
+      </Dialog>
+    </>
+  );
+}
 
 export function ProjectForm({ initialRound }: { initialRound?: string }) {
   const beginFlow = useTxFlow();
@@ -337,7 +369,13 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
   return (
     <div className="space-y-6">
       {roundPicker}
-      <details className="border border-line p-4"><summary className="cursor-pointer font-semibold">{locale === "vi" ? "Đọc quy định trước khi đăng ký" : "Read the rules before applying"}</summary><div className="mt-4 space-y-4"><PlatformRules compact /><RoundPolicyPanel key={selectedAddress} roundAddress={selectedAddress} /></div></details>
+      {rememberedRound.ready && (initialRound || !rememberedRound.values.roundAddress || rememberedRound.values.roundAddress.toLowerCase() === selectedAddress.toLowerCase()) && (
+        <RegistrationRules
+          key={`${address}:${selectedAddress.toLowerCase()}`}
+          roundAddress={selectedAddress}
+          roundName={selection.rounds.find(round => round.address === selectedAddress)?.name}
+        />
+      )}
       {selection.isError && <div role="alert" className="flex items-center gap-3 text-sm text-muted"><p>{t.register.roundsReadError}</p><Button type="button" variant="ghost" onClick={retryRounds}>{t.register.retryRounds}</Button></div>}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Form area */}
