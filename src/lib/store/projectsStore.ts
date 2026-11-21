@@ -1,7 +1,7 @@
 import type { EnrichedProject } from "@/hooks/useProjects";
 import { createMirrorStore } from "./mirror";
 export type StoredProject = EnrichedProject & { storeKey: string; refundedRaw?: bigint };
-// The entity key includes the round: project #1 is not globally unique.
+// Khóa entity gồm vòng: project #1 không duy nhất toàn cục.
 export const projectKey = (round: string, id: string | bigint) => `${round.toLowerCase()}:${id}`;
 export const projectsStore = createMirrorStore<StoredProject, { projectsByRound: Record<string, StoredProject[]> }>(entities => {
   const projectsByRound: Record<string, StoredProject[]> = {};

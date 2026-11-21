@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { tokenBalanceOptions } from "@/lib/tokenBalance";
 
-/** Address is the wallet/recipient; the token always comes from addresses.ts. */
+/** Address là ví/người nhận; token luôn lấy từ addresses.ts. */
 export function useTokenBalance(owner?: Address) {
   const { isConnected, chainId } = useAccount();
   const client = usePublicClient({ chainId: TARGET_CHAIN_ID });

@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 import {Script, console2} from "forge-std/Script.sol";
 import {StudentRegistry} from "../src/StudentRegistry.sol";
 
-/// @notice Deploy identity separately; no factory, round or token is required.
+/// @notice Triển khai identity riêng; không cần factory, round hay token.
 contract DeployStudentRegistry is Script {
     function run() external {
         address attester = vm.envAddress("ATTESTER_ADDRESS");
@@ -12,7 +12,7 @@ contract DeployStudentRegistry is Script {
         vm.stopBroadcast();
         console2.log("StudentRegistry deployed at:", address(registry));
         console2.log("Attester:", registry.attester());
-        // The registry can be deployed before any factory; print its public address
-        // for NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS.
+        // Registry có thể deploy trước factory; in địa chỉ công khai
+        // cho NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS.
     }
 }

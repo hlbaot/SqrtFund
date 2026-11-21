@@ -89,7 +89,7 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
         </p>
       )}
 
-      {/* Time rows: label left in label role, value right in mono at the same size */}
+      {/* Hàng thời gian: nhãn trái, giá trị phải (mono) */}
       <div className="mt-4 grid gap-2 border-y border-line py-3 text-xs">
         <div className="flex items-center justify-between gap-3">
           <span className="role-label shrink-0">{c.start}</span>
@@ -111,7 +111,7 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
         </div>
       </div>
 
-      {/* Matching Pool: single hero metric on the card */}
+      {/* Matching Pool: chỉ số chính của thẻ */}
       <div className="mt-4">
         <p className="role-label text-muted">{c.pool}</p>
         <div className="mt-1 flex items-baseline gap-1.5 text-money">
@@ -131,7 +131,7 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
         </div>
       )}
 
-      {/* Stats group: Supporters first (primary tone), Projects, Direct USDC */}
+      {/* Nhóm thống kê: Supporters, Projects, Direct USDC */}
       <StatGroup columns={3} className="my-4">
         <Stat
           label={c.supporters}
@@ -154,7 +154,7 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
         />
       </StatGroup>
 
-      {/* Fill any extra vertical space gracefully if sibling cards are taller */}
+      {/* Lấp khoảng trống dọc khi thẻ kế bên cao hơn */}
       <div className="flex-1 min-h-2 mb-3">
         {round.totalSupporters > 0 && (
           <MetricBar
@@ -164,7 +164,7 @@ export function RoundListCard({ round, onRetry }: { round: RoundSummary; onRetry
         )}
       </div>
 
-      {/* CTA pinned to the bottom */}
+      {/* CTA ghim ở đáy */}
       <Link
         href={`/round/${round.id}`}
         className="competition-action mt-auto flex min-h-11 w-full items-center justify-between gap-3"
@@ -201,8 +201,8 @@ function PaginatedRoundsList({ rounds, state = "ready", isAdmin, onRetry, pagina
     url.searchParams.set("page", String(page));
     window.history[replace ? "replaceState" : "pushState"](null, "", `${url.pathname}${url.search}${url.hash}`);
   };
-  // Wait for all discovery reads before normalizing a shared URL; partial realtime
-  // snapshots may temporarily contain fewer pages than the completed list.
+  // Chờ mọi lượt đọc discovery trước khi chuẩn hoá URL chia sẻ; snapshot realtime
+  // một phần có thể tạm ít trang hơn danh sách đầy đủ.
   useEffect(() => {
     if (state === "ready" && paginationReady && (requestedPage !== visible.page || (searchParams.has("page") && searchParams.get("page") !== String(visible.page)))) writePage(visible.page, true);
   }, [requestedPage, visible.page, state, paginationReady, searchParams]);

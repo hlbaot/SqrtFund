@@ -1,6 +1,6 @@
 export type Locale = "en" | "vi";
 
-/** Interpolate {placeholders} in a string. */
+/** Thay các {placeholders} trong chuỗi. */
 export const fmt = (s: string, p: Record<string, string | number> = {}): string =>
   s.replace(/\{(\w+)\}/g, (_, k) => String(p[k] ?? `{${k}}`));
 
@@ -921,10 +921,10 @@ const enData = {
       ctaBtn: "Apply as Organizer",
     },
     toasts: {
-      // Wallet
+      // Ví
       walletConnected: "Wallet connected",
       walletConnecting: "Connecting...",
-      // Round creation
+      // Tạo vòng
       factoryNotReadyTitle: "Factory not ready",
       factoryNotReadyDesc: "No active RoundFactory found. Please deploy or configure a factory contract first.",
       invalidScheduleTitle: "Invalid schedule",
@@ -936,7 +936,7 @@ const enData = {
       roundCreatedTitle: "Round created!",
       roundCreatedDesc: "New quadratic funding round is now active on Fuji.",
       createRoundFailed: "Failed to create round",
-      // Project approval (admin)
+      // Duyệt dự án (admin)
       approvingProjectTitle: "Approving project...",
       approvingProjectDesc: "Approving {name} to participate in round.",
       confirmingApprovalTitle: "Confirming approval...",
@@ -951,7 +951,7 @@ const enData = {
       studentApprovedTitle: "Student approved!",
       studentApprovedDesc: "Wallet {address} has been added to the student whitelist.",
       whitelistFailed: "Whitelist update failed",
-      // Deposit pool
+      // Nạp pool
       depositApproveStep: "Step 1/2: Approving USDC...",
       depositApproveDesc: "Please confirm token allowance in your wallet.",
       depositConfirmApproval: "Step 1/2: Confirming approval...",
@@ -966,7 +966,7 @@ const enData = {
       depositSuccess: "Pool deposit confirmed!",
       depositSuccessDesc: "Successfully added {amount} USDC to the sponsor matching pool.",
       depositFailed: "Deposit failed",
-      // Donate
+      // Quyên góp
       donateStep1Title: "Step 1/2: Approving USDC...",
       donateStep1Desc: "Please confirm token allowance in your wallet.",
       donateConfirmApproval: "Step 1/2: Confirming approval...",
@@ -987,7 +987,7 @@ const enData = {
       finalizeSuccess: "Round finalized!",
       finalizeSuccessDesc: "Quadratic allocations have been calculated and claims are now open.",
       finalizeFailed: "Finalization failed",
-      // Register project
+      // Đăng ký dự án
       registerTitle: "Registering project...",
       registerDesc: "Please confirm the transaction in your wallet.",
       registerConfirm: "Confirming registration...",
@@ -1008,7 +1008,7 @@ const enData = {
       faucetSuccess: "Claimed 100 test USDC!",
       faucetSuccessDesc: "100 USDC has been sent to your wallet.",
       faucetFailed: "Claim failed",
-      // Verification request
+      // Yêu cầu xác minh
       requestVerifyTitle: "Requesting verification...",
       requestVerifyDesc: "Please confirm in your wallet.",
       requestVerifyConfirm: "Confirming request...",
@@ -1016,14 +1016,14 @@ const enData = {
       requestVerifySuccess: "Verification requested!",
       requestVerifySuccessDesc: "Your request is now pending admin review.",
       requestVerifyFailed: "Request failed",
-      // Leftover withdrawal
+      // Rút phần dư (leftover)
       withdrawTitle: "Withdrawing leftover...",
       withdrawDesc: "Please confirm the transaction in your wallet.",
       withdrawConfirm: "Confirming withdrawal...",
       withdrawSuccess: "Leftover withdrawn!",
       withdrawSuccessDesc: "Unallocated matching funds have been returned to the admin wallet.",
       withdrawFailed: "Withdrawal failed",
-      // Wallet not ready
+      // Ví chưa sẵn sàng
       walletNotReady: "Wallet not ready",
       walletNotReadyDesc: "Please connect the admin wallet.",
       roundNotActive: "Round not active",
@@ -2000,10 +2000,10 @@ const viData: Translations = {
       ctaBtn: "Đăng ký làm Organizer",
     },
     toasts: {
-      // Wallet
+      // Ví
       walletConnected: "Đã kết nối ví",
       walletConnecting: "Đang kết nối...",
-      // Round creation
+      // Tạo vòng
       factoryNotReadyTitle: "Factory chưa sẵn sàng",
       factoryNotReadyDesc: "Không tìm thấy RoundFactory đang hoạt động. Vui lòng triển khai hoặc cấu hình hợp đồng factory trước.",
       invalidScheduleTitle: "Lịch không hợp lệ",
@@ -2015,7 +2015,7 @@ const viData: Translations = {
       roundCreatedTitle: "Đã tạo vòng gọi vốn!",
       roundCreatedDesc: "Vòng Quadratic Funding mới đã được kích hoạt trên Fuji.",
       createRoundFailed: "Tạo vòng thất bại",
-      // Project approval (admin)
+      // Duyệt dự án (admin)
       approvingProjectTitle: "Đang duyệt dự án...",
       approvingProjectDesc: "Đang duyệt {name} tham gia vòng.",
       confirmingApprovalTitle: "Đang xác nhận duyệt...",
@@ -2030,7 +2030,7 @@ const viData: Translations = {
       studentApprovedTitle: "Đã duyệt sinh viên!",
       studentApprovedDesc: "Ví {address} đã được thêm vào danh sách whitelist sinh viên.",
       whitelistFailed: "Cập nhật whitelist thất bại",
-      // Deposit pool
+      // Nạp pool
       depositApproveStep: "Bước 1/2: Đang phê duyệt USDC...",
       depositApproveDesc: "Vui lòng xác nhận phê duyệt token trong ví.",
       depositConfirmApproval: "Bước 1/2: Đang xác nhận phê duyệt...",
@@ -2045,7 +2045,7 @@ const viData: Translations = {
       depositSuccess: "Đã nạp quỹ thành công!",
       depositSuccessDesc: "Đã thêm thành công {amount} USDC vào quỹ đối ứng.",
       depositFailed: "Nạp quỹ thất bại",
-      // Donate
+      // Quyên góp
       donateStep1Title: "Bước 1/2: Đang phê duyệt USDC...",
       donateStep1Desc: "Vui lòng xác nhận phê duyệt token trong ví.",
       donateConfirmApproval: "Bước 1/2: Đang xác nhận phê duyệt...",
@@ -2066,7 +2066,7 @@ const viData: Translations = {
       finalizeSuccess: "Đã chốt vòng!",
       finalizeSuccessDesc: "Các khoản phân bổ Quadratic đã được tính toán và quyền nhận tiền đã mở.",
       finalizeFailed: "Chốt vòng thất bại",
-      // Register project
+      // Đăng ký dự án
       registerTitle: "Đang đăng ký dự án...",
       registerDesc: "Vui lòng xác nhận giao dịch trong ví của bạn.",
       registerConfirm: "Đang xác nhận đăng ký...",
@@ -2087,7 +2087,7 @@ const viData: Translations = {
       faucetSuccess: "Đã nhận 100 USDC test!",
       faucetSuccessDesc: "100 USDC đã được gửi vào ví của bạn.",
       faucetFailed: "Nhận tiền thất bại",
-      // Verification request
+      // Yêu cầu xác minh
       requestVerifyTitle: "Đang gửi yêu cầu xác minh...",
       requestVerifyDesc: "Vui lòng xác nhận trong ví của bạn.",
       requestVerifyConfirm: "Đang xác nhận yêu cầu...",
@@ -2095,14 +2095,14 @@ const viData: Translations = {
       requestVerifySuccess: "Đã gửi yêu cầu xác minh!",
       requestVerifySuccessDesc: "Yêu cầu của bạn đang chờ quản trị viên xem xét.",
       requestVerifyFailed: "Gửi yêu cầu thất bại",
-      // Leftover withdrawal
+      // Rút phần dư (leftover)
       withdrawTitle: "Đang rút quỹ dư...",
       withdrawDesc: "Vui lòng xác nhận giao dịch trong ví của bạn.",
       withdrawConfirm: "Đang xác nhận rút quỹ...",
       withdrawSuccess: "Đã rút quỹ dư!",
       withdrawSuccessDesc: "Tiền đối ứng chưa phân bổ đã được trả về ví admin.",
       withdrawFailed: "Rút quỹ thất bại",
-      // Wallet not ready
+      // Ví chưa sẵn sàng
       walletNotReady: "Ví chưa sẵn sàng",
       walletNotReadyDesc: "Vui lòng kết nối ví admin.",
       roundNotActive: "Vòng không hoạt động",

@@ -2,7 +2,7 @@
 import { useAccount, useReadContract } from "wagmi";
 import { studentRegistryAbi } from "@/lib/contracts/abis";
 import { isStudentRegistryConfigured, studentRegistryAddress } from "@/lib/contracts/addresses";
-/** Student identity reads never depend on a factory, project or selected round. */
+/** Đọc danh tính Student không phụ thuộc factory, project hay round đã chọn. */
 export function useStudentStatus() {
   const { address, isConnected, chainId } = useAccount();
   const active = isConnected && chainId === 43113;

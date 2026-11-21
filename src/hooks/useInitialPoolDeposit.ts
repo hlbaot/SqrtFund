@@ -6,7 +6,7 @@ import { roundFactoryAbi } from "@/lib/contracts/abis";
 import { factoryAddress, usdcAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { isVersionReadError } from "@/lib/contracts/roundReads";
 
-/** On-chain credit survives reloads and is scoped to chain, factory, token and wallet. */
+/** Credit on-chain giữ qua reload, theo chain, factory, token và ví. */
 export function useInitialPoolDeposit(wallet?: Address) {
   const enabled = Boolean(wallet && factoryAddress && usdcAddress);
   const query = useReadContracts({
@@ -24,7 +24,7 @@ export function useInitialPoolDeposit(wallet?: Address) {
     : version?.status === "failure" && isVersionReadError(version.error);
   const isOwner = Boolean(wallet && query.data?.[2]?.status === "success" && (query.data[2].result as string).toLowerCase() === wallet.toLowerCase());
   const organizer = query.data?.[3];
-  // Funding-only deployments predate Organizer grants. Their owner remains authorized.
+  // Deployment chỉ-funding có trước Organizer grants; owner vẫn được cấp quyền
   const organizerUnsupported = organizer?.status === "failure" && isVersionReadError(organizer.error);
   return {
     isUnsupported,

@@ -56,7 +56,7 @@ export function useRoundRefunds(
   enabled: boolean,
   history?: DonationHistory
 ) {
-  // Current QFRound MAX_PROJECTS is 50. Validate its getter before allowing any refund batch.
+  // MAX_PROJECTS của QFRound là 50; kiểm tra getter trước khi cho refund batch
   const ids = useMemo(() => Array.from({ length: Math.min(Number(projectCount), 50) }, (_, index) => BigInt(index + 1)), [projectCount]);
   const limit = useReadContract({
     address: round,

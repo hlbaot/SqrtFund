@@ -112,7 +112,7 @@ export function RoundHeader({ round, choices, onRoundChange, finalPayoutsAvailab
         </div>
       </div>
 
-      {/* Round header stats strip: Supporters (primary) first, Pool, Direct, Projects */}
+      {/* Dải thống kê header round: Supporters (chính) trước, rồi Pool, Direct, Projects */}
       <StatGroup columns={4} className="bg-surface p-4 sm:p-5">
         <Stat
           label={

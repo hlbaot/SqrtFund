@@ -126,7 +126,7 @@ export function useRound(customRoundAddress?: Address, userAddress?: Address) {
     finalizedAt: finalized && !isCancelled ? claimTiming.data?.finalizedAt : undefined,
     pool: pool ?? 0n, finalized, leftover: leftover ?? 0n, leftoverWithdrawn,
     projectCount: projectCount ?? 0n, status,
-    // Preserve missing reads for financial summaries instead of displaying fallback zeros.
+    // Giữ nguyên giá trị đọc thiếu thay vì hiển thị số 0 mặc định
     financials: {
       pool,
       leftover,

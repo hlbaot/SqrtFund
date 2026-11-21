@@ -18,12 +18,12 @@ export function markTourCompleted(): void {
   try {
     localStorage.setItem(TOUR_STORAGE_KEY, "true");
   } catch {
-    // Ignore localStorage errors
+    // Bỏ qua lỗi localStorage
   }
 }
 
 export async function startOnboardingTour(locale: "vi" | "en" = "vi") {
-  // Dynamically import driver.js to ensure zero SSR side effects and keep main bundle light
+  // Import động driver.js để không có side effect SSR và giữ bundle chính nhẹ
   const { driver } = await import("driver.js");
 
   const isVi = locale === "vi";
@@ -117,7 +117,7 @@ export async function startOnboardingTour(locale: "vi" | "en" = "vi") {
     },
   ];
 
-  // Mark as completed immediately when tour launches to prevent duplicate auto-triggering
+  // Đánh dấu hoàn thành ngay khi tour chạy để tránh tự kích hoạt lặp
   markTourCompleted();
 
   const driverObj = driver({

@@ -1,6 +1,6 @@
 const base = process.argv[2] || "http://127.0.0.1:3100";
 for (const path of ["/", "/rounds", "/round", "/round/0x1111111111111111111111111111111111111111", "/verify", "/admin", "/my", "/register"]) {
-  // Next.js puts awaited metadata in <head> for HTML-limited preview crawlers.
+  // Next.js đặt metadata đã await vào <head> cho crawler preview chỉ đọc HTML.
   const response = await fetch(new URL(path, base), { headers: { "User-Agent": "facebookexternalhit/1.1" } });
   const html = await response.text();
   const head = html.match(/<head>([\s\S]*?)<\/head>/)?.[1] || "";

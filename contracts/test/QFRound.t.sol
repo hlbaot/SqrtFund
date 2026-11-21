@@ -51,7 +51,7 @@ contract QFRoundTest is Test {
         round = QFRound(roundAddr);
     }
 
-    // --- Helper Utilities ---
+    // --- Tiện ích hỗ trợ ---
 
     function _verifyUser(address user) internal {
         if (registry.isStudent(user)) return;
@@ -80,7 +80,7 @@ contract QFRoundTest is Test {
         usdc.approve(address(round), amount);
     }
 
-    // --- MockUSDC Tests ---
+    // --- Test MockUSDC ---
 
     function test_MockUSDC_faucet() public {
         address user = address(0x999);
@@ -88,18 +88,18 @@ contract QFRoundTest is Test {
         usdc.faucetMint();
         assertEq(usdc.balanceOf(user), 100 * 10 ** 6);
 
-        // Immediate second mint should revert due to cooldown
+        // Mint lần hai ngay lập tức phải revert do cooldown
         vm.prank(user);
         vm.expectRevert();
         usdc.faucetMint();
 
-        // Warp 1 hour: can mint again
+        // Warp 1 giờ: mint lại được
         vm.warp(block.timestamp + 1 hours);
         vm.prank(user);
         usdc.faucetMint();
         assertEq(usdc.balanceOf(user), 200 * 10 ** 6);
 
-        // Advance and hit lifetime cap (1,000 USDC = 10 mints total)
+        // Tăng dần đến lifetime cap (1,000 USDC = 10 lần mint)
         for (uint256 i = 2; i < 10; i++) {
             vm.warp(block.timestamp + 1 hours);
             vm.prank(user);
@@ -107,19 +107,19 @@ contract QFRoundTest is Test {
         }
         assertEq(usdc.balanceOf(user), 1000 * 10 ** 6);
 
-        // 11th mint should exceed lifetime cap
+        // Lần mint thứ 11 vượt lifetime cap
         vm.warp(block.timestamp + 1 hours);
         vm.prank(user);
         vm.expectRevert(MockUSDC.FaucetCapExceeded.selector);
         usdc.faucetMint();
     }
 
-    // --- Core QF Math Verification ---
+    // --- Kiểm chứng toán QF cốt lõi ---
 
     function test_Math_300x1_beats_60x5() public {
-        // Project 1: 300 donors x 1 USDC
-        // Project 2: 60 donors x 5 USDC
-        // Both projects receive 300 USDC direct donations.
+        // Dự án 1: 300 donor x 1 USDC
+        // Dự án 2: 60 donor x 5 USDC
+        // Mỗi dự án nhận 300 USDC donation trực tiếp.
         uint256 p1 = _registerAndApproveProject(projectOwner1, "P1 300x1");
         uint256 p2 = _registerAndApproveProject(projectOwner2, "P2 60x5");
 
@@ -141,7 +141,7 @@ contract QFRoundTest is Test {
             round.donate(p2, 5 * 10 ** 6);
         }
 
-        // Sponsor deposits large pool (e.g., 200,000 USDC) so cap / pool size does not truncate raw comparison
+        // Sponsor nạp pool lớn (200,000 USDC) để trần/kích thước pool không làm cắt cụt so sánh raw
         uint256 largePool = 200_000 * 10 ** 6;
         _fundAndApprove(admin, largePool);
         vm.prank(admin);
@@ -150,13 +150,12 @@ contract QFRoundTest is Test {
         (uint256[] memory ids, uint256[] memory estimated) = round.previewMatching();
         assertEq(ids.length, 2);
 
-        // Project 1 raw: ~89,700 USDC (89,700 * 10^6)
-        // Project 2 raw: ~17,700 USDC (17,700 * 10^6)
-        // Note: cap is maxMatchBps = 30% of pool = 60,000 USDC.
-        // To inspect pure raw before cap, let's test preview when maxMatchBps is 100% or observe raw:
-        // P1 should be strictly greater than P2.
+        // Raw dự án 1: ~89,700 USDC
+        // Raw dự án 2: ~17,700 USDC
+        // Trần maxMatchBps = 30% pool = 60,000 USDC.
+        // P1 phải lớn hơn P2.
         assertGt(estimated[0], estimated[1]);
-        assertApproxEqAbs(estimated[0], 60_000 * 10 ** 6, 1); // Capped at 30% of 200k = 60k
+        assertApproxEqAbs(estimated[0], 60_000 * 10 ** 6, 1); // Bị trần 30% của 200k = 60k
         assertApproxEqAbs(estimated[1], 17_700 * 10 ** 6, 50 * 10 ** 6); // ~17,700 USDC
     }
 
@@ -167,7 +166,7 @@ contract QFRoundTest is Test {
         _verifyUser(donor1);
         _fundAndApprove(donor1, 3 * 10 ** 6);
 
-        // Donor gives 1 + 1 + 1 to the same project
+        // Donor góp 1 + 1 + 1 cho cùng một dự án
         vm.prank(donor1);
         round.donate(p1, 1 * 10 ** 6);
         vm.prank(donor1);
@@ -175,16 +174,16 @@ contract QFRoundTest is Test {
         vm.prank(donor1);
         round.donate(p1, 1 * 10 ** 6);
 
-        // Sponsor deposits pool
+        // Sponsor nạp pool
         _fundAndApprove(admin, 10_000 * 10 ** 6);
         vm.prank(admin);
         round.depositPool(10_000 * 10 ** 6);
 
         (, uint256[] memory estimated) = round.previewMatching();
-        // Since there is only 1 donor, raw_p = max(0, S_p^2 / SCALE - totalDonated)
+        // Chỉ có 1 donor nên raw_p = max(0, S_p^2 / SCALE - totalDonated)
         // S = sqrt(3 * 10^6 * 10^12) = sqrt(3 * 10^18) = 1,732,050,807
         // S^2 / 10^12 = 2,999,999 <= totalDonated (3,000,000)
-        // Raw matching MUST be 0!
+        // Raw matching phải bằng 0!
         assertEq(estimated[0], 0);
     }
 
@@ -196,30 +195,30 @@ contract QFRoundTest is Test {
         _verifyUser(donor1);
         _fundAndApprove(donor1, 15 * 10 ** 6);
 
-        // Giving 3 USDC
+        // Góp 3 USDC
         vm.prank(donor1);
         round.donate(p1, 3 * 10 ** 6);
 
-        // Giving 3 USDC again to p1 should revert (3 + 3 = 6 > maxDonation of 5)
+        // Góp thêm 3 USDC cho p1 phải revert (3 + 3 = 6 > maxDonation 5)
         vm.prank(donor1);
         vm.expectRevert(QFRound.DonationExceedsMax.selector);
         round.donate(p1, 3 * 10 ** 6);
 
-        // Can give 2 more to p1 (total = 5)
+        // Góp thêm 2 cho p1 được (tổng = 5)
         vm.prank(donor1);
         round.donate(p1, 2 * 10 ** 6);
         assertEq(round.donationOf(donor1, p1), 5 * 10 ** 6);
 
-        // And can also give 5 USDC to p2!
+        // Và vẫn góp được 5 USDC cho p2!
         vm.prank(donor1);
         round.donate(p2, 5 * 10 ** 6);
         assertEq(round.donationOf(donor1, p2), 5 * 10 ** 6);
     }
 
-    // --- Pool Allocation Scenarios ---
+    // --- Kịch bản phân bổ pool ---
 
     function test_PoolSmallerThanTotalRaw_ProportionalPayout() public {
-        // Deploy a round with maxMatchBps = 10000 so the per-project cap does not leave artificial leftover
+        // Tạo vòng với maxMatchBps = 10000 để trần mỗi dự án không tạo phần dư giả
         vm.prank(admin);
         address rAddr = factory.createRound(
             "Uncapped Round",
@@ -252,13 +251,13 @@ contract QFRoundTest is Test {
         _fundAndApprove(donor1, 10 * 10 ** 6);
         _fundAndApprove(donor2, 10 * 10 ** 6);
 
-        // Approve uncapRound
+        // Duyệt uncapRound
         vm.prank(donor1);
         usdc.approve(address(uncapRound), 10 * 10 ** 6);
         vm.prank(donor2);
         usdc.approve(address(uncapRound), 10 * 10 ** 6);
 
-        // 2 donors on each project to generate positive raw matching
+        // 2 donor mỗi dự án để tạo raw matching dương
         vm.prank(donor1);
         uncapRound.donate(p1, 2 * 10 ** 6);
         vm.prank(donor2);
@@ -269,7 +268,7 @@ contract QFRoundTest is Test {
         vm.prank(donor2);
         uncapRound.donate(p2, 1 * 10 ** 6);
 
-        // Total pool is small (e.g. 2 USDC = 2,000,000)
+        // Pool nhỏ (ví dụ 2 USDC = 2,000,000)
         uint256 smallPool = 2 * 10 ** 6;
         _fundAndApprove(admin, smallPool);
         vm.prank(admin);
@@ -287,12 +286,12 @@ contract QFRoundTest is Test {
 
         assertLe(payout1 + payout2, smallPool);
         assertEq(payout1 + payout2 + leftover, smallPool);
-        // Dust left over due to integer division is at most number of projects (2 wei)
+        // Phần dư do chia nguyên tối đa bằng số dự án (2 wei)
         assertLe(leftover, 2);
     }
 
     function test_MatchingCapEnforced() public {
-        // In default round, maxMatchBps = 3000 (30%)
+        // Vòng mặc định: maxMatchBps = 3000 (30%)
         uint256 p1 = _registerAndApproveProject(projectOwner1, "P1");
 
         vm.warp(startTime + 1);
@@ -306,8 +305,8 @@ contract QFRoundTest is Test {
         vm.prank(donor2);
         round.donate(p1, 5 * 10 ** 6);
 
-        // Pool = 10 USDC. Cap = 30% of 10 USDC = 3 USDC.
-        // Raw matching for p1 would be (2 * sqrt(5e18))^2 / 1e12 - 10e6 = 20e6 - 10e6 = 10 USDC.
+        // Pool = 10 USDC. Trần = 30% của 10 USDC = 3 USDC.
+        // Raw matching của p1 = (2 * sqrt(5e18))^2 / 1e12 - 10e6 = 20e6 - 10e6 = 10 USDC.
         uint256 testPool = 10 * 10 ** 6;
         _fundAndApprove(admin, testPool);
         vm.prank(admin);
@@ -318,7 +317,7 @@ contract QFRoundTest is Test {
         round.finalize();
 
         uint256 payout1 = round.payoutOf(p1);
-        assertEq(payout1, 3 * 10 ** 6); // Exactly capped at 30%
+        assertEq(payout1, 3 * 10 ** 6); // Đúng bằng trần 30%
         assertEq(round.leftover(), 7 * 10 ** 6);
     }
 
@@ -336,7 +335,7 @@ contract QFRoundTest is Test {
         vm.prank(donor2);
         round.donate(p1, 1 * 10 ** 6);
 
-        // Raw matching for p1: (2 * sqrt(1e18))^2 / 1e12 - 2e6 = 4e6 - 2e6 = 2e6 (2 USDC)
+        // Raw matching của p1: (2 * sqrt(1e18))^2 / 1e12 - 2e6 = 4e6 - 2e6 = 2e6 (2 USDC)
         uint256 largePool = 100 * 10 ** 6; // 100 USDC
         _fundAndApprove(admin, largePool);
         vm.prank(admin);
@@ -350,13 +349,13 @@ contract QFRoundTest is Test {
         assertEq(payout, 2 * 10 ** 6);
         assertEq(round.leftover(), 98 * 10 ** 6);
 
-        // Admin withdraws leftover
+        // Admin rút phần dư
         uint256 adminBalBefore = usdc.balanceOf(admin);
         vm.prank(admin);
         round.withdrawLeftover();
         assertEq(usdc.balanceOf(admin) - adminBalBefore, 98 * 10 ** 6);
 
-        // Reverts if called a second time
+        // Gọi lần hai phải revert
         vm.prank(admin);
         vm.expectRevert(QFRound.LeftoverAlreadyWithdrawn.selector);
         round.withdrawLeftover();
@@ -394,7 +393,7 @@ contract QFRoundTest is Test {
         }
     }
 
-    // --- Whitelist & Verification Flow ---
+    // --- Whitelist & xác minh ---
 
 
 
@@ -402,11 +401,11 @@ contract QFRoundTest is Test {
 
 
 
-    // --- Batch Whitelist ---
+    // --- Whitelist hàng loạt ---
 
 
 
-    // --- Claim Flow ---
+    // --- Luồng claim ---
 
     function test_ClaimFlow() public {
         uint256 p1 = _registerAndApproveProject(projectOwner1, "Project 1");
@@ -421,7 +420,7 @@ contract QFRoundTest is Test {
         vm.prank(admin);
         round.depositPool(10 * 10 ** 6);
 
-        // Claim before finalize reverts
+        // Claim trước khi chốt phải revert
         vm.prank(projectOwner1);
         vm.expectRevert(QFRound.NotFinalized.selector);
         round.claim(p1);
@@ -430,27 +429,27 @@ contract QFRoundTest is Test {
         vm.prank(admin);
         round.finalize();
 
-        // Claim by non-owner reverts
+        // Không phải chủ dự án claim phải revert
         vm.prank(donor1);
         vm.expectRevert(QFRound.NotProjectOwner.selector);
         round.claim(p1);
 
-        // Owner claims successfully
+        // Chủ dự án claim thành công
         uint256 balBefore = usdc.balanceOf(projectOwner1);
         vm.prank(projectOwner1);
         round.claim(p1);
         assertGt(usdc.balanceOf(projectOwner1), balBefore);
 
-        // Duplicate claim reverts
+        // Claim trùng phải revert
         vm.prank(projectOwner1);
         vm.expectRevert(QFRound.AlreadyClaimed.selector);
         round.claim(p1);
     }
 
-    // --- All Negative & Revert Scenarios ---
+    // --- Các kịch bản lỗi & revert ---
 
     function test_Reverts() public {
-        // Owner donating to own project reverts
+        // Chủ dự án tự donate cho dự án của mình phải revert
         uint256 p1 = _registerAndApproveProject(projectOwner1, "P1");
         _verifyUser(projectOwner1);
         _fundAndApprove(projectOwner1, 2 * 10 ** 6);
@@ -459,13 +458,13 @@ contract QFRoundTest is Test {
         vm.expectRevert(QFRound.SelfDonationNotAllowed.selector);
         round.donate(p1, 2 * 10 ** 6);
 
-        // Non-whitelisted donate reverts
+        // Chưa whitelist donate phải revert
         _fundAndApprove(donor1, 2 * 10 ** 6);
         vm.prank(donor1);
         vm.expectRevert(QFRound.NotStudent.selector);
         round.donate(p1, 2 * 10 ** 6);
 
-        // Donate to unapproved project reverts
+        // Donate cho dự án chưa duyệt phải revert
         _verifyUser(projectOwner2);
         vm.prank(projectOwner2);
         uint256 unapprovedP = round.registerProject("Unapproved", "Desc", "url", "url");
@@ -474,12 +473,12 @@ contract QFRoundTest is Test {
         vm.expectRevert(QFRound.ProjectNotApproved.selector);
         round.donate(unapprovedP, 2 * 10 ** 6);
 
-        // Donate below min reverts
+        // Donate dưới mức tối thiểu phải revert
         vm.prank(donor1);
         vm.expectRevert(QFRound.DonationBelowMin.selector);
         round.donate(p1, 0.5 * 10 ** 6);
 
-        // Donate outside time window reverts
+        // Donate ngoài khung thời gian phải revert
         vm.warp(startTime - 1);
         vm.prank(donor1);
         vm.expectRevert(QFRound.RoundNotActive.selector);
@@ -490,12 +489,12 @@ contract QFRoundTest is Test {
         vm.expectRevert(QFRound.RoundNotActive.selector);
         round.donate(p1, 1 * 10 ** 6);
 
-        // Finalize before endTime reverts
+        // Chốt trước endTime phải revert
         vm.warp(endTime - 1);
         vm.expectRevert(QFRound.RoundNotEnded.selector);
         round.finalize();
 
-        // Finalize twice reverts
+        // Chốt hai lần phải revert
         vm.warp(endTime + 1);
         vm.prank(admin);
         round.finalize();
@@ -503,7 +502,7 @@ contract QFRoundTest is Test {
         vm.expectRevert(QFRound.AlreadyFinalized.selector);
         round.finalize();
 
-        // Non-admin calling admin functions reverts
+        // Không phải admin gọi hàm admin phải revert
         vm.prank(donor1);
         vm.expectRevert(QFRound.NotAdmin.selector);
         round.depositPool(100);
@@ -513,7 +512,7 @@ contract QFRoundTest is Test {
         round.withdrawLeftover();
     }
 
-    // --- Boundary Tests (Max Projects & Max Requesters) ---
+    // --- Test biên (số dự án tối đa & số requester) ---
 
     function test_MaxProjectsBoundary() public {
         for (uint160 i = 0; i < 25; i++) {
@@ -527,14 +526,14 @@ contract QFRoundTest is Test {
         _verifyUser(address(this));
         assertEq(round.projectCount(), 50);
 
-        // 51st project reverts
+        // Dự án thứ 51 phải revert
         vm.expectRevert(QFRound.MaxProjectsReached.selector);
         round.registerProject("51st", "Desc", "https://img", "https://site");
     }
 
 
 
-    // --- Accounting Invariant Test ---
+    // --- Test bất biến kế toán ---
 
     function test_AccountingDustBound() public {
         uint256 p1 = _registerAndApproveProject(projectOwner1, "P1");
@@ -571,11 +570,11 @@ contract QFRoundTest is Test {
         vm.prank(admin);
         round.withdrawLeftover();
 
-        // Contract balance must be <= number of projects in wei (dust bound)
+        // Số dư contract phải <= số dự án tính bằng wei (giới hạn dust)
         assertLe(usdc.balanceOf(address(round)), 2);
     }
 
-    // --- Fuzz Testing Invariant ---
+    // --- Test bất biến fuzz ---
 
     function testFuzz_PayoutsNeverExceedPool(uint256 poolDeposit, uint256 don1, uint256 don2) public {
         poolDeposit = bound(poolDeposit, 1 * 10 ** 6, 1_000_000 * 10 ** 6);
@@ -611,7 +610,7 @@ contract QFRoundTest is Test {
         assertLe(pay1 + pay2, poolDeposit);
         assertEq(pay1 + pay2 + leftover, poolDeposit);
 
-        // Claims and withdraw should succeed
+        // Claim và rút phải thành công
         vm.prank(projectOwner1);
         round.claim(p1);
         vm.prank(projectOwner2);
@@ -619,23 +618,23 @@ contract QFRoundTest is Test {
         vm.prank(admin);
         round.withdrawLeftover();
 
-        // Balance remains below dust bound
+        // Số dư vẫn dưới giới hạn dust
         assertLe(usdc.balanceOf(address(round)), 2);
     }
 
-    // --- New Tests for Requested Requirements ---
+    // --- Test cho các yêu cầu bổ sung ---
 
     function test_Finalize_GracePeriod_AdminCanFinalize_NonAdminReverts() public {
         _registerAndApproveProject(projectOwner1, "P1");
         vm.warp(endTime + 1 hours);
 
-        // Non-admin trying to finalize during grace period (first 24h) reverts
+        // Không phải admin chốt trong grace period (24h đầu) phải revert
         address stranger = address(0x999);
         vm.prank(stranger);
         vm.expectRevert(QFRound.FinalizeGracePeriodActive.selector);
         round.finalize();
 
-        // Admin can finalize during grace period
+        // Admin chốt được trong grace period
         vm.prank(admin);
         round.finalize();
         assertTrue(round.finalized());
@@ -643,7 +642,7 @@ contract QFRoundTest is Test {
 
     function test_Finalize_AnyoneCanFinalizeAfterGrace() public {
         _registerAndApproveProject(projectOwner1, "P1");
-        // Warp past grace period (1 days after endTime)
+        // Warp qua grace period (1 ngày sau endTime)
         vm.warp(endTime + 1 days + 1 seconds);
 
         address stranger = address(0x999);
@@ -656,13 +655,13 @@ contract QFRoundTest is Test {
         _registerAndApproveProject(projectOwner1, "P1");
         vm.warp(endTime + 10 minutes);
 
-        // Pool is currently 0, stranger attempts to lock the round prematurely
+        // Pool đang là 0, người lạ cố khóa vòng sớm
         address stranger = address(0x999);
         vm.prank(stranger);
         vm.expectRevert(QFRound.FinalizeGracePeriodActive.selector);
         round.finalize();
 
-        // Admin can still deposit pool and finalize properly
+        // Admin vẫn nạp pool và chốt bình thường
         _fundAndApprove(admin, 5_000 * 10 ** 6);
         vm.prank(admin);
         round.depositPool(5_000 * 10 ** 6);
@@ -678,13 +677,13 @@ contract QFRoundTest is Test {
         vm.prank(projectOwner1);
         uint256 p1 = round.registerProject("P1", "Desc", "url", "url");
 
-        // Warp past endTime
+        // Warp qua endTime
         vm.warp(endTime + 1);
         vm.prank(admin);
         vm.expectRevert(QFRound.RoundEnded.selector);
         round.approveProject(p1);
 
-        // Also test after finalize
+        // Test thêm sau khi chốt
         vm.prank(admin);
         round.finalize();
 
@@ -714,7 +713,7 @@ contract QFRoundTest is Test {
         vm.expectRevert();
         factory.createRound("R1", "Org1", address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound);
 
-        // Admin creates round 2 and round 3
+        // Admin tạo vòng 2 và vòng 3
         vm.prank(admin);
         address r2 = factory.createRound("R2", "Org2", address(usdc), startTime + 10 days, endTime + 10 days, minDonation, maxDonation, maxMatchBps, maxPerRound);
         vm.prank(admin);
@@ -744,17 +743,17 @@ contract QFRoundTest is Test {
         vm.expectRevert(QFRound.InvalidMaxMatchBps.selector);
         new QFRound("Round 1", "Org 1", admin, address(usdc), startTime, endTime, minDonation, maxDonation, 10001, maxPerRound, address(registry));
 
-        // zero address admin
+        // admin là zero address
         vm.expectRevert(QFRound.ZeroAddress.selector);
         new QFRound("Round 1", "Org 1", address(0), address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound, address(registry));
 
-        // zero address token
+        // token là zero address
         vm.expectRevert(QFRound.ZeroAddress.selector);
         new QFRound("Round 1", "Org 1", admin, address(0), startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound, address(registry));
     }
 
     function test_QFRound_NameAndOrganizerValidation() public {
-        // Valid name and organizer
+        // Name và organizer hợp lệ
         QFRound rValid = new QFRound(
             "Valid Round Name",
             "Valid Organizer",
@@ -770,7 +769,7 @@ contract QFRoundTest is Test {
         assertEq(rValid.name(), "Valid Round Name");
         assertEq(rValid.organizer(), "Valid Organizer");
 
-        // Organizer can be empty (0 bytes)
+        // Organizer được phép rỗng (0 byte)
         QFRound rEmptyOrg = new QFRound(
             "Round With No Org",
             "",
@@ -786,7 +785,7 @@ contract QFRoundTest is Test {
         assertEq(rEmptyOrg.name(), "Round With No Org");
         assertEq(rEmptyOrg.organizer(), "");
 
-        // Empty name reverts
+        // Name rỗng phải revert
         vm.expectRevert(QFRound.RoundNameInvalid.selector);
         new QFRound(
             "",
@@ -801,8 +800,8 @@ contract QFRoundTest is Test {
             address(registry)
         );
 
-        // Name too long (> 60 bytes) reverts
-        string memory longName = "1234567890123456789012345678901234567890123456789012345678901"; // 61 bytes
+        // Name quá dài (> 60 byte) phải revert
+        string memory longName = "1234567890123456789012345678901234567890123456789012345678901"; // 61 byte
         vm.expectRevert(QFRound.RoundNameInvalid.selector);
         new QFRound(
             longName,
@@ -817,8 +816,8 @@ contract QFRoundTest is Test {
             address(registry)
         );
 
-        // Organizer too long (> 60 bytes) reverts
-        string memory longOrg = "1234567890123456789012345678901234567890123456789012345678901"; // 61 bytes
+        // Organizer quá dài (> 60 byte) phải revert
+        string memory longOrg = "1234567890123456789012345678901234567890123456789012345678901"; // 61 byte
         vm.expectRevert(QFRound.OrganizerTooLong.selector);
         new QFRound(
             "Valid Round",
@@ -837,37 +836,37 @@ contract QFRoundTest is Test {
     function test_RegisterProject_LengthLimits() public {
         _verifyUser(projectOwner1);
 
-        // Name empty
+        // Name rỗng
         vm.prank(projectOwner1);
         vm.expectRevert(QFRound.NameLengthInvalid.selector);
         round.registerProject("", "Valid description", "https://img", "https://url");
 
-        // Name > 60 bytes
-        string memory longName = "1234567890123456789012345678901234567890123456789012345678901"; // 61 chars
+        // Name > 60 byte
+        string memory longName = "1234567890123456789012345678901234567890123456789012345678901"; // 61 ký tự
         vm.prank(projectOwner1);
         vm.expectRevert(QFRound.NameLengthInvalid.selector);
         round.registerProject(longName, "Valid description", "https://img", "https://url");
 
-        // Description empty
+        // Description rỗng
         vm.prank(projectOwner1);
         vm.expectRevert(QFRound.DescriptionLengthInvalid.selector);
         round.registerProject("Valid name", "", "https://img", "https://url");
 
-        // Description > 280 bytes
+        // Description > 280 byte
         bytes memory longDescBytes = new bytes(281);
         for (uint256 i = 0; i < 281; i++) longDescBytes[i] = "a";
         vm.prank(projectOwner1);
         vm.expectRevert(QFRound.DescriptionLengthInvalid.selector);
         round.registerProject("Valid name", string(longDescBytes), "https://img", "https://url");
 
-        // ImageUrl > 200 bytes
+        // ImageUrl > 200 byte
         bytes memory longUrlBytes = new bytes(201);
         for (uint256 i = 0; i < 201; i++) longUrlBytes[i] = "u";
         vm.prank(projectOwner1);
         vm.expectRevert(QFRound.UrlTooLong.selector);
         round.registerProject("Valid name", "Valid description", string(longUrlBytes), "https://url");
 
-        // Link > 200 bytes
+        // Link > 200 byte
         vm.prank(projectOwner1);
         vm.expectRevert(QFRound.UrlTooLong.selector);
         round.registerProject("Valid name", "Valid description", "https://img", string(longUrlBytes));
@@ -876,14 +875,14 @@ contract QFRoundTest is Test {
 
 
     function test_Finalize_ZeroApprovedProjectsAndZeroPool() public {
-        // Round with 0 approved projects and 0 pool
+        // Vòng có 0 dự án duyệt và 0 pool
         vm.warp(endTime + 1 days + 1);
         round.finalize();
         assertTrue(round.finalized());
         assertEq(round.pool(), 0);
         assertEq(round.leftover(), 0);
 
-        // Test with pool > 0 and 0 approved projects
+        // Test với pool > 0 và 0 dự án duyệt
         vm.prank(admin);
         address rAddr = factory.createRound("Empty Round", "Org", address(usdc), startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound);
         QFRound r2 = QFRound(rAddr);
@@ -899,7 +898,7 @@ contract QFRoundTest is Test {
         assertTrue(r2.finalized());
         assertEq(r2.leftover(), 100 * 10 ** 6);
 
-        // Admin withdraws entire leftover
+        // Admin rút toàn bộ phần dư
         uint256 balBefore = usdc.balanceOf(admin);
         vm.prank(admin);
         r2.withdrawLeftover();
@@ -907,7 +906,7 @@ contract QFRoundTest is Test {
     }
 
     function test_Math_300x1_beats_60x5_Uncapped() public {
-        // Deploy round with maxMatchBps = 10000 (100% cap)
+        // Tạo vòng với maxMatchBps = 10000 (trần 100%)
         vm.prank(admin);
         address rAddr = factory.createRound(
             "Math Round",
@@ -956,7 +955,7 @@ contract QFRoundTest is Test {
             uncapRound.donate(p2, 5 * 10 ** 6);
         }
 
-        // Sponsor deposits large pool (200,000 USDC) so pool exceeds total raw matching
+        // Sponsor nạp pool lớn (200,000 USDC) để pool vượt tổng raw matching
         uint256 largePool = 200_000 * 10 ** 6;
         deal(address(usdc), admin, largePool);
         vm.prank(admin);
@@ -967,9 +966,9 @@ contract QFRoundTest is Test {
         (, uint256[] memory estimated) = uncapRound.previewMatching();
         assertEq(estimated.length, 2);
 
-        // Project 1 raw: ~89,700 USDC (within small tolerance of 50 USDC)
+        // Raw dự án 1: ~89,700 USDC (sai số nhỏ 50 USDC)
         assertApproxEqAbs(estimated[0], 89_700 * 10 ** 6, 50 * 10 ** 6);
-        // Project 2 raw: ~17,700 USDC (within small tolerance of 50 USDC)
+        // Raw dự án 2: ~17,700 USDC (sai số nhỏ 50 USDC)
         assertApproxEqAbs(estimated[1], 17_700 * 10 ** 6, 50 * 10 ** 6);
         assertGt(estimated[0], estimated[1]);
     }
@@ -977,12 +976,12 @@ contract QFRoundTest is Test {
     function test_MockUSDC_ownerMint_and_nonOwnerReverts() public {
         assertEq(usdc.owner(), address(this));
 
-        // Owner can mint any amount with no cap
+        // Owner mint số lượng bất kỳ, không giới hạn
         uint256 mintAmount = 250_000 * 10 ** 6;
         usdc.mint(donor1, mintAmount);
         assertEq(usdc.balanceOf(donor1), mintAmount);
 
-        // Non-owner reverts with OwnableUnauthorizedAccount
+        // Non-owner revert với OwnableUnauthorizedAccount
         vm.prank(donor2);
         vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", donor2));
         usdc.mint(donor2, 100 * 10 ** 6);
@@ -994,12 +993,12 @@ contract QFRoundTest is Test {
         address projectOwner3 = address(0x33);
         uint256 p3 = _registerAndApproveProject(projectOwner3, "Project 3");
 
-        // Mint 100,000 USDC directly to admin using owner mint()
+        // Mint 100,000 USDC cho admin bằng owner mint()
         uint256 poolAmount = 100_000 * 10 ** 6;
         usdc.mint(admin, poolAmount);
         assertEq(usdc.balanceOf(admin), poolAmount);
 
-        // Admin deposits 100,000 USDC into matching pool
+        // Admin nạp 100,000 USDC vào matching pool
         vm.prank(admin);
         usdc.approve(address(round), poolAmount);
         vm.prank(admin);
@@ -1008,7 +1007,7 @@ contract QFRoundTest is Test {
 
         vm.warp(startTime + 1);
 
-        // 10 student donors donate to p1, p2, p3
+        // 10 sinh viên donate cho p1, p2, p3
         for (uint160 i = 1; i <= 10; i++) {
             address d = address(uint160(0x5000 + i));
             _verifyUser(d);
@@ -1032,7 +1031,7 @@ contract QFRoundTest is Test {
         round.finalize();
         assertTrue(round.finalized());
 
-        // Read payouts from previewMatching and ensure bounds
+        // Đọc payout từ previewMatching và kiểm tra giới hạn
         (, uint256[] memory payouts) = round.previewMatching();
         assertEq(payouts.length, 3);
 
@@ -1040,7 +1039,7 @@ contract QFRoundTest is Test {
         assertLe(totalPayouts, poolAmount, "Payouts must never exceed pool");
         assertEq(round.leftover(), poolAmount - totalPayouts, "Leftover calculation must be exact");
 
-        // Project owners claim their allocations
+        // Chủ dự án claim phần được phân bổ
         uint256 p1BalBefore = usdc.balanceOf(projectOwner1);
         vm.prank(projectOwner1);
         round.claim(p1);
@@ -1056,13 +1055,13 @@ contract QFRoundTest is Test {
         round.claim(p3);
         assertEq(usdc.balanceOf(projectOwner3) - p3BalBefore, 6 * 10 ** 6 + payouts[2]);
 
-        // Admin withdraws unused leftover funds
+        // Admin rút phần dư chưa dùng
         uint256 adminBalBefore = usdc.balanceOf(admin);
         vm.prank(admin);
         round.withdrawLeftover();
         assertEq(usdc.balanceOf(admin) - adminBalBefore, round.leftover());
 
-        // Contract balance must be drained to dust (<= 3 wei for 3 projects)
+        // Số dư contract phải về dust (<= 3 wei cho 3 dự án)
         assertLe(usdc.balanceOf(address(round)), 3, "Round contract balance must drain to dust");
     }
 

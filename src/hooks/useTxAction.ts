@@ -11,8 +11,7 @@ import { patchReceipt, readMirrorSnapshot } from "@/lib/store/chainSync";
 import type { StoreChange } from "@/lib/store/mirror";
 
 export type TxActionOptions = { patch?: (receipt: TransactionReceipt) => StoreChange[] };
-/** Existing send/receipt callers use begin().wait; this shared confirmation hook
- * patches all views before the first RPC re-read, using only authenticated logs. */
+/** Hook xác nhận dùng chung: cập nhật mọi view trước lần đọc RPC đầu, chỉ dựa trên log đã xác thực. */
 export function useTxAction() {
   const queryClient = useQueryClient();
   const client = usePublicClient({ chainId: TARGET_CHAIN_ID });
@@ -29,8 +28,7 @@ export function useTxAction() {
       const receipt = rawReceipt as TransactionReceipt;
       if (!client || chainId !== TARGET_CHAIN_ID || (client.chain && client.chain.id !== TARGET_CHAIN_ID)) return;
       if (!Array.isArray(receipt.logs) || receipt.blockNumber === undefined) { await invalidateTokenBalances(queryClient); return; }
-      // Cancel in-flight cache reads before the optimistic write: old responses
-      // cannot overwrite the new receipt while the pinned-block read is running.
+      // Huỷ các lần đọc cache đang chạy để phản hồi cũ không ghi đè receipt mới
       await queryClient.cancelQueries({ predicate: q => ["readContracts", "round-fields", "ui-mirror"].includes(String(q.queryKey[0])) });
       let plan: ReturnType<typeof patchReceipt>;
       await confirmTxAction(receipt, {

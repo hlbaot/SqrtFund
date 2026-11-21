@@ -29,10 +29,10 @@ contract RoundPhase2Test is QFRoundTest {
         assertEq(round.donationOf(donor1,a), 5e6);
         assertEq(round.spentInRound(donor1), 6e6);
         (,uint256[] memory matching) = round.previewMatching();
-        assertEq(matching[0],0); // Splitting one donor's contribution cannot manufacture matching.
+        assertEq(matching[0],0); // Tách khoản góp của một donor không tạo thêm matching.
         vm.prank(donor1); vm.expectRevert(QFRound.DonationExceedsMax.selector); round.donate(a,1e6);
         vm.prank(donor1); vm.expectRevert(QFRound.DonationExceedsMax.selector); round.donateMany(_two(b,a),_two(1e6,1e6));
-        assertEq(round.donationOf(donor1,b),1e6); // Failed top-up rolls the whole batch back.
+        assertEq(round.donationOf(donor1,b),1e6); // Top-up lỗi sẽ rollback cả batch.
         assertEq(round.spentInRound(donor1),6e6);
     }
     function test_CancelRefundAllAndPoolAccounting() public {
@@ -42,8 +42,8 @@ contract RoundPhase2Test is QFRoundTest {
         assertEq(usdc.balanceOf(address(round)), 109e6);
         vm.prank(admin); round.cancelRound();
         vm.prank(admin); round.withdrawPoolIfCancelled();
-        assertEq(usdc.balanceOf(address(round)), 9e6); // Pool withdrawal cannot spend donor deposits.
-        vm.warp(endTime + 1000 days); // There is no refund deadline.
+        assertEq(usdc.balanceOf(address(round)), 9e6); // Rút pool không được dùng tiền donor đã nạp.
+        vm.warp(endTime + 1000 days); // Không có hạn chót hoàn tiền.
         vm.prank(donor1); round.refundMany(_two(a,b));
         vm.prank(donor2); round.refund(a);
         assertEq(usdc.balanceOf(donor1), 10e6); assertEq(usdc.balanceOf(donor2), 10e6);
@@ -84,7 +84,7 @@ contract RoundPhase2Test is QFRoundTest {
         vm.prank(admin); round.cancelRound();
         vm.prank(donor2); vm.expectRevert(QFRound.NothingToRefund.selector); round.refund(a);
         vm.prank(donor1); vm.expectRevert(QFRound.NothingToRefund.selector); round.refundMany(_two(a,b));
-        assertEq(round.donationOf(donor1,a),2e6); // First refund rolled back.
+        assertEq(round.donationOf(donor1,a),2e6); // Lần hoàn tiền đầu bị rollback.
         vm.prank(donor1); vm.expectRevert(QFRound.NothingToRefund.selector); round.refundMany(_two(a,a));
         vm.prank(donor1); vm.expectRevert(QFRound.BatchTooLarge.selector); round.refundMany(new uint256[](51));
         vm.prank(donor1); vm.expectRevert(QFRound.EmptyBatch.selector); round.refundMany(new uint256[](0));

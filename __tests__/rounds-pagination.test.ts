@@ -36,7 +36,7 @@ const click = async (label: string) => {
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   window.history.replaceState(null, "", "/round");
-  // Mirror Next's native History API subscription without requiring its router.
+  // Mô phỏng subscription History API gốc của Next, không cần router.
   const nativePush = window.history.pushState.bind(window.history);
   const nativeReplace = window.history.replaceState.bind(window.history);
   vi.spyOn(window.history, "pushState").mockImplementation((...args) => { nativePush(...args); window.dispatchEvent(new PopStateEvent("popstate")); });

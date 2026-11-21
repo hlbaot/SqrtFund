@@ -1,7 +1,7 @@
 import "server-only";
 import { VerificationError } from "@/lib/verify/errors";
 
-/** Accept Cloudinary's standard URL as well as separately configured credentials. */
+/** Chấp nhận URL chuẩn của Cloudinary lẫn credential cấu hình riêng. */
 export function cloudinaryConfig() {
   let cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim();
   let apiKey = process.env.CLOUDINARY_API_KEY?.trim();

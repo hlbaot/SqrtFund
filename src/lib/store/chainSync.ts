@@ -28,7 +28,7 @@ export function patchReceipt(receipt: TransactionReceipt) {
           organizers.add(a);
           changes.push(organizerStore.getState().upsert({ id: a, authorized: event.args.authorized, confirmedBlock: receipt.blockNumber }, true));
         }
-      } catch { /* Unrelated token/ownership events do not update permissions. */ }
+      } catch { /* Event token/ownership không liên quan thì không cập nhật quyền. */ }
       continue;
     }
     if (!roundsStore.getState().entities[key(log.address)] && ![...rounds].some(a => key(a) === key(log.address))) continue;
@@ -81,7 +81,7 @@ export function patchReceipt(receipt: TransactionReceipt) {
         case "CancelledPoolWithdrawn": patchField(16, true); break;
         case "LeftoverWithdrawn": patchField(10, true); break;
       }
-    } catch { /* Unknown events cannot mutate the mirror. */ }
+    } catch { /* Event không rõ không được thay đổi mirror. */ }
   }
   return { changes, rounds: [...rounds], organizers: [...organizers] };
 }
@@ -118,7 +118,7 @@ export async function readMirrorProjects(client: PublicClient, address: Address,
   });
 }
 
-/** Read a single pinned block, then publish one coherent confirmed snapshot. */
+/** Đọc một block đã ghim, rồi publish một snapshot đã xác nhận nhất quán. */
 export async function readMirrorSnapshot(client: PublicClient, addresses: Address[], wallets: Address[], blockNumber?: bigint) {
   const sourceTime = Date.now();
   const block = blockNumber ?? await client.getBlockNumber({ cacheTime: 0 });
@@ -144,7 +144,7 @@ export async function refreshUiStores(client: PublicClient, wallet?: Address) {
   const sourceTime = Date.now(), blockNumber = await client.getBlockNumber({ cacheTime: 0 });
   const addresses = await client.readContract({ address: factoryAddress, abi: roundFactoryAbi, functionName: "getRounds", blockNumber });
   roundsStore.getState().hydrate(addresses.map(address => ({ id: address, address })), sourceTime);
-  // Independent rounds: an unsupported historical round must not stop current ones.
+  // Các vòng độc lập: vòng lịch sử không hỗ trợ không được chặn các vòng hiện tại.
   await Promise.allSettled(addresses.map(async address => (await readMirrorSnapshot(client, [address], [], blockNumber))()));
   if (wallet) (await readMirrorSnapshot(client, [], [wallet], blockNumber))();
 }

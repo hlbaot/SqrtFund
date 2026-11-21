@@ -44,14 +44,14 @@ export function imageMatchesMime(bytes: Uint8Array, mime: string) {
   return false;
 }
 
-/** Browser event handler helper; no credential is persisted. */
+/** Helper cho browser event handler; không lưu credential. */
 export async function createUploadPermit(
   file: File,
   wallet: string,
   registry: string,
 ): Promise<UploadPermit> {
   const issuedAt = Date.now();
-  // subtle is unavailable on HTTP LAN development origins; viem hashes the same bytes.
+  // subtle không có trên origin dev HTTP LAN; viem hash cùng các byte đó.
   const digest = sha256(new Uint8Array(await file.arrayBuffer())).slice(2);
   return {
     wallet: wallet.toLowerCase(),

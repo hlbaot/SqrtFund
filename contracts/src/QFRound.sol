@@ -8,7 +8,7 @@ import {StudentRegistry} from "./StudentRegistry.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @title QFRound
-/// @notice Quadratic funding round for student clubs on Avalanche Fuji.
+/// @notice Vòng quadratic funding cho câu lạc bộ sinh viên trên Avalanche Fuji.
 contract QFRound is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -72,10 +72,10 @@ contract QFRound is ReentrancyGuard {
     uint256[] public approvedProjectIds;
     mapping(uint256 => bool) public rejected;
 
-    // donor => projectId => total donated
+    // donor => projectId => tổng đã góp
     mapping(address => mapping(uint256 => uint256)) public donationOf;
 
-    // Final distribution results
+    // Kết quả phân phối cuối cùng
     mapping(uint256 => uint256) public payoutOf;
 
     // Custom Errors
@@ -179,7 +179,7 @@ contract QFRound is ReentrancyGuard {
         maxMatchBps = _maxMatchBps;
     }
 
-    /// @notice Compatibility view; StudentRegistry is the only source of student rights.
+    /// @notice View tương thích; StudentRegistry là nguồn quyền sinh viên duy nhất.
     function isWhitelisted(address account) public view returns (bool) {
         return studentRegistry.isStudent(account);
     }
@@ -188,9 +188,9 @@ contract QFRound is ReentrancyGuard {
         return maxPerRound - spentInRound[account];
     }
 
-    // --- Project Registration ---
+    // --- Đăng ký dự án ---
 
-    /// @notice Globally verified student registers a project before round endTime (max 50 projects).
+    /// @notice Sinh viên đã xác minh toàn cục đăng ký dự án trước endTime (tối đa 50 dự án).
     function registerProject(
         string calldata projectName,
         string calldata description,
@@ -225,7 +225,7 @@ contract QFRound is ReentrancyGuard {
         emit ProjectRegistered(projectId, msg.sender, projectName);
     }
 
-    /// @notice Admin approves project to participate in round and receive donations.
+    /// @notice Admin duyệt dự án để tham gia vòng và nhận donation.
     function approveProject(uint256 id) external onlyAdmin notCancelled {
         if (finalized) revert AlreadyFinalized();
         if (block.timestamp >= endTime) revert RoundEnded();
@@ -239,11 +239,8 @@ contract QFRound is ReentrancyGuard {
         emit ProjectApproved(id);
     }
 
-    /// @notice Permanently reject an unapproved project without deleting its record.
-    /// @dev Rejection never frees MAX_PROJECTS or MAX_PROJECTS_PER_OWNER capacity:
-    ///      projectCount and projectsOf remain unchanged to prevent registration spam.
-    ///      Approved/rejected are mutually exclusive, so rejected IDs never enter
-    ///      approvedProjectIds and cannot donate, match, or claim.
+    /// @notice Từ chối vĩnh viễn dự án chưa duyệt, giữ nguyên bản ghi.
+    /// @dev Từ chối không giải phóng MAX_PROJECTS hay MAX_PROJECTS_PER_OWNER; projectCount và projectsOf giữ nguyên để chống spam. Approved/rejected loại trừ nhau nên ID bị từ chối không vào approvedProjectIds và không thể donate, match hay claim.
     function rejectProject(uint256 id) external onlyAdmin notCancelled {
         if (finalized) revert AlreadyFinalized();
         if (id == 0 || id > projectCount) revert ProjectNotFound();
@@ -253,9 +250,9 @@ contract QFRound is ReentrancyGuard {
         emit ProjectRejected(id);
     }
 
-    // --- Sponsor Matching Pool ---
+    // --- Matching pool của nhà tài trợ ---
 
-    /// @notice Admin deposits matching funds into the pool prior to round finalization.
+    /// @notice Admin nạp tiền matching vào pool trước khi chốt vòng.
     function depositPool(uint256 amount) external nonReentrant onlyAdmin notCancelled {
         if (finalized) revert AlreadyFinalized();
         if (amount == 0) revert ZeroAmount();
@@ -266,16 +263,16 @@ contract QFRound is ReentrancyGuard {
         token.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    // --- Student Donations ---
+    // --- Donation của sinh viên ---
 
-    /// @notice Globally verified student donates minDonation..maxDonation to an approved project.
+    /// @notice Sinh viên đã xác minh toàn cục donate trong khoảng minDonation..maxDonation cho dự án đã duyệt.
     function donate(uint256 projectId, uint256 amount) external nonReentrant notCancelled {
         _requireDonationOpen();
         _recordDonation(projectId, amount);
         token.safeTransferFrom(msg.sender, address(this), amount);
     }
 
-    /// @notice Atomically split this wallet's budget across projects; duplicate IDs accumulate.
+    /// @notice Chia ngân sách của ví cho nhiều dự án theo giao dịch nguyên tử; ID trùng được cộng dồn.
     function donateMany(uint256[] calldata projectIds, uint256[] calldata amounts) external nonReentrant notCancelled {
         _requireDonationOpen();
         _checkBatch(projectIds.length);
@@ -328,7 +325,7 @@ contract QFRound is ReentrancyGuard {
 
     }
 
-    // --- Cancellation: no timeout-based withdrawal path ---
+    // --- Hủy vòng: không có đường rút theo timeout ---
 
     function cancelRound() external onlyAdmin {
         if (finalized) revert AlreadyFinalized();
@@ -373,9 +370,9 @@ contract QFRound is ReentrancyGuard {
         if (amount > 0) token.safeTransfer(admin, amount);
     }
 
-    // --- Matching Math & Finalization ---
+    // --- Toán matching & chốt vòng ---
 
-    /// @dev Internal calculation of quadratic matching allocations. Shared with previewMatching().
+    /// @dev Tính nội bộ phân bổ quadratic matching; dùng chung với previewMatching().
     function _computeMatching()
         internal
         view
@@ -440,17 +437,17 @@ contract QFRound is ReentrancyGuard {
         remainingLeftover = pool - totalPayout;
     }
 
-    /// @notice Returns current estimated matching payout for each approved project using exact finalize math.
+    /// @notice Trả về matching payout ước tính cho từng dự án đã duyệt, dùng đúng công thức finalize.
     function previewMatching() external view returns (uint256[] memory projectIds, uint256[] memory estimatedPayouts) {
         (projectIds, estimatedPayouts, , , ) = _computeMatching();
     }
 
-    /// @notice Raw demand before proportional scaling and the per-project cap.
+    /// @notice Nhu cầu thô trước khi scale theo tỷ lệ và áp trần mỗi dự án.
     function matchingTotalRaw() external view returns (uint256 totalRaw) {
         (, , , , totalRaw) = _computeMatching();
     }
 
-    /// @notice Finalize the round after endTime. Only admin can finalize during FINALIZE_GRACE (1 day); after that anyone can.
+    /// @notice Chốt vòng sau endTime. Chỉ admin được chốt trong FINALIZE_GRACE (1 ngày); sau đó ai cũng được.
     function finalize() external nonReentrant notCancelled {
         if (block.timestamp < endTime) revert RoundNotEnded();
         if (finalized) revert AlreadyFinalized();
@@ -473,7 +470,7 @@ contract QFRound is ReentrancyGuard {
         emit Finalized(totalPayout, leftover);
     }
 
-    /// @notice Project owner claims direct donations plus matching payout after finalize.
+    /// @notice Chủ dự án nhận donation trực tiếp cộng matching payout sau khi chốt.
     function claim(uint256 projectId) external nonReentrant notCancelled {
         if (!finalized) revert NotFinalized();
         if (projectId == 0 || projectId > projectCount) revert ProjectNotFound();
@@ -494,7 +491,7 @@ contract QFRound is ReentrancyGuard {
         }
     }
 
-    /// @notice Admin withdraws unallocated leftover pool funds after finalize.
+    /// @notice Admin rút phần pool dư chưa phân bổ sau khi chốt.
     function withdrawLeftover() external nonReentrant onlyAdmin {
         if (!finalized) revert NotFinalized();
         if (leftoverWithdrawn) revert LeftoverAlreadyWithdrawn();
@@ -508,7 +505,7 @@ contract QFRound is ReentrancyGuard {
         }
     }
 
-    // --- Frontend Views (No Event Scanning Required) ---
+    // --- View cho frontend (không cần quét event) ---
 
     function getProject(uint256 id)
         external

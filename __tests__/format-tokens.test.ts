@@ -71,13 +71,13 @@ describe("Typography and number tokens format helpers", () => {
 
   describe("formatDateTimeGmt7", () => {
     it("formats ISO strings to DD/MM/YYYY HH:mm GMT+7", () => {
-      // 2026-10-14T00:00:00Z is 07:00 in GMT+7
+      // 2026-10-14T00:00:00Z là 07:00 ở GMT+7
       const res = formatDateTimeGmt7("2026-10-14T00:00:00Z");
       expect(res).toBe("14/10/2026 07:00 GMT+7");
     });
 
     it("formats epoch second timestamps", () => {
-      // 1700000000 is 2023-11-14T22:13:20Z -> 2023-11-15 05:13 in GMT+7
+      // 1700000000 là 2023-11-14T22:13:20Z -> 2023-11-15 05:13 ở GMT+7
       const res = formatDateTimeGmt7(1700000000);
       expect(res).toMatch(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2} GMT\+7$/);
       expect(res).toContain("GMT+7");

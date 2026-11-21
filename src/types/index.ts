@@ -17,12 +17,12 @@ export type Round = {
   id: string;
   title: string;
   description: string;
-  matchingPool: number; // in USDC
-  totalDonated: number; // in USDC
+  matchingPool: number; // đơn vị USDC
+  totalDonated: number; // đơn vị USDC
   totalSupporters: number;
   projectCount: number;
-  startTime: string; // ISO date
-  endTime: string; // ISO date
+  startTime: string; // ngày ISO
+  endTime: string; // ngày ISO
   status: RoundStatus;
   sponsorName: string;
   name?: string;
@@ -48,13 +48,13 @@ export type Project = {
   contactUrl: string;
   ownerAddress: string;
   supporterCount: number;
-  totalDonated: number; // in USDC
-  estimatedMatching: number; // in USDC
+  totalDonated: number; // đơn vị USDC
+  estimatedMatching: number; // đơn vị USDC
   claimed?: boolean;
-  finalizedAt?: number; // Confirmed Finalized event block timestamp (seconds).
+  finalizedAt?: number; // Block timestamp (giây) của event Finalized đã xác nhận.
   fundingState?: "estimated" | "finalized" | "cancelled";
   matchingUnavailable?: boolean;
-  finalMatching?: number; // Confirmed payoutOf(projectId), in USDC; undefined until read successfully.
+  finalMatching?: number; // payoutOf(projectId) đã xác nhận, đơn vị USDC; undefined đến khi đọc thành công.
   status: ProjectStatus;
   rejected?: boolean;
   rank?: number;
@@ -68,9 +68,9 @@ export type Donation = {
   projectId: string;
   projectName: string;
   donorAddress: string;
-  amount: number; // in USDC
+  amount: number; // đơn vị USDC
   txHash: string;
-  timestamp: string; // ISO date
+  timestamp: string; // ngày ISO
 };
 
 export type WalletRole = "visitor" | "student" | "project_owner" | "admin";

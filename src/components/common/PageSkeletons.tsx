@@ -25,7 +25,7 @@ export function ProjectCardSkeleton() {
 export function HomeSkeleton() {
   return (
     <div className="space-y-12">
-      {/* Hero skeleton */}
+      {/* Skeleton hero */}
       <div className="space-y-6 pt-4 max-w-3xl">
         <Skeleton className="h-6 w-48 rounded-full" />
         <Skeleton className="h-14 w-full" />
@@ -36,14 +36,14 @@ export function HomeSkeleton() {
         </div>
       </div>
 
-      {/* Stats skeleton */}
+      {/* Skeleton thống kê */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Skeleton className="h-24" />
         <Skeleton className="h-24" />
         <Skeleton className="h-24" />
       </div>
 
-      {/* Projects grid skeleton */}
+      {/* Skeleton lưới dự án */}
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">

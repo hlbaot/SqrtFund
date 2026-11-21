@@ -46,7 +46,7 @@ export function useRegistrationRounds(initialRound?: string) {
       if (query.data && query.data.confirmedBlock >= (roundsStore.getState().entities[addresses[i].address.toLowerCase()]?.confirmedBlock ?? 0n)) roundsStore.getState().hydrate([{ id: addresses[i].address, address: addresses[i].address, fields: query.data, confirmedBlock: query.data.confirmedBlock,
         name: query.data.results[12]?.result as string | undefined }], query.dataUpdatedAt);
     });
-    // Query objects are recreated on every render; their timestamps identify new snapshots.
+    // Query object tạo lại mỗi render; timestamp xác định snapshot mới
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, addressSignature]);
   const rounds = addresses.map((round, index) => {

@@ -13,7 +13,7 @@ export function useWalletDonationHistory() {
   const factory = useFactoryRounds();
   const cache = useQueryClient();
   const enabled = Boolean(address && isConnected && chainId === TARGET_CHAIN_ID && client);
-  // Personal history includes old rounds hidden from the public round listing.
+  // Lịch sử cá nhân gồm cả round cũ bị ẩn khỏi danh sách công khai
   const rounds = [...new Set(((factory.factoryData?.[0]?.result as readonly Address[] | undefined) ?? []).map(round => round.toLowerCase() as Address))];
   const queries = useQueries({ queries: rounds.map(round => ({
     queryKey: ["wallet-donation-history", TARGET_CHAIN_ID, factoryAddress.toLowerCase(), round, address?.toLowerCase()],

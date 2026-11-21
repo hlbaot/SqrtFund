@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { copy } from "@/lib/copy";
 import { factoryAddress } from "@/lib/contracts/addresses";
 
-// A small state harness exercises the real event handlers without a browser wallet.
+// Harness state nhỏ chạy event handler thật mà không cần ví browser.
 const f = vi.hoisted(() => ({
   draft: {} as Record<string, string>,
   states: [] as unknown[], cursor: 0, submit: undefined as (() => void) | undefined,
@@ -13,7 +13,7 @@ const f = vi.hoisted(() => ({
   credit: 0n, saved: 0n, allowance: 0n, balance: 100_000_000n,
   supported: true, isOwner: true, organizer: false, write: vi.fn(), read: vi.fn(), receipt: vi.fn(), error: vi.fn(),
 }));
-// Funding tests exercise hydrated fields; persistence itself is covered by form-drafts tests.
+// Test funding dùng field đã hydrate; persistence do form-drafts test bao phủ.
 vi.mock("@/hooks/useFormDraft", () => ({ useFormDraft: (_key: string, defaults: Record<string, string>) => {
   if (!Object.keys(f.draft).length) f.draft = { ...defaults };
   return { ready: true, hasDraft: true, storageError: false, values: f.draft,

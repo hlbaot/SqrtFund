@@ -16,7 +16,7 @@ import { isAllowedEmail, maskEmail, type EmailDomainPolicy } from "@/lib/verify/
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 
-// Read the clock in event handlers and timer callbacks, outside render.
+// Đọc đồng hồ trong event handler và timer callback, ngoài render.
 const eventTime = () => Date.now();
 
 type CodeRequest = { requestId: string; expiresAt: string; resendAfter: number };
@@ -127,7 +127,7 @@ function VerificationSession({ address, chainId, showVerified }: { address: Addr
       } else {
       setRequest(result as CodeRequest); setSentEmail(target); setAttestation(undefined); setDigits(Array(6).fill(""));
       setResendAt(eventTime() + (result as CodeRequest).resendAfter * 1000); setNow(eventTime()); setOpen(true);
-      // Modal may already be mounted on resend.
+      // Modal có thể đã mount khi gửi lại.
       requestAnimationFrame(() => inputs.current[0]?.focus());
       }
     } catch (err) { if (!flow.cancelled && mounted.current) showError(err); }

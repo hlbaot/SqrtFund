@@ -1,6 +1,6 @@
 export const SCALE = 1_000_000_000_000n; // 1e12
 
-/// @notice BigInt integer square root matching OpenZeppelin Math.sqrt (floor)
+/// @notice BigInt căn bậc hai nguyên, khớp OpenZeppelin Math.sqrt (làm tròn xuống)
 export function sqrtBigInt(n: bigint): bigint {
   if (n < 0n) throw new Error("negative number");
   if (n === 0n) return 0n;
@@ -43,7 +43,7 @@ export function computeRawMatching(sumSqrt: bigint, totalDonated: bigint): bigin
 export function computeMatchingBigInt(
   projects: ProjectMathInput[],
   pool: bigint,
-  maxMatchBps: bigint = 3000n, // Default 30%
+  maxMatchBps: bigint = 3000n, // Mặc định 30%
 ): ProjectMathResult[] {
   const n = projects.length;
   if (n === 0) {
@@ -88,7 +88,7 @@ export function computeRoundAllocation(projects: ProjectMathInput[], pool: bigin
   return { allocations, matching, direct, totalClaimable: direct + matching, leftover: pool - matching };
 }
 
-/// @notice Simulates the change in matching payout when a donor contributes `amount` (in 6-decimal USDC)
+/// @notice Mô phỏng thay đổi payout đối ứng khi donor góp `amount` (USDC 6 chữ số thập phân)
 export function simulateDonationImpact({
   projectId,
   currentSumSqrt,
@@ -117,7 +117,7 @@ export function simulateDonationImpact({
   const currentItem = currentResults.find((p) => String(p.id) === String(projectId));
   const currentPayout = currentItem?.payout ?? 0n;
 
-  // Simulate update to project sumSqrt
+  // Mô phỏng cập nhật sumSqrt của dự án
   const oldDonorSqrt = donorCurrentTotal > 0n ? sqrtBigInt(donorCurrentTotal * SCALE) : 0n;
   const newDonorTotal = donorCurrentTotal + donationAmount;
   const newDonorSqrt = sqrtBigInt(newDonorTotal * SCALE);
@@ -159,7 +159,7 @@ export function simulateDonationImpact({
   };
 }
 
-/** Apply all allocations before recomputing the shared pool's matching distribution. */
+/** Áp mọi allocation trước khi tính lại phân bổ đối ứng của pool chung. */
 export function simulateDonationBatch(projects: ProjectMathInput[], donorTotals: Record<string, bigint>, allocations: { id: string; amount: bigint }[], pool: bigint, maxMatchBps: bigint) {
   const next = projects.map(project => ({ ...project }));
   const totals = { ...donorTotals };
@@ -175,7 +175,7 @@ export function simulateDonationBatch(projects: ProjectMathInput[], donorTotals:
   return computeMatchingBigInt(next, pool, maxMatchBps);
 }
 
-/** Percent of raw matching demand covered by the pool, floored to 2 decimals. */
+/** Phần trăm nhu cầu đối ứng thô được pool đáp ứng, làm tròn xuống 2 chữ số. */
 export function matchingCoverage(totalRaw: bigint, pool: bigint) {
   if (totalRaw < 0n || pool < 0n) throw new Error("Negative matching inputs");
   const underfunded = totalRaw > pool;

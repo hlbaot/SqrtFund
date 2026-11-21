@@ -178,14 +178,14 @@ describe("createBlockChunks (requirement 6c)", () => {
     expect(plan.scannedBlocks).toBe(251n);
     expect(plan.capped).toBe(false);
 
-    // Verify each chunk is <= 100 blocks
+    // Kiểm tra mỗi chunk <= 100 block
     for (const chunk of plan.chunks) {
       expect(chunk.to - chunk.from + 1n).toBeLessThanOrEqual(100n);
     }
   });
 
   it("strictly enforces maxRequests limit of 300 and flags capped", () => {
-    // 50,000 blocks would take 500 chunks of 100
+    // 50,000 block cần 500 chunk, mỗi chunk 100
     const plan = createBlockChunks(1000n, 50999n, 100n, 300);
     expect(plan.totalPossibleChunks).toBe(500);
     expect(plan.chunks).toHaveLength(300);

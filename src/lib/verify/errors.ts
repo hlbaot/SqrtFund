@@ -13,7 +13,7 @@ export function databaseError(error: unknown): VerificationError {
   const schema = ["42P01", "42703", "42883", "42P10", "PGRST202", "PGRST204", "PGRST205"].includes(code ?? "");
   return new VerificationError(schema ? "DB_SCHEMA_MISMATCH" : "SERVICE_UNAVAILABLE", 503, { cause: error });
 }
-/** Log only approved diagnostic fields. Never payloads, stacks, email, OTP or secrets. */
+/** Chỉ log các trường chẩn đoán đã duyệt; không log payload, stack, email, OTP hay secret. */
 export function logServerError(stage: ErrorStage, error: unknown): void {
   let root = error;
   for (let depth = 0; depth < 4 && root instanceof Error && root.cause; depth++) root = root.cause;

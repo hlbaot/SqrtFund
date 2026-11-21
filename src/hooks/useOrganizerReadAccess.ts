@@ -95,7 +95,7 @@ export function useOrganizerReadAccess() {
         account: address,
         message: organizerReadMessage(permit),
       });
-      // A signature returned after logout/account change must not restore private access.
+      // Chữ ký trả về sau khi logout/đổi tài khoản không được khôi phục quyền riêng tư
       if (
         organizerReadStore.getState().identity !== identity ||
         organizerReadStore.getState().generation !== generation

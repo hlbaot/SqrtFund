@@ -9,7 +9,7 @@ export function parseInitialPool(value: string, balance?: bigint): ParseUsdcResu
     ? { success: true, amount: 0n, formatted: "0" } : parsed;
 }
 
-/** Resolve the deployment from this receipt, never from the factory's latest round. */
+/** Lấy deployment từ receipt này, không lấy vòng mới nhất của factory. */
 export function createdRoundAddress(logs: Log[], factory: Address, admin: Address, token: Address) {
   return parseEventLogs({ abi: roundFactoryAbi, eventName: "RoundCreated", logs: logs.filter(log => log.address.toLowerCase() === factory.toLowerCase()) })
     .find(event => event.args.admin.toLowerCase() === admin.toLowerCase() && event.args.token.toLowerCase() === token.toLowerCase())?.args.roundAddress;

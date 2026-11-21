@@ -10,7 +10,7 @@ export type OrganizerReadPermit = {
   nonce: string;
 };
 
-/** A short-lived, reusable READ credential. Never put its signature in a URL/storage. */
+/** Credential READ ngắn hạn, dùng lại được; không đưa chữ ký vào URL/storage. */
 export function organizerReadMessage(permit: OrganizerReadPermit) {
   return [
     "SqrtFund: Read Organizer applications",

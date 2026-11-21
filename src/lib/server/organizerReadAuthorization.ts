@@ -5,7 +5,7 @@ import { roundFactoryAbi } from "@/lib/contracts/abis";
 import { ORGANIZER_READ_TTL_MS, organizerReadMessage, type OrganizerReadPermit } from "@/lib/organizerReadAccess";
 import { VerificationError } from "@/lib/verify/errors";
 
-/** Authorize before touching application data. A query wallet is a filter, never identity. */
+/** Authorize trước khi chạm dữ liệu đơn; wallet trong query chỉ là bộ lọc, không phải danh tính. */
 export async function authorizeOrganizerRead(request: Request, requestedWallet?: string): Promise<void> {
   const header = request.headers.get("authorization");
   if (!header) throw new VerificationError("ORGANIZER_READ_AUTH_REQUIRED", 401);
@@ -46,7 +46,7 @@ export async function authorizeOrganizerRead(request: Request, requestedWallet?:
       message: organizerReadMessage(permit), signature: value.signature as Hex });
     if (!valid) throw new VerificationError("ORGANIZER_READ_AUTH_INVALID", 401);
     if (requestedWallet?.toLowerCase() === permit.walletAddress.toLowerCase()) return;
-    // No cached owner role: ownership changes take effect on the next read.
+    // Không cache role owner: thay đổi quyền sở hữu có hiệu lực ở lần đọc kế tiếp.
     const owner = await client.readContract({ address: factory as Address, abi: roundFactoryAbi, functionName: "owner" });
     if (owner.toLowerCase() !== permit.walletAddress.toLowerCase())
       throw new VerificationError("ORGANIZER_READ_FORBIDDEN", 403);

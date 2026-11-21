@@ -9,7 +9,7 @@ import { copy } from "@/lib/copy";
 import { projectReviewCopy } from "@/lib/projectReview";
 const locale = vi.hoisted(() => ({ value: "vi" as "vi" | "en" }));
 vi.mock("@/lib/context/locale", async () => { const { copy } = await import("@/lib/copy"); return { useLocale: () => ({ locale: locale.value, t: copy[locale.value] }) }; });
-// Exercise dialog content without a browser portal; the app uses the existing Dialog focus trap.
+// Test nội dung dialog không cần portal; app dùng focus trap của Dialog có sẵn.
 vi.mock("@/components/ui/Dialog", () => ({ Dialog: ({ children, title }: { children: import("react").ReactNode; title: string }) => createElement("section", { role: "dialog" }, createElement("h2", null, title), children) }));
 const owner = "0x123456789012345678901234567890123456abcd";
 const viewer = "0x1111111111111111111111111111111111111111";

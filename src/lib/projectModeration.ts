@@ -4,7 +4,7 @@ export type ModerationAction = "approve" | "reject";
 export type ModerationRound = { admin?: string; endTime?: bigint; finalized: boolean; isCancelled: boolean; supportsRejection: boolean };
 export type ModerationReason = "expired" | "finalized" | "cancelled" | "loading" | "unauthorized" | "notPending" | "legacy";
 
-/** Frontend permissions only; contract access and time checks remain authoritative. */
+/** Chỉ là quyền phía frontend; contract và kiểm tra thời gian vẫn là nguồn quyết định. */
 export function projectModerationState(project: ProjectModeration, round: ModerationRound, viewer: string | undefined, now: number) {
   const blocked = (reason: ModerationReason) => ({ showActions: false, canApprove: false, canReject: false, reason });
   if (!viewer || viewer.toLowerCase() !== round.admin?.toLowerCase()) return blocked("unauthorized");

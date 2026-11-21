@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @notice M-of-N multisig treasury for platform funds (AVAX and any token via arbitrary calls).
-/// Owner set and threshold can only be changed through the multisig itself.
+/// @notice Treasury multisig M-of-N cho quỹ nền tảng (AVAX và token qua lời gọi tùy ý).
+/// Owner và threshold chỉ đổi được thông qua chính multisig.
 contract MultiSigTreasury is ReentrancyGuard {
     struct Transaction {
         address to;
@@ -81,7 +81,7 @@ contract MultiSigTreasury is ReentrancyGuard {
         return _txs[txId];
     }
 
-    /// @notice Propose a transaction; the proposer's confirmation is recorded automatically.
+    /// @notice Đề xuất giao dịch; xác nhận của người đề xuất được ghi tự động.
     function submit(address to, uint256 value, bytes calldata data) external onlyOwner returns (uint256 txId) {
         if (to == address(0)) revert ZeroAddress();
         txId = _txs.length;
@@ -111,7 +111,7 @@ contract MultiSigTreasury is ReentrancyGuard {
         emit Executed(txId);
     }
 
-    // ---- governance (reachable only via submit -> execute against address(this)) ----
+    // ---- governance (chỉ gọi được qua submit -> execute tới address(this)) ----
 
     function addOwner(address o) external onlySelf {
         if (o == address(0)) revert ZeroAddress();

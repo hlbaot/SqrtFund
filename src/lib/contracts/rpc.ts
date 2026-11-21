@@ -1,5 +1,5 @@
 import { fallback, http } from "viem";
-/** These URLs are public browser configuration; never put private credentials here. */
+/** URL công khai cho cấu hình browser; không đặt credential riêng tư ở đây. */
 export function createFujiTransport(primaryUrl?: string, fallbackUrl?: string) {
   const options = { batch: { wait: 20, batchSize: 10 }, retryCount: 2, retryDelay: 750, timeout: 10000 };
   const primary = http(primaryUrl?.trim() || undefined, options);

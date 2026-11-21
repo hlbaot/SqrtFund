@@ -10,7 +10,7 @@ function timestamp(value: bigint | number | undefined): bigint | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? BigInt(value) : undefined;
 }
 
-/** Missing legacy timestamps never imply the round can be finalized. */
+/** Timestamp legacy bị thiếu không có nghĩa vòng có thể finalize. */
 export function deriveRoundPhase(round: PhaseRound, nowSeconds: number | bigint): RoundPhase {
   if (round.isCancelled) return "cancelled";
   if (round.finalized) return "finalized";

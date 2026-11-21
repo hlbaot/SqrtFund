@@ -17,7 +17,7 @@ export async function sendOtp(email: string, otp: string, purpose: "student" | "
         signal: AbortSignal.timeout(15_000),
       });
     } catch {
-      // Avoid passing Axios request config (including credentials) to server logs.
+      // Không truyền Axios request config (gồm credential) vào log server.
       throw new Error("Email delivery failed");
     }
   } else if (provider === "smtp") {

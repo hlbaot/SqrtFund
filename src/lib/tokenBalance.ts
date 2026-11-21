@@ -25,7 +25,7 @@ export function tokenBalanceOptions(client: PublicClient | undefined, owner?: Ad
   });
 }
 
-/** Refresh every mounted wallet/recipient balance after a confirmed transaction. */
+/** Làm mới số dư mọi ví/người nhận đang mount sau khi giao dịch được xác nhận. */
 export function invalidateTokenBalances(client: QueryClient) {
   return client.invalidateQueries({ queryKey: TOKEN_BALANCE_KEY });
 }

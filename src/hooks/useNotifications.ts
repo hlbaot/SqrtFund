@@ -104,7 +104,7 @@ export function useNotifications() {
         href: "/admin?tab=platform", isRead: ready && keys.includes(key) });
     }
 
-    // Organizer application state changes
+    // Thay đổi trạng thái đơn Organizer
     if (myApp.application) {
       if (myApp.isRejected) {
         const key = `organizerRejected:${myApp.application.id}:${myApp.application.updatedAt}`;

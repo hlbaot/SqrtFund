@@ -1,5 +1,5 @@
-/** Shared validation; the server exposes only the public domain policy to the UI. */
-// School aliases +tag map to the same identity; original address is used only for delivery.
+/** Validation dùng chung; server chỉ lộ chính sách domain công khai cho UI. */
+// Alias +tag của trường trỏ về cùng danh tính; địa chỉ gốc chỉ dùng để gửi mail.
 export function normalizeEmail(email: string): string {
   const value = email.trim().toLowerCase();
   const parts = value.split("@");
@@ -43,9 +43,9 @@ export function isAllowedEmail(email: string, domains: DomainList = [], blocked:
   const domain = emailDomain(email);
   if (!domain || !emailDomain(normalizeEmail(email)) || domain === "edu.vn") return false;
   const policy = emailDomainPolicy(domains, blocked);
-  // Deny rules cover descendants; allow rules require an exact approved domain.
+  // Quy tắc deny áp cho cả domain con; allow yêu cầu đúng domain đã duyệt.
   if (policy.blockedDomains.some(d => matchesDomain(domain, d))) return false;
-  // MVP open mode checks the academic suffix; an explicit allowlist remains exact.
+  // Chế độ mở MVP kiểm tra đuôi học thuật; allowlist tường minh vẫn khớp chính xác.
   if (policy.mode === "unconfigured") return false;
   return policy.mode === "allowlist"
     ? policy.allowedDomains.includes(domain)

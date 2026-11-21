@@ -5,7 +5,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title MockUSDC
-/// @notice Mock ERC-20 token simulating USDC with 6 decimals and a rate-limited faucet for Fuji testnet.
+/// @notice Token ERC-20 giả lập USDC (6 decimals) với faucet giới hạn tần suất trên Fuji testnet.
 contract MockUSDC is ERC20, Ownable {
     uint8 private constant DECIMALS = 6;
     uint256 public constant FAUCET_AMOUNT = 100 * 10 ** 6; // 100 USDC
@@ -27,13 +27,13 @@ contract MockUSDC is ERC20, Ownable {
         return DECIMALS;
     }
 
-    /// @notice Owner mint function with no cap for testing and matching pool funding.
+    /// @notice Owner mint không giới hạn để test và nạp matching pool.
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
         emit Mint(to, amount);
     }
 
-    /// @notice Public faucet minting 100 USDC with 1h cooldown and 1,000 USDC lifetime limit.
+    /// @notice Faucet công khai mint 100 USDC, cooldown 1h, tối đa 1,000 USDC mỗi ví.
     function faucetMint() external {
         if (lastFaucetMint[msg.sender] != 0 && block.timestamp < lastFaucetMint[msg.sender] + FAUCET_COOLDOWN) {
             revert FaucetCooldownActive(lastFaucetMint[msg.sender] + FAUCET_COOLDOWN);

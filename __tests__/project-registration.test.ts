@@ -8,7 +8,7 @@ const first = `0x${"2".repeat(40)}` as Address;
 const second = `0x${"3".repeat(40)}` as Address;
 function fields(): RoundFields {
   const results = Array.from({ length: 17 }, () => ({ status: "success" as const, result: 0n as unknown }));
-  results[2].result = 1500n; // Upcoming donations do not prevent project registration.
+  results[2].result = 1500n; // Donation sắp tới không chặn đăng ký project.
   results[3].result = 2000n;
   results[8].result = false;
   results[15].result = false;

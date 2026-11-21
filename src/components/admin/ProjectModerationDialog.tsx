@@ -22,7 +22,7 @@ export function ProjectModerationDialog({ project, action, roundName, roundAddre
   const [copyResult, setCopyResult] = useState("");
   const closeState = useRef({ pending, onClose });
   closeState.current = { pending, onClose };
-  // Keep Dialog's focus-trap effect stable while the page clock updates each second.
+  // Giữ focus-trap của Dialog ổn định khi đồng hồ trang cập nhật mỗi giây.
   const close = useCallback(() => { if (!closeState.current.pending) closeState.current.onClose(); }, []);
   const link = safeProjectLink(project.contactUrl);
   async function copyOwner() {

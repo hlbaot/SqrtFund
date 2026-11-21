@@ -35,7 +35,7 @@ describe("wallet logout persistence", () => {
       request: vi.fn(async ({ method }: { method: string }) => {
         if (method === "eth_accounts" || method === "eth_requestAccounts") return [address];
         if (method === "eth_chainId") return "0xa869";
-        // Core-style wallets can keep their permission after dApp disconnect.
+        // Ví kiểu Core có thể giữ quyền sau khi ngắt kết nối dApp.
         throw Object.assign(new Error("Unsupported method"), { code: 4200 });
       }),
       on: vi.fn(), removeListener: vi.fn(),
@@ -58,15 +58,15 @@ describe("wallet logout persistence", () => {
     expect(window.location.reload).not.toHaveBeenCalled();
     expect(window.localStorage.getItem(seenKey)).toBe('["refund:0xround"]');
     expect(Object.keys(window.localStorage).filter(key => key.startsWith("wagmi"))).toEqual(["wagmi.test-core.disconnected"]);
-    // The retained shim blocks authorization even though the provider still exposes accounts.
+    // Shim còn lưu vẫn chặn authorization dù provider vẫn trả về accounts.
     expect(await config.connectors[0].isAuthorized()).toBe(false);
-    vi.resetModules(); // A fresh page must still remember explicit logout.
+    vi.resetModules(); // Trang mới vẫn phải nhớ logout chủ động.
     const reloaded = await import("../src/lib/walletSession");
     const reconnectOnMount = !reloaded.isWalletLoggedOut();
     if (reconnectOnMount) await reconnect(config);
     expect(reconnectOnMount).toBe(false);
     expect(config.state.status).toBe("disconnected");
-    // Explicit Connect Wallet is allowed and removes the logout guard after success.
+    // Connect Wallet chủ động được phép và gỡ logout guard sau khi thành công.
     reloaded.markWalletConnected();
     await connect(config, { connector: config.connectors[0] });
     expect(config.state.status).toBe("connected");
@@ -89,7 +89,7 @@ describe("wallet logout persistence", () => {
     const session = await import("../src/lib/walletSession");
     window.sessionStorage.setItem(session.WALLET_LOGOUT_KEY, "1");
     window.localStorage.setItem(session.WALLET_LOGOUT_KEY, "1");
-    // A failed connection never calls markWalletConnected.
+    // Kết nối thất bại không bao giờ gọi markWalletConnected.
     expect(session.isWalletLoggedOut()).toBe(true);
     Object.defineProperty(window, "localStorage", { get: () => { throw new Error("Storage disabled"); }, configurable: true });
     expect(session.isWalletLoggedOut()).toBe(true);

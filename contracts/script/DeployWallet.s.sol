@@ -4,8 +4,8 @@ import {Script, console2} from "forge-std/Script.sol";
 import {WalletFactory} from "../src/WalletFactory.sol";
 import {MultiSigTreasury} from "../src/MultiSigTreasury.sol";
 
-/// @notice Deploy WalletFactory (and optionally a MultiSigTreasury when TREASURY_OWNERS is set).
-/// TREASURY_OWNERS: comma separated addresses; TREASURY_THRESHOLD: uint.
+/// @notice Triển khai WalletFactory (và MultiSigTreasury nếu đặt TREASURY_OWNERS).
+/// TREASURY_OWNERS: các địa chỉ cách nhau bởi dấu phẩy; TREASURY_THRESHOLD: uint.
 contract DeployWallet is Script {
     function run() external {
         vm.startBroadcast();

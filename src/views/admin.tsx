@@ -129,7 +129,7 @@ export function AdminView() {
   const { writeContractAsync } = useWriteContract();
 
   const hasAnyAdminAccess = isPlatformOwner || isOrganizer || isRoundAdmin || isAdmin || role === "admin" || hasUnusedDeposit;
-  // The already-deployed funding-only Factory still permits its owner to use this flow.
+  // Factory funding-only đã deploy vẫn cho owner dùng flow này.
   const canUseCreationForm = canCreateRound || (initialDeposit.supported && initialDeposit.isOwner) || hasUnusedDeposit;
 
   useEffect(() => {
@@ -157,7 +157,7 @@ export function AdminView() {
   const moderationRound = { admin: roundAdmin, endTime, finalized, isCancelled, supportsRejection };
   const viewer = isConnected && chainId === TARGET_CHAIN_ID ? address : undefined;
 
-  // Check if current user is admin of selected round
+  // Kiểm tra user hiện tại có phải admin của round đã chọn
   const isSelectedRoundAdmin = useMemo(() => {
     if (!viewer || !roundAdmin) return false;
     return viewer.toLowerCase() === roundAdmin.toLowerCase();
@@ -329,7 +329,7 @@ export function AdminView() {
   return (
     <Container className="py-8 sm:py-10 space-y-8">
       <AOSInit />
-      {/* Administration header */}
+      {/* Header quản trị */}
       <div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-6"
         data-aos="fade-down"
@@ -349,7 +349,7 @@ export function AdminView() {
         </div>
       </div>
 
-      {/* Two Dashboards Tab Navigation */}
+      {/* Tab điều hướng 2 Dashboard */}
       <div className="flex border-b border-line gap-2" role="tablist" aria-label="Dashboard views">
         <button
           type="button"
@@ -397,10 +397,10 @@ export function AdminView() {
         />
       )}
 
-      {/* TAB 2: Organizer Dashboard (Manage Rounds, Funds, Projects, and Allocations) */}
+      {/* TAB 2: Organizer Dashboard (quản lý Rounds, Funds, Projects, Allocations) */}
       {activeTab === "organizer" && (
         <div className="space-y-8" data-aos="fade-up" data-aos-duration="600">
-          {/* Back button when in create round view */}
+          {/* Nút Back khi ở view tạo round */}
           {isCreateAction && (
             <div className="flex items-center justify-between border-b border-line pb-4">
               <Button
@@ -449,7 +449,7 @@ export function AdminView() {
             </div>
           ) : (
             <>
-          {/* Read-only notification if current user is not admin of selected round */}
+          {/* Thông báo read-only nếu user không phải admin của round đã chọn */}
           {roundAddress && !isSelectedRoundAdmin && (
             <div className="border border-line bg-surface-2/40 p-4 rounded-sm flex items-start gap-3 text-xs">
               <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
@@ -495,7 +495,7 @@ export function AdminView() {
             </section>
           )}
 
-          {/* Finalized Round Distribution Results Table */}
+          {/* Bảng kết quả phân bổ của Round đã finalize */}
           {!isRoundLoading && roundAddress && finalized && !isCancelled && (
             <section
               className="border border-money/40 bg-money/10 p-6 space-y-4 rounded-sm"
@@ -576,7 +576,7 @@ export function AdminView() {
 
           {governanceWarning && <p role="alert" className="whitespace-pre-wrap break-words border border-primary/30 p-4 text-sm">{governanceWarning}</p>}
           {roundAddress && <RoundPolicyPanel key={roundAddress} roundAddress={roundAddress} />}
-          {/* Project Proposals Approval Queue (Actionable for Round Admin) */}
+          {/* Hàng đợi duyệt Project Proposals (Round Admin thao tác) */}
           {!isRoundLoading && roundAddress && (
             <ProjectReviewList
               key={`review:${roundAddress || "no-round"}`}
@@ -595,7 +595,7 @@ export function AdminView() {
             />
           )}
 
-          {/* Round creation & minting section */}
+          {/* Phần tạo round & minting */}
           {canUseCreationForm ? (
             <div
               className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] [&>*]:min-w-0"

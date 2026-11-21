@@ -1,5 +1,5 @@
 import type { Project } from "@/types";
-/** Undefined means not read, never an invented zero after settlement. */
+/** Undefined nghĩa là chưa đọc, không tự bịa số 0 sau khi settle. */
 export function projectFunding(
   project: Pick<
     Project,

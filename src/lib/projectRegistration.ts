@@ -3,7 +3,7 @@ import type { RoundFields } from "./contracts/roundReads";
 
 export type RegistrationRoundState = "loading" | "error" | "open" | "closed" | "incompatible";
 
-/** Registration is allowed before donations start, but never at/after endTime. */
+/** Cho đăng ký trước khi bắt đầu quyên góp, không cho từ endTime trở đi. */
 export function registrationRoundState(fields: RoundFields | undefined, now: number, registry: Address): RegistrationRoundState {
   if (!fields || now <= 0) return "loading";
   const endTime = fields.results[3]?.result;
@@ -18,7 +18,7 @@ export function registrationRoundState(fields: RoundFields | undefined, now: num
 }
 
 export function selectRegistrationRound<T extends { address: Address; state: RegistrationRoundState }>(rounds: T[], selection?: string) {
-  // An invalid/expired explicit choice must never silently send to a different round.
+  // Lựa chọn rõ ràng không hợp lệ/hết hạn không được âm thầm chuyển sang vòng khác.
   return selection !== undefined
     ? rounds.find(round => round.address.toLowerCase() === selection.toLowerCase() && round.state === "open")
     : rounds.find(round => round.state === "open");

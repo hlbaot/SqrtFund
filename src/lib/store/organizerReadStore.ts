@@ -7,7 +7,7 @@ export type OrganizerReadCredential = {
   expiresAt: number;
   nonce: string;
 };
-/** Memory only. Signatures must never enter localStorage, URLs or query keys. */
+/** Chỉ lưu trong bộ nhớ; chữ ký không bao giờ vào localStorage, URL hay query key. */
 export const organizerReadStore = create<{
   identity?: string;
   credential?: OrganizerReadCredential;

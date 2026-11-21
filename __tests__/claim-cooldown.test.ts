@@ -28,9 +28,9 @@ describe("Claim Cooldown and Faucet logic", () => {
     });
 
     it("formats greater than 24 hours (>24h) correctly", () => {
-      // 1 day + 2 hours + 3 mins + 4 secs = 86400 + 7200 + 180 + 4 = 93784
+      // 1 ngày + 2 giờ + 3 phút + 4 giây = 86400 + 7200 + 180 + 4 = 93784
       expect(formatCooldown(93784)).toBe("1d 02:03:04");
-      // 2 days + 14 hours + 45 mins + 30 secs = 172800 + 50400 + 2700 + 30 = 225930
+      // 2 ngày + 14 giờ + 45 phút + 30 giây = 172800 + 50400 + 2700 + 30 = 225930
       expect(formatCooldown(225930)).toBe("2d 14:45:30");
     });
   });
@@ -102,7 +102,7 @@ describe("Claim Cooldown and Faucet logic", () => {
           remainingSeconds: 0,
           lifetimeMinted: 1000_000_000n, // 1,000 USDC
           amount: 100_000_000n, // 100 USDC
-          cap: 1000_000_000n, // 1,000 USDC limit
+          cap: 1000_000_000n, // giới hạn 1,000 USDC
         })
       ).toBe(false);
     });

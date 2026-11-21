@@ -9,7 +9,7 @@ export function AutoOnboardingTour() {
   const startedRef = useRef(false);
 
   useEffect(() => {
-    // If returning user has already completed or seen the tour, do nothing
+    // User cũ đã xem/hoàn thành tour thì bỏ qua
     if (isTourCompleted()) return;
 
     const launch = () => {
@@ -19,7 +19,7 @@ export function AutoOnboardingTour() {
       startOnboardingTour(locale);
     };
 
-    // If splash screen is currently active, wait until it finishes
+    // Splash đang chạy thì chờ xong
     const isSplashActive =
       typeof document !== "undefined" &&
       document.documentElement.classList.contains("splash-active");
@@ -32,7 +32,7 @@ export function AutoOnboardingTour() {
       };
       window.addEventListener("splash-intro-finished", onSplashFinished, { once: true });
 
-      // Fallback timer: if splash intro somehow hangs or takes longer, launch after 3.2s
+      // Timer dự phòng: splash treo/lâu thì chạy tour sau 3.2s
       const fallbackTimer = setTimeout(() => {
         window.removeEventListener("splash-intro-finished", onSplashFinished);
         launch();
@@ -44,7 +44,7 @@ export function AutoOnboardingTour() {
         window.removeEventListener("splash-intro-finished", onSplashFinished);
       };
     } else {
-      // No splash active (or fast render) -> launch tour after brief DOM stabilization
+      // Không có splash: chạy tour sau khi DOM ổn định
       timer = setTimeout(launch, 500);
       return () => clearTimeout(timer);
     }

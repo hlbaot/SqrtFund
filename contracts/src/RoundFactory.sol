@@ -8,7 +8,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title RoundFactory
-/// @notice Multi-Organizer round factory with wallet-owned deposits before creation.
+/// @notice Factory vòng gây quỹ đa Organizer, có nạp tiền theo ví trước khi tạo vòng.
 contract RoundFactory is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     address[] public rounds;
@@ -25,7 +25,7 @@ contract RoundFactory is Ownable, ReentrancyGuard {
 
     function fundingVersion() external pure returns (uint256) { return 1; }
 
-    /// @notice Reserve funds before creating any round. Credits belong to the depositing wallet.
+    /// @notice Giữ tiền trước khi tạo vòng; credit thuộc về ví đã nạp.
     function depositInitialPool(address token, uint256 amount) external nonReentrant onlyOrganizer {
         if (amount == 0 || token.code.length == 0) revert InvalidDeposit();
         IERC20 asset = IERC20(token);
@@ -36,7 +36,7 @@ contract RoundFactory is Ownable, ReentrancyGuard {
         emit InitialPoolDeposited(msg.sender, token, amount);
     }
 
-    /// @notice Refund unused credit, including after factory ownership has changed.
+    /// @notice Hoàn credit chưa dùng, kể cả sau khi đổi owner của factory.
     function withdrawInitialPool(address token, uint256 amount) external nonReentrant {
         if (amount == 0) revert InvalidDeposit();
         if (initialPoolDeposits[msg.sender][token] < amount) revert InsufficientDeposit();
@@ -83,7 +83,7 @@ contract RoundFactory is Ownable, ReentrancyGuard {
         return _createRound(name, organizer, token, startTime, endTime, minDonation, maxDonation, maxMatchBps, maxPerRound, 0);
     }
 
-    /// @notice Consumes this wallet's confirmed deposit. Any failure restores both funds and credit.
+    /// @notice Dùng khoản nạp đã xác nhận của ví; lỗi bất kỳ sẽ hoàn lại cả tiền và credit.
     function createFundedRound(
         string calldata name, string calldata organizer, address token,
         uint256 startTime, uint256 endTime, uint256 minDonation, uint256 maxDonation,
@@ -127,12 +127,12 @@ contract RoundFactory is Ownable, ReentrancyGuard {
         emit RoundCreated(roundAddress, msg.sender, token, name);
     }
 
-    /// @notice Returns total number of deployed rounds.
+    /// @notice Trả về tổng số vòng đã triển khai.
     function roundCount() external view returns (uint256) {
         return rounds.length;
     }
 
-    /// @notice Returns list of all deployed rounds.
+    /// @notice Trả về danh sách mọi vòng đã triển khai.
     function getRounds() external view returns (address[] memory) {
         return rounds;
     }

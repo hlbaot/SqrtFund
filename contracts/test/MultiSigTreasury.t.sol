@@ -123,7 +123,7 @@ contract MultiSigTreasuryTest is Test {
         vm.prank(c);
         ms.confirm(id);
         vm.prank(a);
-        vm.expectRevert(); // inner call reverts -> CallFailed
+        vm.expectRevert(); // lời gọi bên trong revert -> CallFailed
         ms.execute(id);
     }
 }

@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import {QFRound} from "./QFRound.sol";
 
-/// @notice Initial pool accounting for rounds funded atomically by RoundFactory.
-/// @dev The factory must transfer the tokens in the same creation transaction.
+/// @notice Kế toán pool ban đầu cho vòng được RoundFactory nạp tiền nguyên tử.
+/// @dev Factory phải chuyển token trong cùng giao dịch tạo vòng.
 contract PrefundedQFRound is QFRound {
     constructor(
         string memory roundName, string memory roundOrganizer, address roundAdmin, address asset,

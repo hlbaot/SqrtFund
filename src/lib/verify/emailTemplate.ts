@@ -1,4 +1,4 @@
-/** Self-contained email markup: inline styles/tables, no remote images or fonts. */
+/** Markup email tự chứa: inline style/table, không ảnh hay font từ xa. */
 export function buildVerificationEmail(otp: string, purpose: "student" | "organizer" = "student"): { subject: string; text: string; html: string } {
   if (otp.length !== 6 || !/^\d{6}$/.test(otp)) throw new Error("Invalid verification code");
   const organizer = purpose === "organizer";

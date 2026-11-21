@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {Script, console2} from "forge-std/Script.sol";
 import {RoundFactory} from "../src/RoundFactory.sol";
 
-/// @notice Deploy only the deposit-before-creation factory, preserving old deployment records.
+/// @notice Chỉ triển khai factory nạp tiền trước khi tạo vòng, giữ nguyên bản ghi deployment cũ.
 contract DeployPrefundedFactory is Script {
     function run() external {
         address registry = vm.envOr("NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS", vm.envOr("STUDENT_REGISTRY_ADDRESS", address(0)));
@@ -16,6 +16,6 @@ contract DeployPrefundedFactory is Script {
         console2.log("Owner:", factory.owner());
         console2.log("StudentRegistry:", factory.studentRegistry());
         console2.log("Funding version:", factory.fundingVersion());
-        // Update manifests and frontend configuration only after checking the real receipt.
+        // Chỉ cập nhật manifest và cấu hình frontend sau khi kiểm tra receipt thật.
     }
 }
