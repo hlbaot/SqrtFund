@@ -50,6 +50,7 @@ export function Navbar() {
     { href: "/", label: t.nav.home },
     { href: "/round", label: t.nav.round },
     { href: "/rules", label: locale === "vi" ? "Quy định" : "Rules" },
+    { href: "/support", label: t.nav.guide },
     ...(isConnected && !isPlatformOwner && !isOrganizerUser ? [
       { href: "/register", label: t.nav.register },
     ] : []),

@@ -1,5 +1,6 @@
 "use client";
-import { parseEventLogs } from "viem";
+import { isAddress, isHash, parseEventLogs, type Address } from "viem";
+import Link from "next/link";
 import { roundsStore } from "@/lib/store/roundsStore";
 import { studentRegistryAddress } from "@/lib/contracts/addresses";
 
@@ -23,6 +24,8 @@ import { useLocale } from "@/lib/context/locale";
 import { useRound } from "@/hooks/useRound";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { RoundPolicyPanel } from "@/components/policy/RoundPolicyPanel";
+import { txToast } from "@/lib/txToast";
 
 /** Format Date object to YYYY-MM-DDTHH:mm string in local timezone */
 function toLocalDatetimeString(date: Date): string {
@@ -36,6 +39,7 @@ function toLocalDatetimeString(date: Date): string {
 }
 
 const ROUND_DEFAULTS = { roundName: "", organizer: "", startDateTime: "", endDateTime: "", maxMatchPercent: "30", studentBudget: "10", initialPool: "" };
+const CREATION_PROGRESS = { hash: "", round: "" };
 function freshRoundDraft() {
   return { ...ROUND_DEFAULTS,
     startDateTime: toLocalDatetimeString(new Date(Date.now() + 2 * 60 * 1000)),
@@ -46,6 +50,7 @@ function freshRoundDraft() {
 export function CreateRoundForm() {
   const beginFlow = useTxFlow();
   const { t, locale } = useLocale();
+  const vi = locale === "vi";
   const { isConnected, address, chainId } = useAccount();
   const publicClient = usePublicClient({ chainId: TARGET_CHAIN_ID });
   const queries = useQueryClient();
@@ -55,6 +60,10 @@ export function CreateRoundForm() {
 
   const draftKey = formDraftKey("round", TARGET_CHAIN_ID, factoryAddress, address);
   const draft = useFormDraft(draftKey, ROUND_DEFAULTS, freshRoundDraft);
+  const progress = useFormDraft(formDraftKey("round-creation", TARGET_CHAIN_ID, factoryAddress, address), CREATION_PROGRESS);
+  const creationHash = progress.values.hash && isHash(progress.values.hash) ? progress.values.hash : undefined;
+  const createdRound = progress.values.round && isAddress(progress.values.round) ? progress.values.round : undefined;
+  const [completedRound, setCompletedRound] = useState<Address>();
   const { roundName, organizer, startDateTime, endDateTime, maxMatchPercent, studentBudget, initialPool } = draft.values;
   const setRoundName = (value: string) => draft.setField("roundName", value);
   const setOrganizer = (value: string) => draft.setField("organizer", value);
@@ -90,7 +99,7 @@ export function CreateRoundForm() {
     ? t.admin.initialPoolInvalid : undefined;
   const funded = initialAmount > 0n && deposit.credit !== undefined && credit >= initialAmount;
   const canDeposit = deposit.canDeposit;
-  const ready = draft.ready && isConnected && chainId === TARGET_CHAIN_ID && deposit.supported && !deposit.isError && canDeposit && deposit.credit !== undefined;
+  const ready = draft.ready && progress.ready && isConnected && chainId === TARGET_CHAIN_ID && deposit.supported && !deposit.isError && canDeposit && deposit.credit !== undefined;
   const insufficientBalance = balance.isReady && balance.balance !== undefined && remaining > balance.balance;
 
   const roundNameBytes = React.useMemo(
@@ -121,9 +130,10 @@ export function CreateRoundForm() {
       BigInt(Math.round(percent * 100)), roundBudget, initialAmount] as const;
   }
 
-  async function act(action: "deposit" | "create" | "withdraw") {
-    if (busy.current || !address || !publicClient || !isConnected || chainId !== TARGET_CHAIN_ID || !deposit.supported) return;
-    if (action !== "withdraw" && !ready) return;
+  async function act(action: "deposit" | "create" | "withdraw" | "resume") {
+    if (busy.current || !address || !publicClient || !isConnected || chainId !== TARGET_CHAIN_ID || createdRound) return;
+    if (action === "resume" ? !creationHash : creationHash || !progress.ready || !deposit.supported) return;
+    if ((action === "deposit" || action === "create") && !ready) return;
     busy.current = true;
     const flow = beginFlow("create-round-funding", { patch: receipt => {
       const event = parseEventLogs({ abi: roundFactoryAbi, eventName: "RoundCreated", logs: receipt.logs.filter(log => log.address.toLowerCase() === factoryAddress.toLowerCase()) })[0];
@@ -137,19 +147,25 @@ export function CreateRoundForm() {
         fields: { version: "current", supportsPhase2: true, registry: studentRegistryAddress, results: values.map(result => ({ status: "success", result })) },
       }, true)];
     } });
-    const toastId = `initial-pool-${action}`;
+    const toastId = `initial-pool-${action === "resume" ? "create" : action}`;
     const title = action === "deposit" ? t.admin.initialPoolDeposit : action === "withdraw" ? t.admin.initialPoolWithdraw : t.admin.createRoundBtn;
     try {
-      const args = action === "withdraw" ? undefined : validateRound();
-      if (action !== "withdraw" && !args) return;
-      setPending(action);
+      const needsInput = action === "deposit" || action === "create";
+      const args = needsInput ? validateRound() : undefined;
+      if (needsInput && !args) return;
+      setPending(action === "resume" ? "create" : action);
       // Re-read credit at each action: never trust a success flag or another tab's stale balance.
-      const saved = await flow.wait(() => publicClient.readContract({ address: factoryAddress, abi: roundFactoryAbi,
+      const saved = action === "resume" ? 0n : await flow.wait(() => publicClient.readContract({ address: factoryAddress, abi: roundFactoryAbi,
         functionName: "initialPoolDeposits", args: [address, usdcAddress] }));
-      const confirm = async (hash: `0x${string}`) => {
+      const confirm = async (hash: `0x${string}`, creating = false) => {
         flow.toast.pending(toastId, title, t.toasts.confirmingOnChain, hash);
-        const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash }), 120_000);
-        if (receipt.status !== "success") throw new Error(t.admin.initialPoolTransactionFailed);
+        const receipt = await flow.wait(() => publicClient.waitForTransactionReceipt({ hash, timeout: 120_000,
+          onReplaced: creating ? ({ transaction }) => progress.setField("hash", transaction.hash) : undefined,
+        }), 120_000);
+        if (receipt.status !== "success") {
+          if (creating) progress.clear();
+          throw new Error(t.admin.initialPoolTransactionFailed);
+        }
         return receipt;
       };
       if (action === "deposit") {
@@ -168,15 +184,27 @@ export function CreateRoundForm() {
           confirm: async hash => { await confirm(hash); },
         });
         flow.toast.success(toastId, t.admin.initialPoolDeposited);
-      } else if (action === "create") {
-        if (saved < args![9]) throw new Error(t.admin.initialPoolRequired);
-        flow.toast.pending(toastId, title, t.toasts.confirmInWallet);
-        const hash = await flow.wait(() => writeContractAsync({ address: factoryAddress, abi: roundFactoryAbi,
-          functionName: "createFundedRound", args: args!, chainId: TARGET_CHAIN_ID }));
-        await confirm(hash);
-        flow.toast.success(toastId, t.toasts.roundCreatedTitle, t.toasts.roundCreatedDesc, hash);
-        // Chỉ xóa nháp sau receipt tạo Round thành công; nạp quỹ chưa xóa.
-        draft.clearSubmitted(); setNameError(null); setOrganizerError(null);
+      } else if (action === "create" || action === "resume") {
+        let hash = creationHash;
+        if (!hash) {
+          if (saved < args![9]) throw new Error(t.admin.initialPoolRequired);
+          flow.toast.pending(toastId, title, t.toasts.confirmInWallet);
+          hash = await flow.wait(async () => {
+            const submitted = await writeContractAsync({ address: factoryAddress, abi: roundFactoryAbi,
+              functionName: "createFundedRound", args: args!, chainId: TARGET_CHAIN_ID });
+            progress.setField("hash", submitted);
+            return submitted;
+          });
+        }
+        const receipt = await confirm(hash, true);
+        const event = parseEventLogs({ abi: roundFactoryAbi, eventName: "RoundCreated", logs: receipt.logs.filter(log => log.address.toLowerCase() === factoryAddress.toLowerCase()) })
+          .find(log => log.args.admin.toLowerCase() === address.toLowerCase());
+        if (!event) {
+          progress.clear();
+          throw new Error(vi ? "Giao dịch đã xác nhận nhưng không tạo vòng gọi vốn." : "The confirmed transaction did not create a funding round.");
+        }
+        progress.setField("round", event.args.roundAddress);
+        txToast.dismiss(toastId);
         refetch();
       } else {
         if (saved <= 0n) { await deposit.refetch(); return; }
@@ -198,9 +226,47 @@ export function CreateRoundForm() {
     }
   }
 
+  function clearCreation() {
+    draft.clearSubmitted();
+    progress.clear();
+  }
+
+  if (createdRound) return (
+    <div className="space-y-4">
+      <div className="space-y-2 border border-line bg-surface p-5">
+        <p className="mono-label text-primary">{vi ? "Bước 2/2" : "Step 2 of 2"}</p>
+        <h3 className="text-lg font-bold">{vi ? "Công bố quy định của vòng" : "Publish round rules"}</h3>
+        <p role="status" className="text-sm text-muted">{vi ? "Fuji đã xác nhận giao dịch tạo vòng. Ký công bố quy định để hoàn tất." : "Fuji confirmed the deployment. Sign and publish the rules to finish."}</p>
+        {chainId !== TARGET_CHAIN_ID && <p role="alert" className="text-xs text-primary">{t.wallet.switchNetwork}</p>}
+        {progress.storageError && <p role="alert" className="text-xs text-primary">{t.drafts.storageError}</p>}
+      </div>
+      <RoundPolicyPanel key={createdRound} roundAddress={createdRound} onSetupLocked={clearCreation} onPublished={() => {
+        setCompletedRound(createdRound);
+        clearCreation();
+        txToast.success("initial-pool-create", t.toasts.roundCreatedTitle, vi ? "Quy định của vòng đã được công bố." : "The round rules are published.", creationHash);
+      }} />
+    </div>
+  );
+
+  if (creationHash) return (
+    <div className="space-y-3 border border-line bg-surface p-5">
+      <h3 className="font-bold">{vi ? "Kiểm tra giao dịch tạo vòng" : "Check round creation transaction"}</h3>
+      <p className="text-sm text-muted">{vi ? "Kiểm tra giao dịch đã gửi để tiếp tục đến bước công bố quy định." : "Check the submitted transaction to continue to round rules."}</p>
+      {progress.storageError && <p role="alert" className="text-xs text-primary">{t.drafts.storageError}</p>}
+      <Button type="button" disabled={isSubmitting || !publicClient || chainId !== TARGET_CHAIN_ID} isLoading={pending === "create"} onClick={() => void act("resume")}>
+        {vi ? "Kiểm tra giao dịch" : "Check transaction"}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="border border-line bg-surface p-6 space-y-4">
+      {completedRound && <div role="status" className="space-y-2 border border-money/30 bg-money/5 p-4 text-sm">
+        <p className="font-semibold text-money">{t.toasts.roundCreatedTitle}</p>
+        <Link href={`/round/${completedRound}`} className="underline underline-offset-4">{vi ? "Xem vòng và quy định" : "View round and rules"}</Link>
+      </div>}
       <div>
+        <p className="mono-label text-primary">{vi ? "Bước 1/2" : "Step 1 of 2"}</p>
         <h3 className="text-base font-bold text-foreground tracking-tight">
           {t.admin.createRoundTitle}
         </h3>
