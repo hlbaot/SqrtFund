@@ -7,9 +7,9 @@ export async function generateMetadata() {
     description: vi
       ? "Các bước chuẩn bị ví, xác thực Student và đóng góp trên Avalanche Fuji."
       : "Prepare your wallet, verify Student status and contribute on Avalanche Fuji.",
-    alternates: { canonical: "/guide" },
+    alternates: { canonical: "/support" },
   };
 }
-export default function GuidePage() {
+export default function SupportPage() {
   return <GuideView />;
 }

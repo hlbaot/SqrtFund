@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useId, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Pagination } from "@/components/common/Pagination";
-import { paginateRounds, parsePage, ROUNDS_GRID, ROUNDS_PAGE_SIZE, type RoundFilter } from "./pagination";
+import { paginateRounds, parsePage, ROUNDS_GRID, ROUNDS_PAGE_SIZE, type RoundFilter, type RoundSort } from "./pagination";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useLocale } from "@/lib/context/locale";
@@ -190,10 +190,11 @@ function PaginatedRoundsList({ rounds, state = "ready", isAdmin, onRetry, pagina
   const c = t.competition;
   const searchParams = useSearchParams();
   const [filter, setFilter] = useState<RoundFilter>("all");
+  const [sort, setSort] = useState<RoundSort>("newest");
   const sectionRef = useRef<HTMLElement>(null);
   const resultsId = useId();
   const requestedPage = parsePage(searchParams.get("page"));
-  const visible = paginateRounds(rounds, filter, requestedPage);
+  const visible = paginateRounds(rounds, filter, requestedPage, sort);
   const previousPage = useRef(requestedPage);
   const writePage = (page: number, replace = false) => {
     const url = new URL(window.location.href);
@@ -215,7 +216,22 @@ function PaginatedRoundsList({ rounds, state = "ready", isAdmin, onRetry, pagina
   return <section ref={sectionRef} className="min-w-0 space-y-7 scroll-mt-24" aria-label={c.rounds}>
     <header className="flex flex-col justify-between gap-6 border-b border-line pb-7 xl:flex-row xl:items-end">
       <div className="min-w-0"><span className="mono-label text-xs text-primary">{c.currency} / {c.timezone}</span><h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{c.rounds}</h1><p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">{c.subtitle}</p></div>
-      <div role="group" aria-label={c.rounds} className="competition-segment flex max-w-full self-start border border-line bg-bg xl:self-auto">{(["all", "active", "ended"] as const).map(key => <button key={key} type="button" aria-pressed={filter === key} onClick={() => { setFilter(key); writePage(1, true); }} aria-controls={resultsId} className="competition-focus flex min-h-11 min-w-0 flex-wrap items-center justify-center gap-2 px-3 py-2 text-xs sm:px-5"><span>{c[key]}</span><span className="tabular-mono text-xs text-muted">{state === "loading" ? c.unavailable : displayNumber(counts[key], locale, 0)}</span></button>)}</div>
+      <div className="flex min-w-0 flex-wrap items-end gap-3 xl:justify-end">
+        <div role="group" aria-label={c.rounds} className="competition-segment flex max-w-full border border-line bg-bg">{(["all", "active", "ended"] as const).map(key => <button key={key} type="button" aria-pressed={filter === key} onClick={() => { setFilter(key); writePage(1, true); }} aria-controls={resultsId} className="competition-focus flex min-h-11 min-w-0 flex-wrap items-center justify-center gap-2 px-3 py-2 text-xs sm:px-5"><span>{c[key]}</span><span className="tabular-mono text-xs text-muted">{state === "loading" ? c.unavailable : displayNumber(counts[key], locale, 0)}</span></button>)}</div>
+        <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-muted sm:w-auto">
+          <span>{c.roundSortLabel}</span>
+          <select
+            value={sort}
+            aria-controls={resultsId}
+            className="competition-focus min-h-11 max-w-full cursor-pointer border border-line bg-bg px-3 text-sm text-foreground"
+            onChange={event => { setSort(event.currentTarget.value as RoundSort); writePage(1, true); }}
+          >
+            <option value="newest">{c.roundSortNewest}</option>
+            <option value="pool">{c.roundSortPool}</option>
+            <option value="supporters">{c.roundSortSupporters}</option>
+          </select>
+        </label>
+      </div>
     </header>
     {state === "error" ? <PresentationState state="error" onRetry={onRetry} /> : state === "loading" ? <RoundSkeletons /> : visible.total ? <div id={resultsId} className={ROUNDS_GRID}>{visible.rounds.map(round => <RoundListCard key={round.id} round={round} onRetry={onRetry} />)}</div> : <PresentationState state="empty"><h2 className="font-semibold">{rounds.length ? c.noFilteredRounds : c.noRounds}</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted">{rounds.length ? c.filterHint : c.noRoundsHint}</p>{isAdmin && !rounds.length && <Link href="/admin" className="competition-action mt-6 inline-flex">{c.admin}</Link>}</PresentationState>}
     {state === "ready" && <Pagination page={visible.page} pageSize={ROUNDS_PAGE_SIZE} total={visible.total} onPageChange={page => writePage(page)} controls={resultsId} label={locale === "vi" ? "Phân trang round" : "Rounds pagination"} />}

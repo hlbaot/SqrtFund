@@ -10,7 +10,7 @@ import { CountdownTimer } from "./CountdownTimer";
 import { Badge } from "@/components/ui/Badge";
 import { Frame } from "@/components/ui/Frame";
 import { ArrowRight } from "lucide-react";
-import { Stat, StatGroup } from "@/components/common/Stat";
+import { Stat } from "@/components/common/Stat";
 
 export interface RoundCardProps {
   round: Round;
@@ -19,8 +19,15 @@ export interface RoundCardProps {
 }
 
 export function RoundCard({ round, className = "", roundIndex }: RoundCardProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const effectiveStatus = round.status;
+  const isOpen = effectiveStatus === "open";
+  const statusLabel = {
+    open: t.roundCard.statusOpen,
+    closed: t.roundCard.statusClosed,
+    finalized: t.roundCard.statusFinalized,
+    cancelled: t.competition.cancelled,
+  }[effectiveStatus];
 
   const fallbackTitle = roundIndex
     ? `${t.homeIntro.roundTitle} #${roundIndex}`
@@ -35,26 +42,17 @@ export function RoundCard({ round, className = "", roundIndex }: RoundCardProps)
     : null;
 
   return (
-    <Frame className={`p-6 ${className}`} interactive>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Badge variant={effectiveStatus === "open" ? "primary" : effectiveStatus === "finalized" ? "accent" : "secondary"}>
-            {effectiveStatus === "open"
-              ? t.roundCard.statusOpen
-              : effectiveStatus === "closed"
-                ? t.roundCard.statusClosed
-                : t.roundCard.statusFinalized}
-          </Badge>
-
-          <ExplorerLink address={round.id} iconOnly label={t.onChain.roundContract} />
-
-        </div>
-
-        <CountdownTimer endTime={round.endTime} statusOverride={effectiveStatus} />
+    <Frame className={`flex min-w-0 flex-col gap-3 p-4 ${className}`} interactive>
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <Badge variant={isOpen ? "primary" : effectiveStatus === "finalized" ? "accent" : "secondary"}>
+          {statusLabel}
+        </Badge>
+        <ExplorerLink address={round.id} iconOnly label={t.onChain.roundContract} />
+        {isOpen && round.endTime && <CountdownTimer endTime={round.endTime} />}
       </div>
 
-      <div className="mt-4">
-        <h3 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+      <div className="flex-1">
+        <h3 className="line-clamp-2 text-lg font-bold tracking-tight text-foreground wrap-anywhere">
           {displayTitle}
         </h3>
         {displayOrganizer && (
@@ -64,22 +62,20 @@ export function RoundCard({ round, className = "", roundIndex }: RoundCardProps)
         )}
       </div>
 
-      {/* Matching Pool: single hero metric on the card */}
-      <div className="mt-4">
-        <p className="role-label text-muted">{t.roundCard.poolLabel}</p>
-        <div className="mt-1 flex items-baseline gap-1.5 text-money">
-          <span
-            className="value-lg text-money"
-            title={formatUsdc(round.matchingPool)}
-          >
-            {formatUsdc(round.matchingPool, { includeSymbol: false, compact: true })}
-          </span>
-          <span className="role-unit">USDC</span>
-        </div>
-      </div>
-
-      {/* Stats group: Supporters first (primary tone), Projects, Raised */}
-      <StatGroup columns={3} className="my-4">
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-line pt-3">
+        <Stat
+          label={t.roundCard.poolLabel}
+          value={formatUsdc(round.matchingPool, { includeSymbol: false, compact: true })}
+          unit="USDC"
+          tone="money"
+          title={formatUsdc(round.matchingPool)}
+        />
+        <Stat
+          label={t.projectCard.directDonations}
+          value={formatUsdc(round.totalDonated, { includeSymbol: false, compact: true })}
+          unit="USDC"
+          title={formatUsdc(round.totalDonated)}
+        />
         <Stat
           label={t.roundCard.supportersLabel}
           value={formatNumber(round.totalSupporters)}
@@ -87,27 +83,18 @@ export function RoundCard({ round, className = "", roundIndex }: RoundCardProps)
           title={formatNumber(round.totalSupporters)}
         />
         <Stat
-          label={t.competition?.projects || "Projects"}
+          label={t.roundCard.projectsLabel}
           value={formatNumber(round.projectCount)}
-          tone="default"
           title={formatNumber(round.projectCount)}
         />
-        <Stat
-          label={t.roundCard.raisedLabel}
-          value={formatUsdc(round.totalDonated, { includeSymbol: false, compact: true })}
-          unit="USDC"
-          tone="default"
-          title={formatUsdc(round.totalDonated)}
-        />
-      </StatGroup>
+      </dl>
 
-      {/* CTA pinned to bottom */}
       <Link
         href={`/round/${round.id}`}
-        className="mono-label inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 border border-primary bg-primary/10 px-6 py-2.5 text-primary transition-all hover:bg-primary hover:text-foreground cursor-pointer active:scale-[0.99] focus:outline-none"
+        className="mono-label inline-flex min-h-11 w-full items-center justify-center gap-2 border border-primary bg-primary/10 px-3 py-2 text-primary transition-colors hover:bg-primary hover:text-foreground"
       >
-        <span>{t.roundCard.viewRound}</span>
-        <ArrowRight className="h-4 w-4" />
+        <span>{locale === "vi" ? "Xem vòng" : "View round"}</span>
+        <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
     </Frame>
   );

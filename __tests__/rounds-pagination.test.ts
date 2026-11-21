@@ -76,6 +76,33 @@ describe("round list pagination", () => {
     expect(host.querySelectorAll("article")).toHaveLength(1);
     expect(host.querySelector("h2")?.textContent).toBe("Round 1");
   });
+  it("sorts the full filtered list by pool or supporters and resets to page one", async () => {
+    const data = rounds.map(round => ({
+      ...round,
+      matchingPool: round.number === 2 ? 500 : round.matchingPool,
+      totalSupporters: round.number === 3 ? 20 : round.totalSupporters,
+      totalDonated: round.number === 1 ? 1000 : round.totalDonated,
+    }));
+    window.history.replaceState(null, "", "/round?page=2");
+    await render(data);
+    const select = host.querySelector("select")!;
+    const sort = (value: string) => act(async () => {
+      select.value = value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    await sort("pool");
+    expect(window.location.search).toBe("?page=1");
+    expect(host.querySelector("h2")?.textContent).toBe("Round 2");
+    expect(host.querySelectorAll("article h2")[1]?.textContent).toBe("Round 7");
+
+    await sort("supporters");
+    expect(host.querySelector("h2")?.textContent).toBe("Round 3");
+    await act(async () => host.querySelectorAll<HTMLButtonElement>('[aria-pressed]')[2].click());
+    expect(select.value).toBe("supporters");
+    expect(host.querySelectorAll("article")).toHaveLength(1);
+    expect(host.querySelector("h2")?.textContent).toBe("Round 1");
+  });
   it("clamps a shared URL and later realtime deletions without losing other query keys/hash", async () => {
     window.history.replaceState(null, "", "/round?source=test&page=99#list"); await render();
     expect(window.location.search).toBe("?source=test&page=2");

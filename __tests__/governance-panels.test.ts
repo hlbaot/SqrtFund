@@ -34,6 +34,16 @@ it("shows the signed immutable policy and suppresses editing even for the organi
   expect(host.textContent).toContain("khóa chỉnh sửa");
   expect(host.querySelector("form")).toBeNull();
 });
+it("completes a restored setup when the rules were already published", async () => {
+  f.records = [{ id: 1, kind: "policy", payload: { kind: "policy", round, rulesVersion: RULES_VERSION, policy: { theme: "Student robotics", eligibility: "All students", funding: "Hardware", criteria: "Working prototype" } }, owner_address: owner, transaction_hash: null, created_at: "2026-10-30T00:00:00Z" }];
+  const complete = vi.fn();
+  await act(async () => root.render(createElement(RoundPolicyPanel, { roundAddress: round, onPublished: complete })));
+  const finish = Array.from(host.querySelectorAll("button")).find(button => button.textContent === "Hoàn tất tạo vòng");
+  expect(finish).toBeDefined();
+  await act(async () => finish!.click());
+  expect(complete).toHaveBeenCalledOnce();
+  expect(f.publish).not.toHaveBeenCalled();
+});
 it("distinguishes unavailable criteria from an unpublished policy and offers retry", async () => {
   f.error = true;
   await act(async () => root.render(createElement(RoundPolicyPanel, { roundAddress: round })));
@@ -42,6 +52,28 @@ it("distinguishes unavailable criteria from an unpublished policy and offers ret
   expect(host.querySelector("form")).toBeNull();
   await act(async () => host.querySelector("button")!.click());
   expect(f.refetch).toHaveBeenCalledOnce();
+});
+it("keeps the round setup open and preserves rules on publication failure, then finishes on retry", async () => {
+  const complete = vi.fn();
+  f.publish.mockRejectedValueOnce(new Error("Signature declined")).mockResolvedValueOnce({ id: 1 });
+  await act(async () => root.render(createElement(RoundPolicyPanel, { roundAddress: round, onPublished: complete })));
+  const form = host.querySelector("form")!;
+  const fields = Array.from(form.querySelectorAll("textarea"));
+  const submit = form.querySelector<HTMLButtonElement>("button[type=submit]")!;
+  expect(submit.disabled).toBe(true);
+  await act(async () => fields.forEach(field => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(field, "Student project rules");
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  }));
+
+  await act(async () => submit.click());
+  expect(complete).not.toHaveBeenCalled();
+  expect(fields.every(field => field.value === "Student project rules")).toBe(true);
+  expect(host.textContent).toContain("Chưa lưu được quy định");
+
+  await act(async () => submit.click());
+  expect(f.publish).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "policy", round }));
+  expect(complete).toHaveBeenCalledOnce();
 });
 it("shows a receipt-backed rejection reason without offering another decision", async () => {
   f.records = [{ id: 2, kind: "review", payload: { kind: "review", round, rulesVersion: RULES_VERSION, review: { projectId: "1", action: "reject", criteria: ["budget"], reason: "Please itemize material expenses" } }, owner_address: owner, transaction_hash: `0x${"a".repeat(64)}`, created_at: "2026-10-30T00:00:00Z" }];
