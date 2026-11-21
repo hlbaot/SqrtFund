@@ -61,7 +61,7 @@ export function NotificationBell() {
 
   const togglePanel = () => {
     if (isOpen) { closePanel(); return; }
-    // Measure before mounting the portal; never animate from default coordinates.
+    // Đo trước khi mount portal; không animate từ toạ độ mặc định.
     reposition();
     setIsClosing(false);
     setIsOpen(true);
@@ -73,7 +73,7 @@ export function NotificationBell() {
     return () => window.clearTimeout(timer);
   }, [isClosing]);
 
-  // Position calculation and outside click/escape listener
+  // Tính vị trí và lắng nghe click ngoài/escape
   useEffect(() => {
     if (!isOpen) return;
 
@@ -249,7 +249,7 @@ export function NotificationBell() {
               </div>
             </div>
 
-            {/* Filter Tabs if there are notifications */}
+            {/* Tab lọc khi có thông báo */}
             {isConnected && totalCount > 0 && (
               <div className="flex shrink-0 flex-nowrap whitespace-nowrap border-b border-line bg-surface/30 px-3 py-1 gap-2">
                 <button
@@ -279,7 +279,7 @@ export function NotificationBell() {
               </div>
             )}
 
-            {/* List / Empty States */}
+            {/* Danh sách / trạng thái rỗng */}
             <div className={`${styles.list} min-h-0 flex-1 overflow-y-auto divide-y divide-line/40 overscroll-contain`}>
               {!isConnected ? (
                 <div className="flex flex-col items-center justify-center px-3 py-5 text-center space-y-2">
@@ -341,7 +341,7 @@ export function NotificationBell() {
               )}
             </div>
 
-            {/* Footer with Quick Links */}
+            {/* Footer với link nhanh */}
             {isConnected && (
               <div className="flex shrink-0 min-w-0 items-center justify-between gap-2 whitespace-nowrap border-t border-line bg-surface/50 px-3 py-2 text-xs">
                 <Link

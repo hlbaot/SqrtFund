@@ -11,7 +11,7 @@ const formats: Record<string, string> = {
   "image/webp": "webp",
 };
 
-/** Validate decoded content, not just the MIME header or a recognizable file prefix. */
+/** Validate nội dung đã decode, không chỉ MIME header hay tiền tố file nhận diện được. */
 export async function validateUploadImage(
   bytes: Uint8Array,
   mime: string,
@@ -34,7 +34,7 @@ export async function validateUploadImage(
       (metadata.pages ?? 1) !== 1
     )
       throw invalid();
-    // metadata() alone accepts some truncated images. stats() forces a full decode.
+    // metadata() một mình chấp nhận vài ảnh bị cắt; stats() ép decode đầy đủ.
     await image.stats();
   } catch {
     throw invalid();

@@ -1,6 +1,6 @@
 @import "driver.js/dist/driver.css";
 
-/* N-Power Custom Driver.js Dark Glass Theme */
+/* Theme Dark Glass tùy chỉnh cho N-Power Driver.js */
 .driver-popover.npower-tour-popover {
   background: rgba(18, 18, 26, 0.96) !important;
   backdrop-filter: blur(20px);
@@ -100,7 +100,7 @@
   box-shadow: 0 0 22px rgba(255, 77, 79, 0.55) !important;
 }
 
-/* Popover Arrow */
+/* Mũi tên popover */
 .npower-tour-popover .driver-popover-arrow-side-left {
   border-left-color: rgba(18, 18, 26, 0.96) !important;
 }

@@ -11,7 +11,7 @@
   --muted: #c3c3cc;
   --primary: #ff4d4f;
   --money: #4ade80;
-  /* Red text and solid buttons need separate contrast pairs. */
+  /* Chữ đỏ và nút đặc cần cặp tương phản riêng. */
   --button-red: #cc3036;
   --button-red-hover: #d3343a;
   --button-ink: #ffffff;
@@ -414,7 +414,7 @@ html.splash-active .splash-intro {
   animation: splash-tagline-in 3s ease both;
 }
 
-/* Decorative scripts never gate the visibility or interaction of content. */
+/* Script trang trí không bao giờ chặn hiển thị hay tương tác của nội dung. */
 html:not(.aos-ready) [data-aos] { opacity: 1 !important; transform: none !important; visibility: visible !important; }
 .navigation-progress { animation: navigation-progress 1.2s ease-in-out infinite; }
 @keyframes navigation-progress { from { transform: translateX(-100%); } to { transform: translateX(140%); } }
@@ -509,7 +509,7 @@ html:not(.aos-ready) [data-aos] { opacity: 1 !important; transform: none !import
   border-top: 1px solid var(--line);
 }
 
-/* Accessibility: respect prefers-reduced-motion */
+/* Accessibility: tôn trọng prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
 
   *,
@@ -522,7 +522,7 @@ html:not(.aos-ready) [data-aos] { opacity: 1 !important; transform: none !import
   }
 }
 
-/* Hide scrollbar chrome while retaining wheel, touch, and keyboard scrolling. */
+/* Ẩn thanh cuộn nhưng vẫn cuộn được bằng chuột, cảm ứng và bàn phím. */
 html,
 body,
 * {
@@ -535,7 +535,7 @@ body,
   height: 0;
 }
 
-/* Same gradient as Connect Wallet; a masked layer fades without changing layout. */
+/* Cùng gradient với Connect Wallet; lớp mask mờ dần mà không đổi layout. */
 .gradient-border.nav-border {
   background: var(--bg);
   border-color: transparent;
@@ -586,7 +586,7 @@ body,
   border-style: dashed;
 }
 
-/* Rounds and leaderboard: token-based, quiet motion and bounded numeric layouts. */
+/* Rounds và leaderboard: dựa trên token, chuyển động nhẹ và layout số có giới hạn. */
 .competition-focus:focus-visible,
 .competition-action:focus-visible,
 .competition-scroll:focus-visible {
@@ -754,7 +754,7 @@ body,
   color: var(--muted);
 }
 
-/* Chain Lattice: decorative layers stay behind content in isolated hosts. */
+/* Chain Lattice: lớp trang trí nằm sau nội dung trong host cô lập. */
 .chain-lattice-host:not(.sticky) {
   position: relative;
 }
@@ -803,7 +803,7 @@ body,
 
 .chain-lattice__field {
   opacity: 0.6;
-  /* Fade at both section seams and screen edges; keep the middle quieter. */
+  /* Mờ ở các đường nối section và mép màn hình; phần giữa dịu hơn. */
   mask-image: radial-gradient(ellipse 78% 90% at 50% 38%, #000 20%, transparent 100%),
     linear-gradient(transparent, #000 48px, #000 70%, transparent);
   mask-composite: intersect;
@@ -842,7 +842,7 @@ body,
   max-width: none;
   transform: translateX(-50%);
   overflow: visible;
-  /* Keep bright signals out of the main text column. */
+  /* Giữ tín hiệu sáng ra khỏi cột chữ chính. */
   mask-image: linear-gradient(90deg, #000, #000 24%, rgb(0 0 0 / 0.32) 37%, rgb(0 0 0 / 0.32) 63%, #000 76%, #000);
 }
 
@@ -888,7 +888,7 @@ body,
   animation-play-state: running;
 }
 
-/* The ring begins at arrival, then expands once over 800ms. */
+/* Vòng bắt đầu khi xuất hiện, rồi mở rộng một lần trong 800ms. */
 @keyframes chain-confirm {
   0% {
     opacity: 0.3;
@@ -983,7 +983,7 @@ body,
   --lattice-ambient-y: 64%;
 }
 
-/* Timeline support uses horizontal traces, without the list's block columns. */
+/* Timeline dùng đường ngang, không dùng cột block của list. */
 .chain-lattice-host--stats .chain-lattice__columns,
 #how-it-works .chain-lattice__columns {
   display: none;
@@ -1066,8 +1066,7 @@ body,
   }
 }
 
-/* Shared contrast rules apply to pages, portalled dialogs, forms and toasts.
-   Keep opacity for decoration; readable copy always uses the complete ink token. */
+/* Quy tắc tương phản dùng chung cho trang, dialog portal, form và toast; opacity chỉ để trang trí, chữ đọc luôn dùng đủ ink token. */
 [class~="text-muted/60"], [class~="text-muted/40"] { color: var(--muted); }
 [class*="placeholder:text-muted/"]::placeholder { color: var(--muted); opacity: 0.5; }
 [class*="text-primary/"] { color: var(--primary); }
@@ -1100,7 +1099,7 @@ body,
   box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
-/* Brightness filters would lower white-on-red contrast on solid hover states. */
+/* Filter brightness làm giảm tương phản chữ trắng trên đỏ ở trạng thái hover đặc. */
 .bg-primary:is(.text-white, .text-foreground):hover,
 .pagination-button[aria-current="page"]:hover,
 .ui-button[data-variant="destructive"]:not(:disabled):hover { filter: none; }
@@ -1110,5 +1109,5 @@ body,
   color: var(--button-ink);
   filter: none;
 }
-/* Higher-opacity red chips use light ink rather than red-on-red text. */
+/* Chip đỏ opacity cao dùng chữ sáng thay vì đỏ trên đỏ. */
 .text-primary:is(.bg-primary\/15, .bg-primary\/20) { color: var(--text); }

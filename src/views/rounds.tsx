@@ -17,7 +17,7 @@ import type { RoundSummary } from "@/components/leaderboard/model";
 
 type LoadedRound = { round: RoundSummary; loading: boolean };
 
-// Adapters use the repository's existing hooks; presentation components never read contracts.
+// Adapters dùng hook sẵn có của repo; presentation components không đọc contract.
 function RoundData({ address, number, onData, retry }: { address: Address; number: number; onData: (address: string, data: LoadedRound) => void; retry: number }) {
   const source = useRound(address);
   const refetchFields = source.refetch;
@@ -38,7 +38,7 @@ function RoundData({ address, number, onData, retry }: { address: Address; numbe
     }, loading: source.isLoading || isLoading };
   }, [address, number, source.name, source.organizer, source.status, source.startTime, source.endTime, source.pool, source.isLoading, source.isError, source.roundVersion, source.readFailureKind, projects, isLoading, isError, projectFailure, upcoming]);
   useEffect(() => { onData(address, data); }, [address, data, onData]);
-  // The existing hooks poll; explicitly refresh their project query on Retry as well.
+  // Hook hiện có tự poll; Retry cũng refresh project query.
   useEffect(() => { if (retry > 0) { refetchFields(); void refetch(); } }, [retry, refetch, refetchFields]);
   return null;
 }
@@ -54,7 +54,7 @@ export function RoundsView() {
   const stored = roundsStore(useShallow(state => state.entities));
   const [retry, setRetry] = useState(0);
   const onData = useCallback((address: string, data: LoadedRound) => {
-    // Summary snapshots have the same receipt fence as the raw fields.
+    // Summary snapshots dùng cùng receipt fence như raw fields.
     roundsStore.getState().hydrate([{ id: address, address: address as Address, summary: data }]);
   }, []);
   const entries = allRounds.map(({ address }) => stored[address.toLowerCase()]?.summary);

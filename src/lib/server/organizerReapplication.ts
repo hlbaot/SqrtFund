@@ -4,7 +4,7 @@ import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { organizerReapplicationMessage, type OrganizerReapplication } from "@/lib/organizerReapplication";
 import type { OrganizerApplication } from "./organizerApplications";
 
-/** Stored email verification may be reused only by its wallet and application version. */
+/** Email đã xác minh chỉ dùng lại được bởi đúng ví và phiên bản đơn. */
 export async function verifyOrganizerReapplication(body: Record<string, unknown>, previous?: OrganizerApplication) {
   if (!previous?.emailVerifiedAt || !(previous.status === "revoked" || previous.status === "rejected")
     || typeof body.walletAddress !== "string" || previous.walletAddress.toLowerCase() !== body.walletAddress.toLowerCase()

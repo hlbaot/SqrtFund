@@ -2,11 +2,11 @@ import type { NextConfig } from "next";
 import { ClientBundleStatsPlugin } from "./scripts/bundle-stats.mjs";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  /* tùy chọn config */
   experimental: {
     agentFeedback: true,
   },
-  // Development uses Turbopack; the opt-in stats plugin applies to webpack builds.
+  // Dev dùng Turbopack; plugin stats tùy chọn chỉ áp dụng cho build webpack.
   turbopack: {},
   webpack(config, { isServer }) {
     if (!isServer && process.env.ANALYZE_BUNDLE === "1") config.plugins.push(new ClientBundleStatsPlugin());

@@ -82,7 +82,7 @@ beforeEach(() => {
     toast: { pending: vi.fn(), success: vi.fn() }, finish: vi.fn(), error: vi.fn() });
 });
 const render = () => renderToStaticMarkup(createElement(CreateRoundForm));
-// onSubmit deliberately returns void; drain the promise chain started by act().
+// onSubmit cố ý trả void; chờ hết promise chain do act() khởi tạo.
 const finish = () => vi.waitFor(() => expect(f.begin.mock.results[0]?.value.finish).toHaveBeenCalled());
 it("opens rules for the created round and reports success only after publication", async () => {
   const success = vi.spyOn(txToast, "success").mockImplementation(() => {});

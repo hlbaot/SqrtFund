@@ -15,7 +15,7 @@ export function AOSInit() {
       if (!initialized) { AOS.init({ duration: 700, easing: "ease-out-cubic", once: true, offset: 40, delay: 50 }); initialized = true; }
       else AOS.refreshHard();
       document.documentElement.classList.add("aos-ready");
-    }).catch(() => { /* Unavailable decoration must never hide the page. */ });
+    }).catch(() => { /* Hiệu ứng trang trí lỗi không được ẩn trang. */ });
     return () => { cancelled = true; };
   }, [pathname]);
 

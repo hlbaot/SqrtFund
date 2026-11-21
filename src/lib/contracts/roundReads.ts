@@ -25,11 +25,11 @@ export function logContractReadFailure(address: Address, functionName: string, e
   const key = `${address.toLowerCase()}:${functionName}:${kind}`;
   if (reported.has(key)) return;
   reported.add(key);
-  // Never log raw errors: provider errors may contain URLs with credentials.
+  // Không log lỗi thô: lỗi provider có thể chứa URL kèm credential.
   console.warn("[contract-read]", { address, functionName, kind });
 }
 export type RoundFields = RoundCapability & { results: readonly RoundReadResult[] };
-/** Probe once per chain/address; legacy deployments never receive modern detail reads. */
+/** Probe một lần cho mỗi chain/address; deployment legacy không nhận lệnh đọc chi tiết mới. */
 export async function loadRoundFields(read: RoundBatchReader, address: Address, capabilities = new Map<string, RoundCapability>()): Promise<RoundFields> {
   const key = address.toLowerCase();
   let capability = capabilities.get(key);
@@ -49,7 +49,7 @@ export async function loadRoundFields(read: RoundBatchReader, address: Address, 
   let results: readonly RoundReadResult[];
   try { results = await read(functions.map(functionName => ({ address, abi: qfRoundAbi, functionName }))); }
   catch (error) { for (const fn of functions) logContractReadFailure(address, fn, error); throw error; }
-  // Preserve positional fields for useRound callers; skipped metadata is not an error.
+  // Giữ các trường theo vị trí cho caller của useRound; metadata bị bỏ qua không phải lỗi.
   const complete = functions.map((fn, index) => {
     const result = results[index] ?? { status: "failure" as const, error: new Error("Missing contract response") };
     if (result.status === "failure") logContractReadFailure(address, fn, result.error);

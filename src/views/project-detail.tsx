@@ -109,7 +109,7 @@ export function ProjectDetailView() {
       {project.status === "approved" && roundStatus === "open" && !isCancelled && <ContributionOverview expanded={mobileDrawerOpen} onOpen={()=>setMobileDrawerOpen(true)} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left column: Single Unified Project Details Card */}
+        {/* Cột trái: card chi tiết dự án */}
         <div className="lg:col-span-7">
           <article
             className="gradient-border bg-surface p-6 sm:p-7 space-y-6"
@@ -160,7 +160,7 @@ export function ProjectDetailView() {
               </div>
             )}
 
-            {/* Project Name & Summary */}
+            {/* Tên & tóm tắt dự án */}
             <div className="space-y-2">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
                 {project.name}
@@ -171,7 +171,7 @@ export function ProjectDetailView() {
               </p>
             </div>
 
-            {/* On-chain Explorer Links */}
+            {/* Link On-chain Explorer */}
             <div className="flex flex-wrap items-center gap-4">
               <ExplorerLink address={project.ownerAddress} label={t.onChain.ownerWallet} />
               <ExplorerLink address={roundAddress} label={t.onChain.roundContract} />
@@ -184,10 +184,9 @@ export function ProjectDetailView() {
             <ProjectProfilePanel project={project} roundAddress={roundAddress} />
             <ProjectClaimPanel project={project} round={roundAddress} finalized={finalized} cancelled={isCancelled} onClaimed={()=>void refetch()} />
 
-            {/* Divider */}
             <div className="border-t border-line" />
 
-            {/* 3. Detailed Proposal Info & Website / Community Link */}
+            {/* 3. Chi tiết proposal & link Website / Community */}
             <div className="space-y-4">
               <h2 className="text-base font-bold text-foreground">
                 {t.projectDetail.aboutTitle}
@@ -216,7 +215,7 @@ export function ProjectDetailView() {
           </article>
         </div>
 
-        {/* Right column: Sticky Donate Box for Desktop */}
+        {/* Cột phải: Donate Box sticky cho Desktop */}
         <div
           className="hidden lg:block lg:col-span-5 sticky top-24"
           data-aos="fade-left"

@@ -19,7 +19,7 @@ import { useLocale } from "@/lib/context/locale";
 import { formatNumber } from "@/lib/format";
 
 /**
- * Custom hook for smooth count-up animation over a specified duration
+ * Hook count-up mượt trong khoảng thời gian cho trước
  */
 function useCountUp(target: number, duration: number = 800, active: boolean = true): number {
   const [value, setValue] = useState(0);
@@ -40,7 +40,7 @@ function useCountUp(target: number, duration: number = 800, active: boolean = tr
     const step = (timestamp: number) => {
       if (!start) start = timestamp;
       const progress = Math.min((timestamp - start) / duration, 1);
-      // Easing cubic-bezier(0.22, 1, 0.36, 1) approximation
+      // Xấp xỉ easing cubic-bezier(0.22, 1, 0.36, 1)
       const ease = 1 - Math.pow(1 - progress, 3);
       setValue(Math.round(startVal + diff * ease));
 
@@ -72,7 +72,7 @@ type Column = {
 };
 
 /**
- * Platform-wide stats aggregated over every public round (not only the latest one).
+ * Thống kê toàn nền tảng trên mọi round công khai (không chỉ round mới nhất).
  */
 export function NetworkStats() {
   const router = useRouter();
@@ -90,7 +90,7 @@ export function NetworkStats() {
 
   const queries = useQueries({
     queries: addresses.map((address) => ({
-      // Same key as useRound/useRegistrationRounds so the cache is shared.
+      // Cùng key với useRound/useRegistrationRounds để dùng chung cache.
       queryKey: ["round-fields", TARGET_CHAIN_ID, address.toLowerCase()],
       queryFn: async () => {
         const head = await client!.getBlockNumber({ cacheTime: 0 });
@@ -151,7 +151,7 @@ export function NetworkStats() {
     return () => observer.disconnect();
   }, []);
 
-  // Seconds since the last data change
+  // Số giây kể từ lần dữ liệu đổi gần nhất
   useEffect(() => {
     const resetFrame = requestAnimationFrame(() => setSecondsAgo(0));
     const interval = setInterval(() => setSecondsAgo((s) => s + 1), 1000);

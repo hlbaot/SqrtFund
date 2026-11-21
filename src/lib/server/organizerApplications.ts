@@ -27,7 +27,7 @@ export interface ApplicationInput {
   reason: string;
 }
 
-/** A database failure must never produce a local substitute for a persisted application. */
+/** Lỗi database không được tạo bản thay thế cục bộ cho đơn đã lưu. */
 async function withDatabase<T>(
   work: (db: ReturnType<typeof supabaseAdmin>) => Promise<T>,
 ): Promise<T> {
@@ -91,7 +91,7 @@ export async function createOrganizerApplication(
   return withDatabase(async (db) => {
     const wallet = input.walletAddress.trim().toLowerCase();
     const email = input.contactEmail.trim().toLowerCase();
-    // The caller validates the v2 email token; the persisted identity remains authoritative.
+    // Caller xác thực token email v2; danh tính đã lưu vẫn là nguồn quyết định.
     await ensureEmailWallet(email, wallet, true, db);
     const now = new Date().toISOString();
     const { data, error } = await db
@@ -138,7 +138,7 @@ export async function listOrganizerApplications(options?: {
   });
 }
 
-/** Reopen only the signed database revision, without creating another email binding. */
+/** Chỉ mở lại phiên bản đã ký trong database, không tạo thêm liên kết email. */
 export async function resubmitOrganizerApplication(
   previous: OrganizerApplication,
   input: ApplicationInput,
@@ -189,7 +189,7 @@ export async function updateOrganizerApplicationStatus(
   },
 ): Promise<OrganizerApplication | null> {
   return withDatabase(async (db) => {
-    // CAS and wallet-wide revocation are one database transaction, not two HTTP writes.
+    // CAS và thu hồi theo ví là một transaction database, không phải hai lần ghi HTTP.
     const { data, error } = await db.rpc("review_organizer_application", {
       p_id: id,
       p_status: updates.status,

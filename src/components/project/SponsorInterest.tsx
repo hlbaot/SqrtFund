@@ -12,7 +12,7 @@ export function sponsorContactUrl(value?: string): string | undefined {
     const url = new URL(value ?? "");
     if (["https:", "http:"].includes(url.protocol) && !url.username && !url.password)
       return url.href;
-  } catch { /* A missing or invalid contact must not become a clickable link. */ }
+  } catch { /* Contact thiếu/không hợp lệ không thành link. */ }
 }
 
 export function SponsorInterest({ project, roundAddress }: { project: Project; roundAddress: Address }) {

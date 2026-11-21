@@ -67,7 +67,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
   const [amount, setAmount] = useState<number>(1);
   const [inputValue, setInputValue] = useState<string>("1");
 
-  // Read how much current user has already donated to this project
+  // Đọc số tiền user đã ủng hộ dự án này
   const projectIdBigInt = BigInt(project.id || "1");
   const { data: userDonatedData, refetch: refetchDonation, isError: donationReadFailed } = useReadContract({
     address: roundAddress,
@@ -116,7 +116,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
     if (parsed.success) setAmount(Number(parsed.amount) / 1_000_000);
   };
 
-  // Convert all approved round projects to ProjectMathInput format
+  // Chuyển dự án đã duyệt sang ProjectMathInput
   const allProjects = useMemo(() => {
     if (projects.length === 0) {
       return [
@@ -136,7 +136,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
       }));
   }, [projects, project]);
 
-  // QF Impact preview calculated with BigInt math matching smart contracts
+  // Xem trước QF Impact bằng BigInt, khớp smart contract
   const impact = useMemo(() => {
     const parsed = parseUsdc(inputValue);
     const donationAmountBigInt = parsed.success ? parsed.amount : 0n;
@@ -160,7 +160,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
     return { nextMatching, increase, totalRaw: res.totalRaw };
   }, [project, inputValue, userDonatedBigInt, pool, allProjects, maxMatchBps]);
 
-  // Stepper definition
+  // Định nghĩa stepper
   const steps: StepItem[] = [
     {
       id: 1,
@@ -235,7 +235,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
       {token && !tokenReady && <p role="alert">{t.tokenBalance.tokenMismatch}</p>}
       {!isOrganizerUser && !isOwner && supportsPhase2 && <Button variant="secondary" fullWidth className="mt-3" disabled={!canParticipate || isRoundClosed || isDonatePending || isRefreshing} onClick={() => setBatchMode(true)}>{t.phase2.splitBudget}</Button>}
 
-      {/* Round Closed Banner */}
+      {/* Banner round đã đóng */}
       {isRoundClosed && (
         <div
           role="alert"
@@ -246,7 +246,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
         </div>
       )}
 
-      {/* Organizer cannot donate guard */}
+      {/* Chặn organizer ủng hộ */}
       {isOrganizerUser && (
         <div
           role="alert"
@@ -263,7 +263,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
         </div>
       )}
 
-      {/* Owner self-donation guard */}
+      {/* Chặn owner tự ủng hộ */}
       {isOwner && (
         <div className="my-4 border border-line-strong bg-surface-2 p-3 text-xs text-muted">
           <p className="font-semibold text-foreground">{t.donateBox.ownerTitle}</p>
@@ -317,7 +317,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
         </div>
       )}
       {isConnected && isMaxAllowanceReached && !isRoundClosed && (
-        /* Max allowance reached alert */
+        /* Cảnh báo đạt allowance tối đa */
         <div className="my-4 border border-money/40 bg-money/10 p-3 text-xs text-money">
           <p className="font-bold">{t.donateBox.maxReachedTitle}</p>
           <p className="mt-1 text-muted">
@@ -329,7 +329,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
 
       {donationStep !== "success" ? (
         <div className="mt-4 space-y-4">
-          {/* Amount input & Quick buttons */}
+          {/* Ô nhập số tiền và nút nhanh */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-semibold text-foreground">
               <label htmlFor="donation-amount">{t.donateBox.amountLabel}</label>
@@ -372,7 +372,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
 
           <p className="text-xs text-muted">{t.phase2.expectedHint}</p>
           <MatchingPoolWarning totalRaw={impact.totalRaw} pool={pool} />
-          {/* Impact preview */}
+          {/* Xem trước impact */}
           <div className="border border-money/30 bg-money/10 p-3 text-xs text-foreground">
             <div className="flex items-center gap-1.5 font-bold text-money">
               <Sparkles className="h-4 w-4" />
@@ -388,17 +388,17 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
             </p>
           </div>
 
-          {/* Honest copy about 2 sequential confirmations */}
+          {/* Thông báo cần 2 lần xác nhận liên tiếp */}
           <p className="text-xs text-muted leading-relaxed">
             {t.donateBox.approvalNotice}
           </p>
 
-          {/* Stepper visualization */}
+          {/* Hiển thị stepper */}
           <div className="pt-1">
             <Stepper steps={steps} />
           </div>
 
-          {/* Tx Status during pending/error */}
+          {/* Trạng thái tx khi pending/lỗi */}
           {activeTxHash && (
             <TxStatusDisplay
               status={isDonatePending ? "confirming" : "idle"}
@@ -406,7 +406,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
             />
           )}
 
-          {/* Insufficient balance alert */}
+          {/* Cảnh báo không đủ số dư */}
           {isConnected && isStudent && hasInsufficientBalance && (
             <div className="flex items-start gap-2.5 border border-primary/40 bg-primary/10 p-3 text-xs text-foreground">
               <AlertCircle className="h-4 w-4 shrink-0 text-primary mt-0.5" />
@@ -430,7 +430,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
             </div>
           )}
 
-          {/* Primary Action Button */}
+          {/* Nút hành động chính */}
           <div>
             {isOwner ? (
               <Button variant="secondary" fullWidth disabled className="py-3 text-sm font-bold opacity-50">
@@ -475,7 +475,7 @@ function DonationSession({ project, className = "", roundAddress: customRound }:
           </div>
         </div>
       ) : (
-        /* Completed Transaction Card */
+        /* Thẻ giao dịch hoàn tất */
         <div className="mt-4 space-y-4 border border-money/30 bg-money/10 p-4 text-center">
           <div className="mx-auto flex h-10 w-10 items-center justify-center border border-money/40 bg-money/10 text-money">
             <Check className="h-6 w-6 stroke-[3]" />

@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/Button";
 import { RoundPolicyPanel } from "@/components/policy/RoundPolicyPanel";
 import { txToast } from "@/lib/txToast";
 
-/** Format Date object to YYYY-MM-DDTHH:mm string in local timezone */
+/** Format Date sang YYYY-MM-DDTHH:mm theo múi giờ local */
 function toLocalDatetimeString(date: Date): string {
   const pad = (n: number) => n.toString().padStart(2, "0");
   const y = date.getFullYear();
@@ -154,7 +154,7 @@ export function CreateRoundForm() {
       const args = needsInput ? validateRound() : undefined;
       if (needsInput && !args) return;
       setPending(action === "resume" ? "create" : action);
-      // Re-read credit at each action: never trust a success flag or another tab's stale balance.
+      // Đọc lại credit mỗi hành động: không tin cờ thành công hay số dư cũ của tab khác.
       const saved = action === "resume" ? 0n : await flow.wait(() => publicClient.readContract({ address: factoryAddress, abi: roundFactoryAbi,
         functionName: "initialPoolDeposits", args: [address, usdcAddress] }));
       const confirm = async (hash: `0x${string}`, creating = false) => {

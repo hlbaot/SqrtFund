@@ -37,7 +37,7 @@ describe("WalletWatcher shouldReload state machine", () => {
     const next: WalletState = { address: addrA, status: "connected" };
     expect(shouldReload(prev, next)).toBe(false);
 
-    // Initial mount with prev null
+    // Mount lần đầu với prev null
     expect(shouldReload(null, next)).toBe(false);
   });
 

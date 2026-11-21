@@ -27,7 +27,7 @@ export function NavigationProgress() {
       start(link.href);
     };
     const custom = (event: Event) => { const href = (event as CustomEvent<string>).detail; if (typeof href === "string") start(href); };
-    // Capture before next/link prevents the native navigation event.
+    // Bắt trước khi next/link chặn sự kiện điều hướng native.
     document.addEventListener("click", click, true);
     window.addEventListener("sqrt-route-start", custom);
     return () => { clearTimeout(timer); document.removeEventListener("click", click, true); window.removeEventListener("sqrt-route-start", custom); };

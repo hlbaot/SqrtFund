@@ -28,7 +28,7 @@ it.each(["mint", "deposit", "donate", "claim", "refund"])("refreshes the shared 
   function Probe() { snapshot = useTokenBalance(owner); begin = useTxFlow(); return null; }
   const render = () => renderToStaticMarkup(createElement(QueryClientProvider, { client }, createElement(Probe)));
   render();
-  // An active observer models the mounted hook's subscription; no mocked invalidation.
+  // Observer đang hoạt động mô phỏng subscription của hook đã mount; không mock invalidation.
   const observer = new QueryObserver(client, tokenBalanceOptions({ readContract: state.read } as unknown as PublicClient, owner));
   const unsubscribe = observer.subscribe(() => {});
   try {

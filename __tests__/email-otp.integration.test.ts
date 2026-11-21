@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { createClient } from "@supabase/supabase-js";
 import { randomBytes, randomUUID } from "node:crypto";
 import { hashOtp } from "@/lib/verify/otp";
-// Explicitly opt in to a SEPARATE dev project. Never reuse production variables.
+// Bật rõ ràng cho project dev RIÊNG; không dùng lại biến production.
 const enabled = process.env.RUN_VERIFICATION_INTEGRATION === "1" && Boolean(process.env.SUPABASE_TEST_URL && process.env.SUPABASE_TEST_SERVICE_ROLE_KEY);
 const secret = "integration-only-secret-at-least-32-characters";
 const hex = (bytes: number) => `0x${randomBytes(bytes).toString("hex")}`;

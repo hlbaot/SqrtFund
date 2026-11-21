@@ -34,7 +34,7 @@ export function useClaim() {
   const isTargetChain = chainId === TARGET_CHAIN_ID;
   const enabled = Boolean(address && isConnected && usdcAddress && isTargetChain);
 
-  // 1. Fetch on-chain faucet configuration & user claim status
+  // 1. Lấy cấu hình faucet on-chain và trạng thái claim của user
   const {
     data: faucetData,
     isLoading: isReading,
@@ -84,19 +84,18 @@ export function useClaim() {
 
   const cooldownDuration = cooldown !== undefined ? Number(cooldown) : 3600;
 
-  // Calculate nextClaimAt (seconds)
+  // Tính nextClaimAt (giây)
   const nextClaimAt =
     lastMint !== undefined && lastMint > 0n && cooldown !== undefined
       ? Number(lastMint + cooldown)
       : 0;
 
-  // 2. Calibrate clock skew against latest block once
+  // 2. Hiệu chỉnh lệch đồng hồ theo block mới nhất (một lần)
   useEffect(() => {
     let cancelled = false;
     if (!enabled || !publicClient) return;
 
-    // Navbar, wallet menu and /my share the same sample. Guest visitors have no
-    // faucet countdown to calibrate, so they do not need this RPC at all.
+    // Navbar, wallet menu và /my dùng chung mẫu; khách không có countdown nên bỏ qua RPC
     queryClient.fetchQuery({
       queryKey: ["chain-clock", TARGET_CHAIN_ID],
       queryFn: async () => {
@@ -110,7 +109,7 @@ export function useClaim() {
         setClockSkew(Number(sample.timestamp) - sample.sampledAt);
       })
       .catch(() => {
-        // Fallback to local clock
+        // Dùng đồng hồ local
       });
 
     return () => {
@@ -124,7 +123,7 @@ export function useClaim() {
       ? calculateRemainingSeconds(nextClaimAt, currentNowSec)
       : 0;
 
-  // Trigger refetch when countdown reaches 0
+  // Refetch khi countdown về 0
   useEffect(() => {
     if (
       prevRemainingRef.current !== null &&
@@ -150,7 +149,7 @@ export function useClaim() {
     cap,
   });
 
-  // 4. Claim 100 test USDC from faucet
+  // 4. Claim 100 test USDC từ faucet
   const claimUsdc = useCallback(async () => {
     const flow = beginFlow("claim-usdc");
     const toastId = "claim-usdc";
@@ -204,7 +203,7 @@ export function useClaim() {
         hash
       );
 
-      // Instant refresh of cooldown & balance queries
+      // Làm mới ngay cooldown và balance
       await Promise.all([
         refetch(),
         queryClient.invalidateQueries(),
@@ -219,7 +218,7 @@ export function useClaim() {
         locale === "vi" ? "Nhận USDC thất bại" : "Claim failed",
         locale
       );
-      // If error might be due to cooldown, trigger a fast refetch to update local state
+      // Lỗi có thể do cooldown: refetch nhanh để cập nhật state
       void refetch();
       return false;
     } finally {
@@ -240,7 +239,7 @@ export function useClaim() {
     queryClient,
   ]);
 
-  // 5. Claim project matching funds
+  // 5. Claim matching funds của project
   const claimMatching = useCallback(
     async (projectId: bigint, targetRound: Address | undefined = roundAddress) => {
       const flow = beginFlow(`claim-${targetRound}-${projectId}`);
@@ -310,7 +309,7 @@ export function useClaim() {
     ]
   );
 
-  // Overloaded claim dispatcher
+  // Dispatcher claim nạp chồng
   const claim = useCallback(
     async (projectId?: bigint, targetRound?: Address) => {
       if (typeof projectId === "bigint") {

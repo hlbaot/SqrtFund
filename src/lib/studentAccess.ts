@@ -1,4 +1,4 @@
-/** Shared UI guards; on-chain StudentRegistry and budget checks remain authoritative. */
+/** Guard UI dùng chung; StudentRegistry on-chain và kiểm tra ngân sách vẫn là nguồn quyết định. */
 export function studentCanParticipate(connected: boolean, student: boolean, registryMatches: boolean): boolean {
   return connected && student && registryMatches;
 }

@@ -14,7 +14,7 @@ function setLocaleCookie(locale: Locale) {
   try {
     document.cookie = `${LOCALE_COOKIE_KEY}=${locale}; path=/; max-age=${ONE_YEAR_IN_SECONDS}; SameSite=Lax`;
   } catch {
-    // ignore
+    // bỏ qua
   }
 }
 
@@ -35,17 +35,17 @@ export function LocaleProvider({
 }) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
-  // Sync state if initialLocale prop changes
+  // Đồng bộ state khi prop initialLocale đổi
   useEffect(() => {
     setLocaleState(initialLocale);
   }, [initialLocale]);
 
-  // Keep <html lang="..."> in sync with current locale
+  // Giữ <html lang="..."> khớp locale hiện tại
   useEffect(() => {
     try {
       document.documentElement.lang = locale;
     } catch {
-      // ignore
+      // bỏ qua
     }
   }, [locale]);
 
@@ -55,12 +55,12 @@ export function LocaleProvider({
     try {
       localStorage.setItem(STORAGE_KEY, l);
     } catch {
-      // ignore
+      // bỏ qua
     }
     window.dispatchEvent(new Event(LOCALE_CHANGE_EVENT));
   }, []);
 
-  // Post-hydration migration: if no cookie is set yet but localStorage has a value, migrate to cookie & state
+  // Migrate sau hydrate: chưa có cookie nhưng localStorage có giá trị thì chuyển sang cookie & state
   useEffect(() => {
     try {
       const hasCookie = document.cookie
@@ -72,11 +72,11 @@ export function LocaleProvider({
         setLocale(stored);
       }
     } catch {
-      // ignore
+      // bỏ qua
     }
   }, [locale, setLocale]);
 
-  // Listen for storage / cross-tab events
+  // Lắng nghe sự kiện storage / giữa các tab
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY && (e.newValue === "vi" || e.newValue === "en")) {
@@ -91,7 +91,7 @@ export function LocaleProvider({
           setLocaleState(stored);
         }
       } catch {
-        // ignore
+        // bỏ qua
       }
     };
     window.addEventListener("storage", handleStorage);

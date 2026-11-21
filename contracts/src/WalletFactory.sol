@@ -4,8 +4,7 @@ pragma solidity ^0.8.24;
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {SmartWallet} from "./SmartWallet.sol";
 
-/// @notice Deploys SmartWallet clones at deterministic (CREATE2) addresses, so a wallet address
-/// can be shown and funded before it is deployed.
+/// @notice Triển khai clone SmartWallet tại địa chỉ xác định (CREATE2), nên có thể hiển thị và nạp tiền vào ví trước khi deploy.
 contract WalletFactory {
     address public immutable implementation;
 
@@ -25,7 +24,7 @@ contract WalletFactory {
         if (walletOwner == address(0)) revert ZeroAddress();
         bytes32 finalSalt = _salt(walletOwner, salt);
         wallet = Clones.predictDeterministicAddress(implementation, finalSalt, address(this));
-        // Idempotent: return the existing wallet instead of reverting.
+        // Idempotent: trả về ví đã có thay vì revert.
         if (wallet.code.length > 0) return wallet;
         wallet = Clones.cloneDeterministic(implementation, finalSalt);
         SmartWallet(payable(wallet)).initialize(walletOwner);

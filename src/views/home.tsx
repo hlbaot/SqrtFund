@@ -48,12 +48,12 @@ export function HomeView() {
       const headerBottom = document.querySelector("header")?.getBoundingClientRect().bottom ?? 0;
       const scrollPadding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
       const scrollMargin = Math.max(0, ...sections.map(({ element }) => parseFloat(getComputedStyle(element).scrollMarginTop) || 0));
-      // Match anchor scrolling too: scroll-padding and scroll-margin are additive.
+      // Khớp cả anchor scrolling: scroll-padding và scroll-margin cộng dồn.
       const activationLine = Math.max(Math.max(0, headerBottom) + 48, scrollPadding + scrollMargin + 1);
       let nextActive = sections[0]?.id ?? "intro";
 
       for (const section of sections) {
-        // offsetTop is relative to an offset parent, not the scroll document.
+        // offsetTop tính theo offset parent, không phải scroll document.
         if (section.element.getBoundingClientRect().top <= activationLine) nextActive = section.id;
       }
       if (window.scrollY > 0 && document.documentElement.scrollHeight > window.innerHeight + 1 &&
@@ -102,7 +102,7 @@ export function HomeView() {
     <div ref={pageRef} className="relative space-y-0">
       <AOSInit />
 
-      {/* Side dot navigation: visible only from xl (1280px+) screens where safe right margins exist */}
+      {/* Dot navigation bên phải: chỉ hiện từ xl (1280px+) khi đủ lề an toàn */}
       <nav
         aria-label={t.homeIntro.sectionNavLabel}
         className="fixed right-3 xl:right-4 2xl:right-6 top-1/2 z-20 hidden -translate-y-1/2 xl:block"
@@ -134,13 +134,13 @@ export function HomeView() {
         </div>
       </nav>
 
-      {/* 1. Hero Section: Takes 100% of the viewport height below header */}
+      {/* 1. Hero Section: cao 100% viewport dưới header */}
       <section
         id="intro"
         className="relative flex flex-col justify-center scroll-mt-20 overflow-hidden bg-bg"
         style={{ minHeight: `calc(100dvh - ${headerHeight}px)` }}
       >
-        {/* AeroShards 3D Cyber Shards Background - ONLY in Hero */}
+        {/* Nền AeroShards 3D - chỉ ở Hero */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-60"
@@ -158,7 +158,7 @@ export function HomeView() {
           />
         </div>
 
-        {/* Layer 2: Aurora glows (Top-left red/orange ~12%, Bottom-right green ~10%) */}
+        {/* Layer 2: Aurora glows (trên-trái đỏ/cam ~12%, dưới-phải xanh ~10%) */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -top-28 -left-20 z-0 h-[480px] w-[540px] rounded-full bg-primary opacity-[0.12] blur-[140px]"
@@ -168,7 +168,7 @@ export function HomeView() {
           className="pointer-events-none absolute -bottom-28 -right-16 z-0 h-[520px] w-[560px] rounded-full bg-money opacity-[0.10] blur-[150px]"
         />
 
-        {/* Layer 3: Noise / grain texture (opacity ~3.5%) */}
+        {/* Layer 3: Noise / grain (opacity ~3.5%) */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-0 opacity-[0.035] mix-blend-overlay"
@@ -177,7 +177,7 @@ export function HomeView() {
           }}
         />
 
-        {/* Layer 4: Subtle twinkling stars scattered across hero */}
+        {/* Layer 4: Sao lấp lánh rải trong hero */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           {[
             { top: "18%", left: "12%", delay: "0s", size: "w-1 h-1" },
@@ -196,7 +196,7 @@ export function HomeView() {
           ))}
         </div>
 
-        {/* Bottom fade to transition smoothly into the next section */}
+        {/* Fade dưới để chuyển mượt sang section kế tiếp */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute bottom-0 inset-x-0 z-0 h-28 bg-gradient-to-t from-black to-transparent"
@@ -242,7 +242,7 @@ export function HomeView() {
         </Container>
       </section>
 
-      {/* 2. Stats strip: Unified Network Metrics Bar (Team1 / Avalanche style) */}
+      {/* 2. Stats strip: thanh metric mạng (kiểu Team1 / Avalanche) */}
       <section
         id="stats"
         aria-label={t.homeIntro.statsAria}
@@ -254,7 +254,7 @@ export function HomeView() {
         </Container>
       </section>
 
-      {/* 3. How it works: Scroll-driven Blockchain Timeline */}
+      {/* 3. How it works: timeline blockchain cuộn theo scroll */}
       <HowItWorksTimeline />
 
       <FeaturedFundingSections />

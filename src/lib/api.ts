@@ -8,7 +8,7 @@ type ApiErrorBody = {
   missing?: string[];
 };
 
-/** Preserve API error codes and OTP metadata for the existing UI flows. */
+/** Giữ mã lỗi API và metadata OTP cho các luồng UI hiện có. */
 export class ApiError extends Error {
   constructor(
     readonly code: string,

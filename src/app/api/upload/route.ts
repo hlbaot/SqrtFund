@@ -8,7 +8,7 @@ import { VerificationError } from "@/lib/verify/errors";
 import { cloudinaryConfig } from "@/lib/server/cloudinaryConfig";
 export const runtime = "nodejs";
 const MAX_BODY = MAX_UPLOAD_BYTES + 64 * 1024;
-/** Classify provider diagnostics without copying arbitrary text into server logs. */
+/** Phân loại chẩn đoán của provider mà không chép văn bản tùy ý vào log server. */
 function providerFailureReason(message: unknown): string {
   if (typeof message !== "string") return "NO_PROVIDER_ERROR_MESSAGE";
   if (/missing permissions/i.test(message) && /actions=\["create"\]/i.test(message)) return "MISSING_CREATE_PERMISSION";
@@ -34,7 +34,7 @@ function reply(error: string, status: number, retryAfter?: number) {
     },
   );
 }
-/** Bound chunked bodies too, before parsing multipart data. Never trust Content-Length alone. */
+/** Giới hạn cả body chunked trước khi parse multipart; không tin riêng Content-Length. */
 async function readForm(request: Request) {
   const length = request.headers.get("content-length");
   if (length && (!/^\d+$/.test(length) || Number(length) > MAX_BODY))
@@ -82,8 +82,7 @@ export async function POST(request: Request) {
     "NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS", "NEXT_PUBLIC_CHAIN_ID",
   ]);
   const fail = (code: string, status: number, retryAfter?: number, missing?: string[]) => {
-    // Explicit fields only: never log request bodies, wallet signatures, credentials,
-    // provider messages, raw exceptions or URLs (which can contain credentials).
+    // Chỉ log các trường tường minh: không log body, chữ ký ví, credential, message provider, exception thô hay URL (có thể chứa credential).
     console.error("[project-image-upload]", {
       requestId, stage, code, status, elapsedMs: Date.now() - startedAt,
       ...(missing?.length ? { missingOrInvalid: missing.filter(name => configNames.has(name)) } : {}),
@@ -121,7 +120,7 @@ export async function POST(request: Request) {
       crypto.createHash("sha256").update(bytes).digest("hex") !== permit.digest
     )
       return fail("UPLOAD_INVALID_FILE", 400);
-    // Unsigned presets bypass this endpoint's authorization/quota; never use one here.
+    // Preset không ký bỏ qua authorization/quota của endpoint; không dùng ở đây.
     stage = "cloudinary-config";
     const { cloudName, apiKey, secret } = cloudinaryConfig();
     stage = "quota";
@@ -145,11 +144,10 @@ export async function POST(request: Request) {
         Number(data.retryAfter) || 3600,
       );
     if (data.status !== "OK") return fail("UPLOAD_QUOTA_UNAVAILABLE", 503);
-    // Charge expensive attempts before decoding. Replays/quota denials must not
-    // repeatedly invoke the decoder; invalid content also burns this nonce/quota.
+    // Tính phí thao tác tốn kém trước khi decode; replay/hết quota không được gọi lại decoder, nội dung sai cũng đốt nonce/quota.
     stage = "image-decode";
     await validateUploadImage(bytes, file.type);
-    // Reservation stays charged if decoding or Cloudinary fails. Never retry automatically.
+    // Reservation vẫn bị tính phí nếu decode hoặc Cloudinary lỗi; không tự retry.
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const body = new FormData();
     body.append("file", file);

@@ -3,7 +3,7 @@ import type { WalletProfile } from "@/hooks/useWalletProfile";
 import { Badge } from "@/components/ui/Badge";
 import { RefreshCw } from "lucide-react";
 
-/** Display only the selected profile. Authorization still comes from the on-chain reads. */
+/** Chỉ hiển thị profile đã chọn. Quyền vẫn lấy từ dữ liệu on-chain. */
 export function WalletRoleStatus({
   profile,
   studentStatus,

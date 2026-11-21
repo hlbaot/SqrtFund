@@ -1,4 +1,3 @@
-// src/lib/txToast.ts
 import { getContractErrorMessage, isUserRejected } from "@/lib/errors";
 import { ConfirmationReadError } from "@/lib/txAction";
 import { copy } from "@/lib/copy";
@@ -55,7 +54,7 @@ class TxToastStore {
 
     const index = this.toasts.findIndex((t) => t.id === item.id);
     if (index >= 0) {
-      // In-place update preserving position
+      // Cập nhật tại chỗ, giữ nguyên vị trí
       const updated = [...this.toasts];
       updated[index] = item;
       this.toasts = updated;
@@ -119,10 +118,7 @@ class TxToastStore {
 
 export const txToast = new TxToastStore();
 
-/**
- * Timeout helper for awaiting block confirmation.
- * Rejects if the promise takes longer than timeoutMs (default 120s).
- */
+/** Helper timeout khi chờ xác nhận block; reject nếu promise vượt timeoutMs (mặc định 120s). */
 export function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs = 120_000,
@@ -155,10 +151,7 @@ export function withTimeout<T>(
 
 export { isUserRejected } from "@/lib/errors";
 
-/**
- * Standard error handler for transaction toasts.
- * Automatically detects user wallet rejection and block timeouts.
- */
+/** Xử lý lỗi chuẩn cho toast giao dịch; tự nhận biết ví từ chối và timeout block. */
 export function handleTxError(
   id: string,
   error: unknown,
@@ -191,7 +184,7 @@ export function cancelTransactionFlows() {
   for (const flow of activeFlows) flow.cancel();
 }
 
-/** A flow owns its toast IDs and rejects every continuation after cancellation. */
+/** Mỗi flow sở hữu toast ID của mình và từ chối mọi bước tiếp theo sau khi bị hủy. */
 export class TransactionFlow {
   private controller = new AbortController();
   private ids = new Set<string>();

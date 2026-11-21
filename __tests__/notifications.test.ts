@@ -18,7 +18,7 @@ beforeEach(() => {
 describe("wallet notification sources", () => {
   it("has no event for a cancelled round without this wallet's refund or projects", () => {
     expect(buildNotificationItems({ address: wallet, round: { ...round, isCancelled: true }, refundTotal: 0n })).toEqual([]);
-    // An available faucet is deliberately absent from the notification inputs.
+    // Faucet khả dụng cố ý không nằm trong đầu vào notification.
     expect(buildNotificationItems({ address: wallet, round })).toEqual([]);
   });
   it("only creates a refund event for a positive refundable amount, once per round", () => {
@@ -67,7 +67,7 @@ describe("unseen notification counts and persistence", () => {
     expect(countUnseenNotifications(two, store.snapshot(wallet).keys).activity).toBe(0);
     const next: NotificationItem[] = [...two, { key: "projectRejected:0xround:2", scope: "activity" }];
     expect(countUnseenNotifications(next, store.snapshot(wallet).keys).activity).toBe(1);
-    expect(two).toHaveLength(2); // Acknowledging does not remove financial actions.
+    expect(two).toHaveLength(2); // Acknowledge không xóa các hành động tài chính.
   });
   it("deduplicates event keys and keeps admin counts separate", () => {
     expect(countUnseenNotifications([...two, two[0], { key: "projectPending:0xround:3", scope: "admin" }], []))

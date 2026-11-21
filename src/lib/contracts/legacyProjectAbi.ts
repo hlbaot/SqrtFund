@@ -1,4 +1,4 @@
-// Frozen pre-rejection read ABI. Existing rounds keep the old tuple layout.
+// ABI đọc cũ trước khi có reject; các vòng hiện có giữ layout tuple cũ.
 export const legacyProjectAbi = [
   {
     "type": "function",

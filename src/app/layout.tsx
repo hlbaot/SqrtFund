@@ -38,7 +38,7 @@ export default async function RootLayout({
   const initialLocale = await getRequestLocale();
 
   return (
-    // The bootstrap intentionally sets the intro class before React hydrates.
+    // Bootstrap chủ ý đặt class intro trước khi React hydrate.
     <html suppressHydrationWarning lang={initialLocale} className={`${beVietnamPro.variable} ${jetBrainsMono.variable}`}>
       <head>
         <script id="visit-intro" dangerouslySetInnerHTML={{ __html: VISIT_INTRO_BOOTSTRAP }} />

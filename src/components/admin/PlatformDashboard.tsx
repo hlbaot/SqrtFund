@@ -66,10 +66,10 @@ export function PlatformDashboard({
   const queries = useQueryClient();
   const beginFlow = useTxFlow();
 
-  // Copy feedback state
+  // State phản hồi copy
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Organizers Registry
+  // Registry organizer
   const [, setOrganizers] = useState<OrganizerEntry[]>([]);
   const [, setIsLoadingRegistry] = useState(false);
   const [, setRegistryError] = useState(false);
@@ -114,13 +114,13 @@ export function PlatformDashboard({
     void refreshRegistry();
   }, [refreshRegistry]);
 
-  // Organizer Applications State
+  // State đơn organizer
   const [appsFilter, setAppsFilter] = useState<string>("all");
   const [appsPage, setAppsPage] = useState(1);
   const [selectedAppForReason, setSelectedAppForReason] = useState<OrganizerApplication | null>(null);
   const [busyAppId, setBusyAppId] = useState<string | null>(null);
 
-  // Revocation Modal State
+  // State modal thu hồi
   const [revokeTarget, setRevokeTarget] = useState<OrganizerApplication | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
   const [revokeError, setRevokeError] = useState<string | null>(null);
@@ -208,7 +208,7 @@ export function PlatformDashboard({
     }
   };
 
-  // Open revocation modal instead of directly revoking
+  // Mở modal thu hồi thay vì thu hồi ngay
   const openRevokeModal = (app: OrganizerApplication) => {
     setRevokeTarget(app);
     setRevokeReason("");
@@ -287,9 +287,9 @@ export function PlatformDashboard({
 
   return (
     <div className="space-y-8" data-aos="fade-up" data-aos-duration="600">
-      {/* Platform Owner Status - only shown when not owner (guard above already returns null) */}
+      {/* Trạng thái Platform Owner (chỉ hiện khi không phải owner) */}
 
-      {/* Contract & Owner Info Card */}
+      {/* Thẻ thông tin contract và owner */}
       <section className="border border-line bg-surface p-5 space-y-4 rounded-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-4">
           <div className="flex items-center gap-2">
@@ -360,7 +360,7 @@ export function PlatformDashboard({
 
 
 
-      {/* Section: Organizer Applications Queue */}
+      {/* Hàng đợi đơn organizer */}
       <section className="border border-line bg-surface p-5 space-y-4 rounded-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-3">
           <div className="flex items-center gap-2">
@@ -383,7 +383,7 @@ export function PlatformDashboard({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Filter buttons */}
+            {/* Nút lọc */}
             <div className="flex items-center border border-line rounded-xs p-0.5 text-xs">
               {(["all", "pending", "approved", "rejected", "revoked"] as const).map(filterKey => {
                 const label = filterKey === "all" ? c.filterAll : filterKey === "pending" ? c.filterPending : filterKey === "approved" ? c.filterApproved : filterKey === "revoked" ? (locale === "vi" ? "Đã thu hồi" : "Revoked") : c.filterRejected;
@@ -575,7 +575,7 @@ export function PlatformDashboard({
         )}
       </section>
 
-      {/* Detail Dialog for viewing application reason */}
+      {/* Dialog xem lý do đơn */}
       {selectedAppForReason && (
         <Dialog
           isOpen={Boolean(selectedAppForReason)}
@@ -605,7 +605,7 @@ export function PlatformDashboard({
         </Dialog>
       )}
 
-      {/* Revocation Confirmation Modal */}
+      {/* Modal xác nhận thu hồi */}
       {revokeTarget && (
         <Dialog
           isOpen={Boolean(revokeTarget)}
@@ -613,7 +613,6 @@ export function PlatformDashboard({
           title={locale === "vi" ? "Xác nhận thu hồi quyền nhà tổ chức" : "Confirm Revoke Organizer Permission"}
         >
           <div className="space-y-5 pt-2">
-            {/* Alert */}
             <div className="flex items-start gap-3 p-3 border border-destructive/30 bg-destructive/5 rounded-xs">
               <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
               <p className="text-sm text-muted leading-relaxed">
@@ -623,7 +622,7 @@ export function PlatformDashboard({
               </p>
             </div>
 
-            {/* Organizer info */}
+            {/* Thông tin organizer */}
             <div className="border border-line bg-surface/50 p-3 rounded-xs space-y-1.5 font-mono text-xs">
               <p>
                 <span className="text-muted">{locale === "vi" ? "Tổ chức:" : "Organization:"}</span>{" "}
@@ -639,7 +638,7 @@ export function PlatformDashboard({
               </p>
             </div>
 
-            {/* Reason input */}
+            {/* Ô nhập lý do */}
             <div className="space-y-2">
               <label className="text-xs font-mono uppercase tracking-wider text-muted block">
                 {locale === "vi" ? "Lí do thu hồi *" : "Revocation Reason *"}
@@ -657,7 +656,7 @@ export function PlatformDashboard({
               )}
             </div>
 
-            {/* Action buttons */}
+            {/* Nút hành động */}
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-line">
               <Button type="button" variant="outline" onClick={closeRevokeModal}>
                 {locale === "vi" ? "Huỷ" : "Cancel"}

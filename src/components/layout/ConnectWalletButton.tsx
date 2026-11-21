@@ -114,8 +114,7 @@ export function ConnectWalletButton() {
   }, []);
   useEffect(() => {
     if (!dropdownOpen) return;
-    // Clicking non-focusable panel content can blur a button with relatedTarget=null.
-    // Close only when the pointer or actual new focus is outside both portal and trigger.
+    // Click vào nội dung panel không focus được có thể blur button với relatedTarget=null.
     const outside = (event: PointerEvent | FocusEvent) => {
       if (!root.current?.contains(event.target as Node) && !panel.current?.contains(event.target as Node)) setDropdownOpen(false);
     };
@@ -164,7 +163,7 @@ export function ConnectWalletButton() {
     try {
       await connectAsync({ connector, chainId: TARGET_CHAIN_ID });
 
-      // Wait up to 1500ms for role to resolve so toast and profile appear smoothly together
+      // Chờ tối đa 1500ms để role resolve, toast và profile xuất hiện cùng lúc
       const start = Date.now();
       while (!isReadyRef.current && Date.now() - start < 1500) {
         await new Promise(r => setTimeout(r, 50));
@@ -243,7 +242,7 @@ export function ConnectWalletButton() {
           onKeyDown={event => { if (event.key === "Escape") { setDropdownOpen(false); trigger.current?.focus(); } }}
           id={menuId} role="dialog" aria-label={t.wallet.profile} className="fixed right-[var(--profile-right)] top-[var(--profile-top)] z-50 w-[352px] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-var(--profile-top)-1rem)] overflow-y-auto rounded-lg border border-line bg-bg p-4 font-mono text-xs text-foreground shadow-2xl">
 
-          {/* Header: Avatar + Network + Role Status */}
+          {/* Header: Avatar + Network + Role */}
           <div className="flex items-start gap-4">
             <button type="button" onClick={openAvatarPicker} aria-label={t.avatar.change}
               className="group relative shrink-0 rounded-full cursor-pointer transition-transform hover:scale-105 active:scale-95 ring-1 ring-line">
@@ -285,7 +284,7 @@ export function ConnectWalletButton() {
             />
           )}
 
-          {/* Address & Quick Copy Card */}
+          {/* Địa chỉ và nút copy nhanh */}
           <div className="my-4 flex min-h-10 items-center justify-between gap-2 rounded-sm bg-surface-2/40 px-3 py-2">
             <span className="font-mono text-xs text-foreground select-all" title={address}>
               {shortAddress(address, 4)}
@@ -311,7 +310,7 @@ export function ConnectWalletButton() {
             </button>
           </div>
 
-          {/* Available Balances Card */}
+          {/* Số dư khả dụng */}
           {(avax || tokenBalance.isEnabled) && (
             <div className="mb-4" aria-label={t.wallet.balance}>
               <div className="grid grid-cols-2 gap-2">
@@ -358,7 +357,7 @@ export function ConnectWalletButton() {
             </div>
           )}
 
-          {/* Student Verification Callout (if not verified) */}
+          {/* Lời nhắc xác minh sinh viên (nếu chưa xác minh) */}
           {activeProfile === "student" && !isPlatformOwner && !isStudent && (
             <div className="mb-3 p-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/25 rounded-sm space-y-2">
               <div className="flex items-start justify-between gap-2">
@@ -384,7 +383,7 @@ export function ConnectWalletButton() {
             </div>
           )}
 
-          {/* Navigation & Action Links */}
+          {/* Link điều hướng và hành động */}
           <div className="space-y-0 border-t border-line pt-2">
             {isPlatformOwner && (
               <Link
@@ -465,7 +464,7 @@ export function ConnectWalletButton() {
             </Link>
           </div>
 
-          {/* Disconnect Button */}
+          {/* Nút Disconnect */}
           <div className="border-t border-line pt-2 mt-2">
             <button
               type="button"

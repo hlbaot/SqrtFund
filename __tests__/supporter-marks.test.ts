@@ -11,18 +11,18 @@ describe("supporter marks and qf lesson copy and logic", () => {
       };
     };
 
-    // <= 25 test cases
+    // <= 25 test case
     expect(calcMarks(0)).toEqual({ scale: 1, markCount: 0 });
     expect(calcMarks(1)).toEqual({ scale: 1, markCount: 1 });
     expect(calcMarks(4)).toEqual({ scale: 1, markCount: 4 });
     expect(calcMarks(25)).toEqual({ scale: 1, markCount: 25 });
 
-    // > 25 test cases
+    // > 25 test case
     expect(calcMarks(26)).toEqual({ scale: 5, markCount: 6 });
     expect(calcMarks(30)).toEqual({ scale: 5, markCount: 6 });
     expect(calcMarks(31)).toEqual({ scale: 5, markCount: 7 });
 
-    // Explicit scale overrides default
+    // Scale chỉ định ghi đè mặc định
     expect(calcMarks(4, 5)).toEqual({ scale: 5, markCount: 1 });
     expect(calcMarks(30, 10)).toEqual({ scale: 10, markCount: 3 });
   });
@@ -30,15 +30,15 @@ describe("supporter marks and qf lesson copy and logic", () => {
   it("formats Vietnamese marks labels using 'ô' instead of 'điểm'", () => {
     const vi = copy.vi;
 
-    // Singular note for scale = 1
+    // Note số ít cho scale = 1
     expect(vi.projectCard.oneMarkNoteOne).toBe("1 ô = 1 người ủng hộ");
     expect(vi.competition.marksNoteOne).toBe("1 ô = 1 người ủng hộ");
 
-    // Dynamic note for scale = 5
+    // Note động cho scale = 5
     expect(fmt(vi.projectCard.oneMarkNote, { n: 5 })).toBe("1 ô = 5 người ủng hộ");
     expect(fmt(vi.competition.marksNote, { n: 5 })).toBe("1 ô = 5 người ủng hộ");
 
-    // Plural/singular marks count uses 'ô'
+    // Số lượng marks số ít/nhiều dùng 'ô'
     expect(fmt(vi.projectCard.marksCount, { count: 4 })).toBe("4 ô");
     expect(fmt(vi.projectCard.marksCountOne, { count: 1 })).toBe("1 ô");
     expect(fmt(vi.competition.marksCount, { count: 4 })).toBe("4 ô");
@@ -48,15 +48,15 @@ describe("supporter marks and qf lesson copy and logic", () => {
   it("formats English marks labels with supporter / supporters and mark / marks", () => {
     const en = copy.en;
 
-    // Singular note for scale = 1
+    // Note số ít cho scale = 1
     expect(en.projectCard.oneMarkNoteOne).toBe("1 mark = 1 supporter");
     expect(en.competition.marksNoteOne).toBe("1 mark = 1 supporter");
 
-    // Dynamic note for scale = 5
+    // Note động cho scale = 5
     expect(fmt(en.projectCard.oneMarkNote, { n: 5 })).toBe("1 mark = 5 supporters");
     expect(fmt(en.competition.marksNote, { n: 5 })).toBe("1 mark = 5 supporters");
 
-    // Plural/singular marks count
+    // Số lượng marks số ít/nhiều
     expect(fmt(en.projectCard.marksCount, { count: 4 })).toBe("4 marks");
     expect(fmt(en.projectCard.marksCountOne, { count: 1 })).toBe("1 mark");
     expect(fmt(en.competition.marksCount, { count: 4 })).toBe("4 marks");

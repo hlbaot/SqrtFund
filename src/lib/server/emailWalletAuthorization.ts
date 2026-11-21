@@ -9,7 +9,7 @@ import {
 import { normalizeEmail } from "@/lib/verify/domain";
 import { VerificationError } from "@/lib/verify/errors";
 
-/** Verify before consuming OTPs or writing a durable identity. Never log the proof. */
+/** Xác minh trước khi tiêu thụ OTP hoặc ghi danh tính bền vững; không log proof. */
 export async function authorizeEmailWallet(
   request: Request,
   proof: unknown,
@@ -54,7 +54,7 @@ export async function authorizeEmailWallet(
     !/^0x[0-9a-fA-F]{130}$/.test(p.signature)
   )
     throw invalid();
-  // Current Core EOA flow. Contract-wallet signatures require a future ERC-1271 verifier.
+  // Luồng Core EOA hiện tại; chữ ký contract-wallet cần verifier ERC-1271 sau này.
   try {
     if (
       !(await verifyMessage({

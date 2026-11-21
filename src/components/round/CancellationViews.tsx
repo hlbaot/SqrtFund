@@ -55,7 +55,7 @@ export function CancelRoundDialog({
     if (!closeState.current.pending) closeState.current.onClose();
   }, []);
 
-  // Confirm button ONLY depends on matching input, not being blocked on-chain, and not pending
+  // Nút xác nhận chỉ phụ thuộc input khớp, không bị chặn on-chain và không pending
   const allowed = matchesCancellationInput(input, name, address) && !blocked && !pending;
 
   async function copy() {
@@ -128,7 +128,7 @@ export function CancelRoundDialog({
         </div>
       )}
 
-      {/* Explorer link for contribution history */}
+      {/* Link explorer cho lịch sử đóng góp */}
       <div className="mt-4 border-t border-line/50 pt-3 text-sm">
         <a
           href={targetExplorerUrl}

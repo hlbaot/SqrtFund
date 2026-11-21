@@ -8,7 +8,7 @@ const memoryFallback = new Map<string, WalletProfile>();
 export const walletProfileKey = (address: string, chainId: number) => `sqrt-fund:profile:${chainId}:${address.toLowerCase()}`;
 export const isWalletProfile = (value: unknown): value is WalletProfile => value === "student" || value === "organizer";
 
-/** This is a display preference; it never grants Student or Organizer permissions. */
+/** Chỉ là tuỳ chọn hiển thị; không cấp quyền Student hay Organizer. */
 export function readWalletProfile(address?: string, chainId?: number): WalletProfile | null {
   if (!address || !chainId || typeof window === "undefined") return null;
   const key = walletProfileKey(address, chainId);

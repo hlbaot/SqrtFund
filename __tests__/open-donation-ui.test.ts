@@ -62,7 +62,7 @@ it("lets a supporter contribute above 5 USDC without displaying a fake maximum o
   expect(html).not.toContain(maxUint256.toString());
   expect(html).not.toContain(copy.vi.donateBox.roundBudgetRemaining.split("{remaining}")[0]);
 
-  // Prior contributions remain visible while the form permits a top-up.
+  // Khoản góp trước vẫn hiển thị khi form cho phép top-up.
   f.donated = 20_000_000n;
   const donatedHtml = render();
   expect(donatedHtml).toContain(copy.vi.donateBox.alreadyDonatedTitle);

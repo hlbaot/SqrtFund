@@ -66,7 +66,7 @@ export function RoundControls({ round, projects, projectsLoading, projectsError,
 
   async function transact(action: Action) {
     if (busy.current || !client || !round.roundAddress || !viewer) return;
-    // Recheck against the shared live clock and current authority at confirmation.
+    // Kiểm tra lại với đồng hồ chung và quyền hiện tại khi xác nhận.
     const fresh = deriveRoundActions(actionRound, now, viewer);
     const allowed = action === "finalize" ? fresh.finalize && statsReady : action === "cancelRound" ? fresh.cancel
       : action === "withdrawLeftover" ? fresh.withdrawLeftover : fresh.withdrawPool;

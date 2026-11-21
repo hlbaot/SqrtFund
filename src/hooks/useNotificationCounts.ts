@@ -17,7 +17,7 @@ export function useNotificationCounts(role: WalletRole, { markViewed = false } =
   const enabled = isConnected && chainId === TARGET_CHAIN_ID;
   const round = useRound();
   const { projects, isLoading, isError } = useProjects(round.roundAddress, { enabled });
-  // Reuse /my's refund query keys and polling, rather than a separate RPC reader.
+  // Dùng lại query key và polling refund của /my
   const refunds = useRoundRefunds(round.roundAddress, round.projectCount, enabled ? address : undefined,
     Boolean(enabled && round.isCancelled && !round.isError));
   const { ready, keys, markSeen } = useNotificationSeen(enabled ? address : undefined);
@@ -30,7 +30,7 @@ export function useNotificationCounts(role: WalletRole, { markViewed = false } =
       now,
   }), ...snapshots.flatMap(snapshot => enabled && address ? [...roundLifecycleNotificationItems(snapshot, address, now), ...roundProjectNotificationItems(snapshot,address,now)] : [])]
     .filter(item => item.scope !== "admin" || role === "admin" || role === "platform_owner" || role === "organizer");
-  // Depend on stable keys so polling does not repeatedly acknowledge unchanged items.
+  // Phụ thuộc key ổn định để polling không acknowledge lại mục không đổi
   const serializedKeys = JSON.stringify(items.map(item => item.key));
   const markAllSeen = () => markSeen(items.map(item => item.key));
   const counts = countUnseenNotifications(ready ? items : [], keys);

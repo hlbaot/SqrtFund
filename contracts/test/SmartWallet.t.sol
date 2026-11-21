@@ -85,7 +85,7 @@ contract SmartWalletTest is Test {
         calls[1] = SmartWallet.Call(address(usdc), 0, abi.encodeCall(usdc.transfer, (address(1), 1)));
         vm.prank(owner);
         vm.expectRevert();
-        wallet.executeBatch(calls); // wallet has no USDC
+        wallet.executeBatch(calls); // ví không có USDC
         assertEq(address(0xCAFE).balance, 0);
     }
 
@@ -119,7 +119,7 @@ contract SmartWalletTest is Test {
     function test_SignatureExpiredOrWrongSigner() public {
         uint256 deadline = block.timestamp + 1 hours;
         bytes memory sig = _sign(address(0xCAFE), 1 ether, "", 0, deadline);
-        // tampered value
+        // giá trị bị sửa
         vm.expectRevert(SmartWallet.InvalidSignature.selector);
         wallet.executeWithSig(address(0xCAFE), 2 ether, "", deadline, sig);
         vm.warp(deadline + 1);
@@ -127,7 +127,7 @@ contract SmartWalletTest is Test {
         wallet.executeWithSig(address(0xCAFE), 1 ether, "", deadline, sig);
     }
 
-    // ---- daily limit ----
+    // ---- giới hạn hằng ngày ----
 
     function test_DailyLimitEnforcedAndResets() public {
         vm.startPrank(owner);
@@ -166,7 +166,7 @@ contract SmartWalletTest is Test {
         vm.prank(g2);
         wallet.approveRecovery();
 
-        vm.expectRevert(SmartWallet.RecoveryNotReady.selector); // delay not elapsed
+        vm.expectRevert(SmartWallet.RecoveryNotReady.selector); // chưa hết thời gian chờ
         wallet.executeRecovery();
 
         vm.warp(block.timestamp + 1 days);
@@ -219,7 +219,7 @@ contract SmartWalletTest is Test {
         wallet.startRecovery(newOwner);
         vm.prank(g2);
         wallet.approveRecovery();
-        // g3 restarts with a different target: only 1 approval in the new round
+        // g3 bắt đầu lại với target khác: vòng mới chỉ có 1 approval
         vm.prank(g3);
         wallet.startRecovery(address(0x777));
         vm.warp(block.timestamp + 2 days);

@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     let body: Record<string, unknown>;
     try { body = await readBody(request); } catch { return failure("INVALID_REQUEST"); }
     if (typeof body.email !== "string" || typeof body.address !== "string" || !isAddress(body.address)) return failure("INVALID_REQUEST");
-    // Validate the raw address too, so normalization cannot conceal malformed aliases.
+    // Validate cả địa chỉ thô để normalize không che alias sai định dạng.
     const deliveryEmail = body.email.trim().toLowerCase();
     const email = normalizeEmail(deliveryEmail);
     requireEligibleStudentEmail(deliveryEmail);
@@ -48,8 +48,7 @@ export async function POST(request: Request) {
     if (reservation.status === "RATE_LIMITED") return failure("RATE_LIMITED", 429, { retryAfter: reservation.retryAfter ?? 60 });
     if (["EMAIL_ALREADY_USED", "WALLET_ALREADY_VERIFIED"].includes(reservation.status)) return failure(reservation.status, 409);
     if (reservation.status === "ALREADY_VERIFIED") {
-      // The persisted OTP-verified binding authorizes only this same wallet/email.
-      // A signature is useful only to msg.sender = that wallet; no new mail is sent.
+      // Binding đã OTP-verify chỉ authorize đúng ví/email này; chữ ký chỉ có ích cho msg.sender là ví đó; không gửi mail mới.
       stage = "registry";
       const expiry = BigInt(Math.floor(Date.now() / 1000) + 3600);
       await ensureEmailWallet(email, address, true, db);

@@ -106,5 +106,5 @@ it("treats missing maxPerRound as legacy and skips modern reads on subsequent po
   expect(read.mock.calls[2][0].map(c=>c.functionName)).toEqual([...roundCoreFunctions]);
 });
 
-// This static render has no Next router; query pagination starts on page one.
+// Render tĩnh không có Next router; phân trang query bắt đầu ở trang một.
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));

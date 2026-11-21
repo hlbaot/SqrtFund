@@ -30,7 +30,7 @@ export const TypewriterText = memo(function TypewriterText({
   const [displayText, setDisplayText] = useState(() => initialText || safePhrases[0] || "");
   const [isReady, setIsReady] = useState(false);
 
-  // Defer starting animation until after page load & hydration settles
+  // Trì hoãn animation đến sau khi trang tải và hydrate xong
   useEffect(() => {
     if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setDisplayText(phrasesRef.current[0]);
@@ -44,7 +44,7 @@ export const TypewriterText = memo(function TypewriterText({
     return () => clearTimeout(startTimer);
   }, [startDelay]);
 
-  // Main typing loop using requestAnimationFrame / setTimeout
+  // Vòng lặp gõ chính dùng requestAnimationFrame / setTimeout
   useEffect(() => {
     if (!isReady) return;
 
@@ -66,7 +66,7 @@ export const TypewriterText = memo(function TypewriterText({
           setDisplayText(currentStr);
           timeoutId = setTimeout(tick, typingSpeed);
         } else {
-          // Finished typing phrase, pause before backspacing
+          // Gõ xong cụm từ, dừng trước khi xoá
           isDeleting = true;
           timeoutId = setTimeout(tick, pauseDuration);
         }
@@ -76,7 +76,7 @@ export const TypewriterText = memo(function TypewriterText({
           setDisplayText(currentStr);
           timeoutId = setTimeout(tick, deletingSpeed);
         } else {
-          // Finished deleting, proceed to next phrase
+          // Xoá xong, chuyển sang cụm từ kế tiếp
           isDeleting = false;
           phraseIdx = (phraseIdx + 1) % fullList.length;
           timeoutId = setTimeout(tick, 300);

@@ -24,7 +24,7 @@ export const ERROR_SELECTORS: Record<string, string> = {
   "0xa30bc0c1": "CancelledPoolAlreadyWithdrawn",
   "0xc2e5347d": "EmptyBatch",
   "0x36df1424": "OwnerProjectLimit",
-  // QFRound & MockUSDC custom errors
+  // Custom error của QFRound & MockUSDC
   "0xd92e233d": "ZeroAddress",
   "0x536a71af": "InvalidTimeRange",
   "0x3321e4a1": "InvalidDonationBounds",
@@ -64,7 +64,7 @@ export const ERROR_SELECTORS: Record<string, string> = {
 };
 
 export const ERROR_MESSAGES_EN: Record<string, string> = {
-  // Token & Transfer errors
+  // Lỗi Token & Transfer
   ERC20InsufficientBalance:
     "Insufficient USDC balance. Your wallet does not have enough USDC to complete this action. Please claim 100 USDC from the Faucet in 'My Dashboard'.",
   ERC20InsufficientAllowance:
@@ -85,7 +85,7 @@ export const ERROR_MESSAGES_EN: Record<string, string> = {
   CancelledPoolAlreadyWithdrawn: "The cancelled round pool has already been returned.",
   EmptyBatch: "Select at least one project.",
   OwnerProjectLimit: "Each wallet can register at most 2 projects per round, including pending projects.",
-  // Round errors
+  // Lỗi Round
   NotAdmin: "Only the round administrator can perform this action.",
   NotWhitelisted: "Your wallet is not whitelisted. Please request student verification first.",
   AlreadyWhitelisted: "This wallet is already whitelisted.",
@@ -126,7 +126,7 @@ export const ERROR_MESSAGES_EN: Record<string, string> = {
 };
 
 export const ERROR_MESSAGES_VI: Record<string, string> = {
-  // Token & Transfer errors
+  // Lỗi Token & Transfer
   ERC20InsufficientBalance:
     "Số dư USDC không đủ. Ví của bạn không đủ USDC để thực hiện giao dịch này. Vui lòng nhận 100 USDC từ Faucet tại trang 'My Dashboard'.",
   ERC20InsufficientAllowance:
@@ -147,7 +147,7 @@ export const ERROR_MESSAGES_VI: Record<string, string> = {
   CancelledPoolAlreadyWithdrawn: "Pool của vòng đã hủy đã được rút.",
   EmptyBatch: "Vui lòng chọn ít nhất một dự án.",
   OwnerProjectLimit: "Mỗi ví chỉ được đăng ký tối đa 2 dự án trong một vòng, gồm cả dự án chờ duyệt.",
-  // Round errors
+  // Lỗi Round
   NotAdmin: "Chỉ có Admin của vòng mới có quyền thực hiện thao tác này.",
   NotWhitelisted: "Ví của bạn chưa được duyệt Whitelist sinh viên. Vui lòng gửi yêu cầu xác thực trước.",
   AlreadyWhitelisted: "Ví này đã có trong danh sách Whitelist rồi.",
@@ -194,7 +194,7 @@ export function getContractErrorMessage(error: unknown, locale: "en" | "vi" = "e
 
   const messages = locale === "vi" ? ERROR_MESSAGES_VI : ERROR_MESSAGES_EN;
 
-  // 1. Check viem ContractFunctionRevertedError in the error chain
+  // 1. Kiểm tra viem ContractFunctionRevertedError trong chuỗi lỗi
   let errorName: string | undefined;
 
   if (error instanceof BaseError) {
@@ -207,7 +207,7 @@ export function getContractErrorMessage(error: unknown, locale: "en" | "vi" = "e
     }
   }
 
-  // 2. Check for hex selector or errorName on any cause in error chain
+  // 2. Kiểm tra hex selector hoặc errorName trên mọi cause trong chuỗi lỗi
   if (!errorName && typeof error === "object" && error !== null) {
     let current: unknown = error;
     while (current && !errorName) {
@@ -233,7 +233,7 @@ export function getContractErrorMessage(error: unknown, locale: "en" | "vi" = "e
     }
   }
 
-  // 3. Search the stringified error message for known 4-byte selectors or names
+  // 3. Tìm 4-byte selector hoặc tên đã biết trong chuỗi thông báo lỗi
   const fullMessage =
     (typeof error === "object" && error !== null && "shortMessage" in error && typeof (error as { shortMessage: unknown }).shortMessage === "string"
       ? (error as { shortMessage: string }).shortMessage
@@ -288,7 +288,7 @@ export function getContractErrorMessage(error: unknown, locale: "en" | "vi" = "e
     return messages[errorName];
   }
 
-  // 4. Common web3 / RPC failure patterns
+  // 4. Các lỗi web3 / RPC thường gặp
   if (isUserRejected(error)) {
     return locale === "vi"
       ? "Giao dịch đã bị từ chối trên ví của bạn."
@@ -307,7 +307,7 @@ export function getContractErrorMessage(error: unknown, locale: "en" | "vi" = "e
       : "Web3 wallet not found. Please install or enable Core or MetaMask.";
   }
 
-  // 5. Clean up ugly technical execution reverted strings
+  // 5. Làm gọn chuỗi execution reverted kỹ thuật
   if (
     /execution reverted/i.test(fullMessage) ||
     /unable to calculate gas limit/i.test(fullMessage) ||
@@ -330,7 +330,7 @@ export function getContractErrorMessage(error: unknown, locale: "en" | "vi" = "e
   return String(error);
 }
 
-/** Wallet libraries wrap EIP-1193 rejection errors in nested causes. */
+/** Thư viện ví bọc lỗi từ chối EIP-1193 trong các cause lồng nhau. */
 export function isUserRejected(error: unknown): boolean {
   const seen = new Set<unknown>();
   let current = error;

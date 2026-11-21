@@ -86,7 +86,7 @@ function OrganizerApplicationForm({
   const emailVerified = emailOtp.verified || reuseEmail;
   const otpRequired = vi ? "Vui lòng xác thực email liên hệ bằng OTP trước khi gửi đơn." : "Verify your contact email with an OTP before submitting.";
 
-  // Revocation detail state
+  // State chi tiết thu hồi
   const [showRevocationDetails, setShowRevocationDetails] = useState(false);
   const [isReapplying, setIsReapplying] = useState(false);
 
@@ -195,7 +195,7 @@ function OrganizerApplicationForm({
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={c.title} description={c.subtitle} className="max-w-xl">
       <div className="space-y-6 pt-2">
-        {/* Connected wallet identification banner */}
+        {/* Banner định danh ví đã kết nối */}
         <div className="p-4 border border-line bg-surface/50 rounded-xs space-y-2">
           <div className="flex items-center justify-between text-xs text-muted">
             <span className="flex items-center gap-1.5 font-medium">
@@ -216,7 +216,7 @@ function OrganizerApplicationForm({
           </div>
         </div>
 
-        {/* State 1: Already Organizer on-chain */}
+        {/* State 1: Đã là Organizer on-chain */}
         {readAccess?.needsAuth ? <OrganizerReadAccessPrompt access={readAccess} /> : isApplicationError ? (
           <div className="space-y-3"><p role="alert" className="text-sm text-primary">{vi ? "Không thể tải đơn đăng ký của bạn. Hãy thử lại trước khi gửi đơn." : "Your application could not be loaded. Retry before submitting."}</p>
             <Button type="button" variant="outline" onClick={() => void refetch()}>{vi ? "Thử lại" : "Retry"}</Button></div>
@@ -241,7 +241,7 @@ function OrganizerApplicationForm({
             </div>
           </div>
         ) : isPlatformOwner ? (
-          /* State 2: Already Platform Owner */
+          /* State 2: Đã là Platform Owner */
           <div className="space-y-4 py-2">
             <StatusAlert
               tone="info"
@@ -260,7 +260,7 @@ function OrganizerApplicationForm({
             </div>
           </div>
         ) : isPending || submitSuccess ? (
-          /* State 3: Pending review */
+          /* State 3: Đang chờ duyệt */
           <div className="space-y-4 py-2">
             <div className="p-4 border border-warning/40 bg-warning/5 rounded-xs space-y-3">
               <div className="flex items-center gap-2 text-warning font-semibold">
@@ -285,7 +285,7 @@ function OrganizerApplicationForm({
             </div>
           </div>
         ) : isRevoked && application && !isReapplying ? (
-          /* State 3.5: Revoked - show revocation notice */
+          /* State 3.5: Đã bị thu hồi - hiển thị thông báo thu hồi */
           <div className="space-y-4 py-2">
             <div className="p-4 border border-destructive/40 bg-destructive/5 rounded-xs space-y-3">
               <div className="flex items-center gap-2 text-destructive font-semibold">
@@ -309,7 +309,7 @@ function OrganizerApplicationForm({
               </div>
             </div>
 
-            {/* Revocation Details Sub-dialog */}
+            {/* Sub-dialog chi tiết thu hồi */}
             {showRevocationDetails && (
               <div className="p-4 border border-line bg-surface/50 rounded-xs space-y-4 animate-in fade-in">
                 <div className="space-y-2">
@@ -368,7 +368,7 @@ function OrganizerApplicationForm({
             )}
           </div>
         ) : (
-          /* State 4: Standard application form */
+          /* State 4: Form đăng ký chuẩn */
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-mono uppercase tracking-wider text-muted flex items-center gap-1.5">

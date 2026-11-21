@@ -17,10 +17,7 @@ export interface RoundStats {
   totalSupporters: number;
 }
 
-/**
- * Calculates direct donation total and supporter count across approved projects.
- * Matches the exact calculation logic of the round detail page (/round/[id]).
- */
+/** Tính tổng quyên góp trực tiếp và số người ủng hộ ở các dự án đã duyệt, khớp logic trang chi tiết vòng (/round/[id]). */
 export function calculateRoundStats(projects: readonly ProjectStatItem[] = []): RoundStats {
   if (!projects || projects.length === 0) {
     return {
@@ -46,7 +43,7 @@ export function calculateRoundStats(projects: readonly ProjectStatItem[] = []): 
 
 type FundingProject = ProjectStatItem & { sumSqrtRaw?: bigint; rejected?: boolean };
 
-/** Raw demand is an estimate even after finalization; it is not the capped payout. */
+/** Nhu cầu thô chỉ là ước tính kể cả sau finalize, không phải payout đã bị trần. */
 export function calculateRoundFundingStats(
   projects: readonly FundingProject[] | undefined,
   pool: bigint | undefined,
@@ -70,13 +67,13 @@ export function calculateRoundFundingStats(
     totalRaw,
     coverage,
     needed,
-    // Ceiling division in micro-USDC avoids float rounding and scientific notation.
+    // Chia làm tròn lên theo micro-USDC để tránh sai số float và ký hiệu khoa học
     suggestedDeposit: needed !== undefined && needed > 0n && !finalized && !cancelled
       ? ((needed + 999_999n) / 1_000_000n).toString() : undefined,
   };
 }
 
-/** Exact contract allocation (including per-project caps and integer rounding). */
+/** Phân bổ chính xác của contract (gồm trần từng dự án và làm tròn số nguyên). */
 export function calculateRoundSettlement(projects: readonly (FundingProject & { claimed?: boolean })[] | undefined, pool?: bigint, maxMatchBps?: bigint, finalizedLeftover?: bigint) {
   const funding = calculateRoundFundingStats(projects, pool);
   const approved = projects?.filter(isPublicProject);

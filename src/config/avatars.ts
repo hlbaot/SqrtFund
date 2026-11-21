@@ -2,14 +2,14 @@ type Theme = { bg: string; fg: string; accent: string };
 
 // 8 tông màu lấy theo giao diện dự án (nền tối + đỏ Avalanche, vàng, xanh, tím...)
 const THEMES: Theme[] = [
-  { bg: '#1a0a0c', fg: '#e84142', accent: '#ffd166' }, // red
-  { bg: '#17110a', fg: '#f5b301', accent: '#ff7a59' }, // amber
-  { bg: '#07140e', fg: '#22c55e', accent: '#a7f3d0' }, // green
+  { bg: '#1a0a0c', fg: '#e84142', accent: '#ffd166' }, // đỏ
+  { bg: '#17110a', fg: '#f5b301', accent: '#ff7a59' }, // hổ phách
+  { bg: '#07140e', fg: '#22c55e', accent: '#a7f3d0' }, // xanh lá
   { bg: '#06121a', fg: '#22d3ee', accent: '#e0f2fe' }, // cyan
-  { bg: '#120a1c', fg: '#a855f7', accent: '#f0abfc' }, // purple
-  { bg: '#1a0f08', fg: '#fb923c', accent: '#fde68a' }, // orange
-  { bg: '#1a0912', fg: '#f472b6', accent: '#fbcfe8' }, // pink
-  { bg: '#080d1c', fg: '#3b82f6', accent: '#93c5fd' }, // blue
+  { bg: '#120a1c', fg: '#a855f7', accent: '#f0abfc' }, // tím
+  { bg: '#1a0f08', fg: '#fb923c', accent: '#fde68a' }, // cam
+  { bg: '#1a0912', fg: '#f472b6', accent: '#fbcfe8' }, // hồng
+  { bg: '#080d1c', fg: '#3b82f6', accent: '#93c5fd' }, // xanh dương
 ];
 
 // 16 mẫu pixel 5x5, mỗi hàng 3 ký tự (nửa trái + cột giữa), tự lật đối xứng

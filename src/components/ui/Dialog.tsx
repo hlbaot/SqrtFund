@@ -35,7 +35,7 @@ export function Dialog({ isOpen, onClose, title, description, children, classNam
       'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]'
     ) ?? []).filter(element => element.tabIndex >= 0 && element.getClientRects().length > 0);
 
-    // Only apply initial focus if focus is not already inside the dialog panel
+    // Chỉ focus ban đầu khi focus chưa nằm trong panel của dialog
     if (!panel.current?.contains(document.activeElement)) {
       const initial = panel.current?.querySelector<HTMLElement>("[data-autofocus]");
       const firstInput = panel.current?.querySelector<HTMLElement>(

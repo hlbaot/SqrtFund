@@ -8,7 +8,7 @@ export type OrganizerReview = {
   issuedAt: number;
 };
 
-/** A readable signature binds the Admin to one decision and one application revision. */
+/** Chữ ký đọc được gắn Admin với một quyết định và một phiên bản đơn. */
 export function organizerReviewMessage(review: OrganizerReview, factory: string, chainId: number) {
   const lines = [
     "SqrtFund: Review Organizer Application",

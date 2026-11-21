@@ -30,7 +30,7 @@ export function emailWalletMessage(p: EmailWalletPermit) {
     `Nonce: ${p.nonce}`,
   ].join("\n");
 }
-/** Memory only. Reusable for this email/wallet/purpose until expiry; OTPs remain single-use. */
+/** Chỉ lưu trong bộ nhớ; dùng lại được cho email/ví/mục đích này đến khi hết hạn, OTP vẫn chỉ dùng một lần. */
 export function createEmailWalletPermit(
   purpose: EmailWalletPurpose,
   email: string,

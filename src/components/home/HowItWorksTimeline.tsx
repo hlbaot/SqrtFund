@@ -52,12 +52,12 @@ export function HowItWorksTimeline() {
   const [headerHeight, setHeaderHeight] = useState(64);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
-  // Active step thresholds
+  // Ngưỡng step đang active
   const activeStep1 = scrollProgress >= 0.05;
   const activeStep2 = scrollProgress >= 0.40;
   const activeStep3 = scrollProgress >= 0.78;
 
-  // Track fill percentage across timeline (0 to 100%)
+  // Phần trăm fill của track trên timeline (0 đến 100%)
   const trackFill = useMemo(() => {
     if (scrollProgress < 0.05) return 0;
     if (scrollProgress < 0.42) {
@@ -106,7 +106,7 @@ export function HowItWorksTimeline() {
     };
   }, []);
 
-  // If user prefers reduced motion, render clean static 3-column layout
+  // Nếu user ưu tiên reduced motion, render layout 3 cột tĩnh
   if (prefersReducedMotion) {
     return (
       <section id="how-it-works" className="chain-lattice-host relative scroll-mt-20 py-20 text-white">
@@ -156,7 +156,7 @@ export function HowItWorksTimeline() {
 
   return (
     <section id="how-it-works" className="relative scroll-mt-20 text-white">
-      {/* DESKTOP VIEW: 300vh Scroll-driven timeline pinned under navbar */}
+      {/* DESKTOP: timeline cuộn 300vh, pin dưới navbar */}
       <div ref={containerRef} className="relative hidden h-[300vh] w-full md:block">
         <div
           className="chain-lattice-host sticky flex w-full flex-col justify-center overflow-hidden px-4 py-4 lg:px-8"
@@ -166,9 +166,9 @@ export function HowItWorksTimeline() {
           }}
         >
           <ChainLatticeBackground variant="dense" />
-          {/* UNIFIED FRAME: Header + Timeline + Status */}
+          {/* Frame chung: Header + Timeline + Status */}
           <Container className="relative z-10 mx-auto flex w-full max-w-5xl flex-col justify-center gap-6 lg:gap-8">
-            {/* 1. Header (Synchronized with site section headers) */}
+            {/* 1. Header (đồng bộ với header các section) */}
             <div className="flex flex-col items-start justify-between gap-3 border-b border-line pb-4 sm:flex-row sm:items-end">
               <div>
                 <MonoLabel className="text-primary">
@@ -187,19 +187,19 @@ export function HowItWorksTimeline() {
 
             </div>
 
-            {/* 2. Central Timeline & 3 Journey Nodes */}
+            {/* 2. Timeline trung tâm và 3 node */}
             <div className="relative mx-auto w-full pt-2 pb-2">
-              {/* Timeline Track: 1px rgba(255,255,255,0.12) */}
+              {/* Track timeline: 1px rgba(255,255,255,0.12) */}
               <div className="absolute left-[8%] right-[8%] top-[36px] h-[1px] -translate-y-1/2 bg-white/12" />
 
-              {/* Active Progress Fill Line: 1px Solid Red #E84142 */}
+              {/* Line fill tiến độ: 1px đỏ #E84142 */}
               <div
                 className="absolute left-[8%] top-[36px] h-[1px] -translate-y-1/2 bg-primary transition-all duration-150 ease-out"
                 style={{
                   width: `calc((100% - 16%) * ${trackFill / 100})`,
                 }}
               >
-                {/* Solid 6px Red Dot at Leading Edge (NO GLOW) */}
+                {/* Chấm đỏ 6px ở đầu line (không glow) */}
                 {trackFill > 0 && trackFill < 100 && (
                   <span
                     className="absolute right-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary"
@@ -207,7 +207,7 @@ export function HowItWorksTimeline() {
                 )}
               </div>
 
-              {/* 3 Nodes Grid */}
+              {/* Grid 3 node */}
               <div className="grid grid-cols-3 gap-4 lg:gap-8">
                 {STEPS.map((s, idx) => {
                   const Icon = s.icon;
@@ -222,9 +222,9 @@ export function HowItWorksTimeline() {
                       key={s.step}
                       className="relative flex flex-col items-center text-center transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
                     >
-                      {/* Node: 56px Square, rounded-[4px], bg-black, 1px border */}
+                      {/* Node: vuông 56px, rounded-[4px], bg-black, border 1px */}
                       <div className="relative flex items-center justify-center z-10">
-                        {/* 1 single 1px ripple wave when active (600ms) */}
+                        {/* 1 sóng ripple 1px khi active (600ms) */}
                         {isCurrentActive && (
                           <span
                             className="absolute -inset-2 rounded-[4px] border border-primary/40 animate-ping pointer-events-none"
@@ -243,7 +243,7 @@ export function HowItWorksTimeline() {
                         </div>
                       </div>
 
-                      {/* Bottom Step Content (Slide up 12px + fade) */}
+                      {/* Nội dung step phía dưới (trượt lên 12px + fade) */}
                       <div
                         className={`mt-4 flex flex-col items-center max-w-[240px] z-10 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                           isConfirmed ? "translate-y-0 opacity-100" : "translate-y-3 opacity-100"
@@ -270,7 +270,7 @@ export function HowItWorksTimeline() {
         </div>
       </div>
 
-      {/* MOBILE VIEW: Vertical Timeline (Clean Engineering Style) */}
+      {/* MOBILE: timeline dọc (phong cách engineering gọn) */}
       <div className="chain-lattice-host block md:hidden py-14 px-4 sm:px-6">
         <ChainLatticeBackground variant="dense" />
         <Container className="space-y-10">
@@ -289,19 +289,19 @@ export function HowItWorksTimeline() {
           </div>
 
           <div className="relative pl-6 space-y-10">
-            {/* 1px Vertical Track Line */}
+            {/* Line track dọc 1px */}
             <div className="absolute left-[18px] top-4 bottom-4 w-[1px] bg-white/12" />
 
             {STEPS.map((s) => {
               const Icon = s.icon;
               return (
                 <div key={s.step} className="relative flex items-start gap-4">
-                  {/* Vertical Node: 38px Square, rounded-[4px], border #E84142 */}
+                  {/* Node dọc: vuông 38px, rounded-[4px], border #E84142 */}
                   <div className="relative -left-[14px] flex h-10 w-10 shrink-0 items-center justify-center rounded-[4px] border border-primary bg-surface text-white">
                     <Icon className="h-4 w-4" />
                   </div>
 
-                  {/* Content */}
+                  {/* Nội dung */}
                   <div className="flex-1 space-y-1 pt-0.5">
                     <h3 className="text-[18px] font-semibold text-white">
                       {isVi ? s.titleVi : s.titleEn}

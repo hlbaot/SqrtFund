@@ -24,7 +24,7 @@ it("README QF examples use the actual integer sqrt and min/max units",()=>{
   const project=(count:number,amount:bigint)=>({id:count,sumSqrt:BigInt(count)*sqrtBigInt(amount*SCALE),totalDonated:BigInt(count)*amount});
   const results=computeMatchingBigInt([project(100,1_000_000n),project(20,5_000_000n)],100_000_000_000n,10000n);
   expect(results[0].raw).toBe(9_900_000_000n);
-  // Integer sqrt floors the ideal 1900 USDC by one micro-USDC.
+  // Integer sqrt làm tròn xuống lý tưởng 1900 USDC một micro-USDC.
   expect(results[1].raw).toBe(1_899_999_999n);
 });
 

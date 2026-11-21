@@ -7,7 +7,7 @@ type NotificationProject = {
   totalDonatedRaw: bigint; estimatedMatchingRaw: bigint; finalMatchingRaw?: bigint;
 };
 
-/** Faucet availability is a standing shortcut, not a new wallet event. */
+/** Faucet là lối tắt thường trực, không phải sự kiện ví mới. */
 export function buildNotificationItems({ address, round, projects = [], refundTotal = 0n, now = 0 }: {
   address?: string;
   round: { roundAddress?: string; admin?: string; finalized: boolean; isCancelled: boolean; isError?: boolean; status?: string; finalizedAt?: number };
@@ -56,7 +56,7 @@ function parseSeen(value: string | null): string[] {
   } catch { return []; }
 }
 
-/** Shared snapshots update every navbar/menu subscriber immediately. */
+/** Snapshot dùng chung cập nhật ngay mọi navbar/menu đang subscribe. */
 export function createNotificationSeenStore(getStorage: () => Pick<Storage, "getItem" | "setItem">) {
   const snapshots = new Map<string, { ready: boolean; keys: readonly string[] }>();
   const listeners = new Map<string, Set<() => void>>();
@@ -71,12 +71,12 @@ export function createNotificationSeenStore(getStorage: () => Pick<Storage, "get
   const store = {
     snapshot: (address?: string) => address ? snapshots.get(address.toLowerCase()) ?? EMPTY_SEEN : EMPTY_SEEN,
     hydrate(address: string) {
-      // Called by an effect, never during render.
+      // Gọi từ effect, không bao giờ gọi trong lúc render.
       publish(address, [...read(address), ...store.snapshot(address).keys]);
     },
     markSeen(address: string, keys: readonly string[]) {
       const merged = boundedKeys([...read(address), ...store.snapshot(address).keys, ...keys]);
-      try { getStorage().setItem(notificationSeenKey(address), JSON.stringify(merged)); } catch { /* Session fallback. */ }
+      try { getStorage().setItem(notificationSeenKey(address), JSON.stringify(merged)); } catch { /* Dự phòng theo session. */ }
       publish(address, merged);
     },
     subscribe(address: string | undefined, listener: () => void) {

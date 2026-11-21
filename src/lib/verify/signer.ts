@@ -19,7 +19,7 @@ export function getRegistryAddress(): Address {
   if (!registry || !isAddress(registry) || /^0x0{40}$/i.test(registry)) throw new VerificationError("CONFIG_MISSING", 503, { missing: ["NEXT_PUBLIC_STUDENT_REGISTRY_ADDRESS"] });
   return registry;
 }
-/** Identity is bound only to the configured registry, never a round or factory. */
+/** Danh tính chỉ gắn với registry đã cấu hình, không gắn với vòng hay factory. */
 export async function validateRegistry(): Promise<Address> {
   const registry = getRegistryAddress();
   const rpc = createPublicClient({ chain: avalancheFuji, transport: http(process.env.NEXT_PUBLIC_RPC_URL) });

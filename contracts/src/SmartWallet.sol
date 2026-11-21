@@ -5,9 +5,8 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @notice Contract wallet for Core wallet (Avalanche) users. Deployed as an EIP-1167 clone by WalletFactory.
-/// Features: execute / executeBatch, gasless meta-transactions (EIP-712, relayer pays gas),
-/// daily native spending limit, and guardian-based social recovery with a time delay.
+/// @notice Ví hợp đồng cho người dùng Core wallet (Avalanche), triển khai dạng clone EIP-1167 bởi WalletFactory.
+/// Tính năng: execute / executeBatch, meta-transaction không gas (EIP-712), giới hạn chi tiêu hằng ngày và social recovery qua guardian có độ trễ.
 contract SmartWallet is ReentrancyGuard {
     struct Call {
         address target;
@@ -19,10 +18,10 @@ contract SmartWallet is ReentrancyGuard {
         address newOwner;
         uint64 executeAfter;
         uint32 approvals;
-        uint32 round; // invalidates old approvals when a new recovery starts
+        uint32 round; // vòng khôi phục, vô hiệu hóa approval cũ khi bắt đầu lần mới
     }
 
-    // --- EIP-712 (clone-safe: domain computed on demand, not in immutables) ---
+    // --- EIP-712 (an toàn cho clone: domain tính khi cần, không dùng immutable) ---
     bytes32 private constant _DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 public constant EXECUTE_TYPEHASH =
@@ -35,7 +34,7 @@ contract SmartWallet is ReentrancyGuard {
     bool private _initialized;
     uint256 public nonce;
 
-    // Native (AVAX) daily limit. 0 = unlimited. Applies to owner and meta-tx calls.
+    // Giới hạn AVAX native mỗi ngày; 0 = không giới hạn. Áp dụng cho owner và meta-tx.
     uint256 public dailyLimit;
     uint256 public spentToday;
     uint256 public windowStart;
@@ -81,7 +80,7 @@ contract SmartWallet is ReentrancyGuard {
     }
 
     constructor() {
-        _initialized = true; // lock the implementation; wallets are clones
+        _initialized = true; // khóa implementation; ví thật là clone
     }
 
     function initialize(address initialOwner) external {
@@ -113,7 +112,7 @@ contract SmartWallet is ReentrancyGuard {
         }
     }
 
-    /// @notice Anyone (a relayer) may submit a call signed by the owner; the relayer pays gas.
+    /// @notice Relayer bất kỳ có thể gửi lời gọi đã được owner ký và trả gas.
     function executeWithSig(
         address target,
         uint256 value,
@@ -173,7 +172,7 @@ contract SmartWallet is ReentrancyGuard {
         return _guardians;
     }
 
-    /// @notice Replace the guardian set. Cancels any pending recovery.
+    /// @notice Thay toàn bộ guardian và hủy recovery đang chờ.
     function setGuardians(address[] calldata newGuardians, uint32 threshold, uint64 delay) external onlyOwner {
         if (newGuardians.length > MAX_GUARDIANS) revert TooManyGuardians();
         if (delay < MIN_RECOVERY_DELAY) revert DelayTooShort();
@@ -199,7 +198,7 @@ contract SmartWallet is ReentrancyGuard {
 
     // ------------------------------------------------------------------ recovery
 
-    /// @notice A guardian proposes a new owner (counts as their approval). Starts a new round.
+    /// @notice Guardian đề xuất owner mới (tính là approval của họ) và mở vòng mới.
     function startRecovery(address newOwner) external {
         if (!isGuardian[msg.sender]) revert NotGuardian();
         if (newOwner == address(0)) revert ZeroAddress();
@@ -225,20 +224,20 @@ contract SmartWallet is ReentrancyGuard {
         emit RecoveryApproved(msg.sender, r.approvals);
     }
 
-    /// @notice Anyone can finalize once threshold is met and the delay has passed.
+    /// @notice Ai cũng có thể hoàn tất khi đủ threshold và hết thời gian chờ.
     function executeRecovery() external {
         Recovery memory r = recovery;
         if (r.newOwner == address(0)) revert NoRecovery();
         if (r.approvals < recoveryThreshold || block.timestamp < r.executeAfter) revert RecoveryNotReady();
         address previous = owner;
         owner = r.newOwner;
-        // Old guardian could equal the new owner; drop them to keep owner != guardian invariant.
+        // Guardian cũ có thể trùng owner mới; loại ra để giữ bất biến owner != guardian.
         if (isGuardian[r.newOwner]) _removeGuardian(r.newOwner);
         _clearRecovery();
         emit OwnerChanged(previous, r.newOwner);
     }
 
-    /// @notice The current owner can cancel a malicious or mistaken recovery during the delay.
+    /// @notice Owner hiện tại có thể hủy recovery sai/độc hại trong thời gian chờ.
     function cancelRecovery() external onlyOwner {
         if (recovery.newOwner == address(0)) revert NoRecovery();
         _clearRecovery();

@@ -29,12 +29,12 @@ export function MintTestUsdcForm() {
   const [isPending, setIsPending] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  // Derived effective recipient
+  // Người nhận hiệu lực
   const effectiveRecipient = recipient || address || "";
 
   const recipientBalance = useTokenBalance(isAddress(effectiveRecipient.trim()) ? effectiveRecipient.trim() as Address : undefined);
 
-  // Read owner of MockUSDC contract
+  // Đọc owner của contract MockUSDC
   const { data: tokenOwnerData } = useReadContract({
     address: usdcAddress,
     chainId: TARGET_CHAIN_ID,
@@ -53,7 +53,7 @@ export function MintTestUsdcForm() {
     address.toLowerCase() === tokenOwner.toLowerCase()
   );
 
-  // BigInt parsing and validation without Number conversions
+  // Parse/validate BigInt, không chuyển sang Number
   const validation = parseUsdc(amount);
   const isFuji = chainId === TARGET_CHAIN_ID;
 
@@ -239,7 +239,7 @@ export function MintTestUsdcForm() {
         </Button>
       </form>
 
-      {/* Confirmation Dialog */}
+      {/* Dialog xác nhận */}
       <Dialog
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}

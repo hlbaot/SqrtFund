@@ -9,7 +9,7 @@
   animation: bell-close 100ms ease-out both;
 }
 
-/* Override the site's hidden scrollbars only inside this notification list. */
+/* Ghi đè scrollbar ẩn của site, chỉ trong danh sách thông báo này. */
 .list {
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;

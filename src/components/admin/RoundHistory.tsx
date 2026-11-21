@@ -26,7 +26,7 @@ export function RoundHistory({ addresses, selected, selectedName, disabled, onSe
     const name = (address.toLowerCase() === selected?.toLowerCase() ? selectedName?.trim() : undefined)
       || (result?.status === "success" && typeof result.result === "string" ? result.result.trim() : "");
     const number = fmt(t.competition.round, { n: index + 1 });
-    // Creation order provides a stable, readable identity even for unnamed legacy rounds.
+    // Thứ tự tạo cho định danh ổn định, dễ đọc kể cả round cũ không tên.
     return { address, label: name ? `${number} · ${name}` : number };
   }).reverse();
   const hasFailures = names.isError || names.data?.some(result => result.status === "failure");
