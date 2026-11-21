@@ -57,7 +57,7 @@ export function ProjectCard({
     roundAddress ||
     (roundId && isAddress(roundId) ? (roundId as Address) : undefined);
 
-  // Read how much current user has already donated to this project
+  // Đọc số tiền user đã ủng hộ dự án này
   const projectIdBigInt = BigInt(project.id || project.contractId?.toString() || "1");
   const { data: userDonatedData } = useReadContract({
     address: targetRoundAddress,
@@ -83,7 +83,7 @@ export function ProjectCard({
       ? project.shortDescriptionVi
       : project.shortDescription;
 
-  // Visual category icons
+  // Icon theo danh mục
   const CategoryIcon = {
     education: BookOpen,
     technology: Cpu,
@@ -101,7 +101,7 @@ export function ProjectCard({
       interactive
     >
       <ClaimOverdueBadge project={project} />
-      {/* 5. Rank Badge (top corner overlay) */}
+      {/* Huy hiệu xếp hạng (góc trên) */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           {project.rank && (
@@ -132,7 +132,7 @@ export function ProjectCard({
         </div>
       </div>
 
-      {/* 1. Image placeholder area, name, short description */}
+      {/* Ảnh, tên, mô tả ngắn */}
       <div>
         <div className={`relative mb-4 flex w-full items-center justify-center overflow-hidden border border-line bg-bg ${imageLayout === "square" ? "mx-auto aspect-square max-w-[200px]" : "h-32"}`}>
           {project.imageUrl && !imageFailed ? (
@@ -162,15 +162,15 @@ export function ProjectCard({
         </p>
       </div>
 
-      {/* 2. Number of supporters (most emphasized with SupporterMarks) */}
+      {/* Số người ủng hộ (SupporterMarks) */}
       <div className="my-4">
         <SupporterMarks count={project.supporterCount} />
       </div>
 
-      {/* 3. USDC Donated & 4. Estimated Matching */}
+      {/* USDC đã ủng hộ và matching ước tính */}
       <FundingBreakdown project={project} compact />
 
-      {/* Action Buttons */}
+      {/* Nút hành động */}
       <div className="mt-4 pt-1 flex items-center gap-2">
         <Link
           href={`/round/${roundId}/project/${project.id}`}

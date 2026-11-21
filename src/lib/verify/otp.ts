@@ -5,7 +5,7 @@ export function hashValue(value: string, purpose: "otp" | "ip", secret = process
   if (!secret || secret.length < 32) throw new Error("Verification configuration unavailable");
   return createHmac("sha256", secret).update(`${purpose}:${value}`).digest("hex");
 }
-// Bind a code to its request; a leaked hash cannot be transplanted across requests.
+// Gắn mã với request của nó; hash bị lộ không dùng được cho request khác.
 export function hashOtp(id: string, otp: string, secret?: string): string { return hashValue(`${id}:${otp}`, "otp", secret); }
 export function equalHashes(a: string, b: string): boolean {
   return /^[0-9a-f]{64}$/.test(a) && /^[0-9a-f]{64}$/.test(b) && timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));

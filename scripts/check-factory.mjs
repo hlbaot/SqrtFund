@@ -3,7 +3,7 @@ import { parseEnv } from 'node:util';
 import { createPublicClient, http, isAddress, parseAbi, zeroAddress } from 'viem';
 import { avalancheFuji } from 'viem/chains';
 
-// Public, read-only preflight. Never load a signer or print credentials from .env.
+// Preflight công khai, chỉ đọc; không nạp signer hay in credential từ .env.
 const config = {};
 for (const file of ['.env', '.env.local']) {
   const path = new URL(`../${file}`, import.meta.url);
@@ -65,7 +65,7 @@ async function main() {
   else console.log('Pass a wallet address as the second argument to check Organizer access and refundable credit.');
 }
 main().catch(error => {
-  // Raw RPC errors can include credential-bearing URLs. Keep the diagnostic sanitized.
+  // Lỗi RPC thô có thể chứa URL kèm credential; giữ diagnostic đã làm sạch.
   const known = ['RPC_CHAIN_MISMATCH', 'NO_FACTORY_BYTECODE', 'UNSUPPORTED_FUNDING_VERSION', 'MISSING_USDC_ADDRESS', 'STUDENT_REGISTRY_MISMATCH'];
   console.error(known.includes(error.message) ? error.message : 'RPC_READ_FAILED: Cannot verify this Factory. Check network/RPC and retry; no transaction was sent.');
   process.exitCode = 1;

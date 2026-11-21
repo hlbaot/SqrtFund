@@ -2,7 +2,7 @@ import "server-only";
 import { hashValue, equalHashes } from "@/lib/verify/otp";
 import { normalizeContactEmail } from "@/lib/organizerContact";
 
-// Version change invalidates tokens issued before wallet ownership was required.
+// Đổi version làm vô hiệu token phát hành trước khi yêu cầu sở hữu ví.
 const PURPOSE = "organizer-contact-email-wallet-v2";
 export function issueOrganizerEmailProof(email: string, wallet: string, now = Date.now()) {
   const expiresAt = now + 15 * 60_000;

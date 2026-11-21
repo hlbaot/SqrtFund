@@ -19,7 +19,7 @@ export function useRoundNotifications(wallet?: Address) {
       const snapshot = await loadRoundNotificationSnapshot(call => client!.readContract(call), round, wallet);
       if (snapshot.finalized && !snapshot.isCancelled && snapshot.projects.some(p => p.ownerAddress.toLowerCase() === wallet?.toLowerCase() && p.approved && !p.claimed && p.finalMatchingRaw !== undefined && p.totalDonatedRaw + p.finalMatchingRaw > 0n)) {
         try { snapshot.finalizedAt = (await queryClient.fetchQuery({ queryKey: ["round-finalization", round.toLowerCase()], queryFn: () => fetchClaimTiming(round), staleTime: 60 * 60_000 }))?.finalizedAt; }
-        catch { /* Preserve ordinary claim/refund notifications when timing cannot be confirmed. */ }
+        catch { /* Giữ thông báo claim/refund thường khi không xác nhận được thời gian */ }
       }
       return snapshot;
     },

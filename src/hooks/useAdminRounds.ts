@@ -9,7 +9,7 @@ import { qfRoundAbi } from "@/lib/contracts/abis";
 import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { IMMUTABLE_STALE_MS, QUERY_GC_MS } from "@/lib/queryPolicy";
 
-/** Factory order is creation order; only this wallet's rounds are deposit targets. */
+/** Thứ tự Factory là thứ tự tạo; chỉ round của ví này là đích nạp tiền. */
 export function useAdminRounds(admin?: Address) {
   const { factoryData, isFactoryLoading, isFactoryError, refetchFactory } = useFactoryRounds();
   const storedRounds = roundsStore(useShallow(state => state.entities));
@@ -35,7 +35,7 @@ export function useAdminRounds(admin?: Address) {
     admin: (storedRounds[address.toLowerCase()]?.admin ?? metadata.data?.[i * 2]?.result) as Address | undefined,
     name: (storedRounds[address.toLowerCase()]?.name ?? metadata.data?.[i * 2 + 1]?.result) as string | undefined,
   })).filter(round => admin && round.admin?.toLowerCase() === admin.toLowerCase()).reverse();
-  // New rounds become the default until the user explicitly chooses an existing target.
+  // Round mới là mặc định cho đến khi user chọn target khác
   const roundAddress = rounds.find(round => round.address.toLowerCase() === selection?.toLowerCase())?.address ?? rounds[0]?.address;
   return { rounds, totalRounds: addresses.length, roundAddress, selectRound, isLoading, isError, refetch: () => { void refetchFactory(); void metadata.refetch(); } };
 }

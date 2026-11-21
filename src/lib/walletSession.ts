@@ -11,25 +11,24 @@ export const WALLET_SNAPSHOT_KEY = "sqrt-fund:wallet-snapshot";
 export const WALLET_LOGOUT_KEY = "sqrt-fund:wallet-logged-out";
 let navigating = false;
 
-// Keep this outside the wagmi/rk namespaces: logout deliberately clears those.
-// Injected wallets can still expose accounts after disconnect and auto-authorize.
+// Để ngoài namespace wagmi/rk vì logout chủ ý xóa chúng; ví injected vẫn có thể lộ tài khoản sau disconnect và tự authorize.
 export function isWalletLoggedOut() {
   if (typeof window === "undefined") return false;
   for (const name of ["sessionStorage", "localStorage"] as const) {
-    try { if (window[name].getItem(WALLET_LOGOUT_KEY) === "1") return true; } catch { /* Storage may be disabled. */ }
+    try { if (window[name].getItem(WALLET_LOGOUT_KEY) === "1") return true; } catch { /* Storage có thể bị tắt. */ }
   }
   return false;
 }
 
 export function markWalletConnected() {
   for (const name of ["sessionStorage", "localStorage"] as const) {
-    try { window[name].removeItem(WALLET_LOGOUT_KEY); } catch { /* Storage may be disabled. */ }
+    try { window[name].removeItem(WALLET_LOGOUT_KEY); } catch { /* Storage có thể bị tắt. */ }
   }
 }
 
 export function markWalletLoggedOut() {
   for (const name of ["sessionStorage", "localStorage"] as const) {
-    try { window[name].setItem(WALLET_LOGOUT_KEY, "1"); } catch { /* Storage may be disabled. */ }
+    try { window[name].setItem(WALLET_LOGOUT_KEY, "1"); } catch { /* Storage có thể bị tắt. */ }
   }
 }
 
@@ -44,19 +43,7 @@ export interface WalletState {
   role?: WalletRole;
 }
 
-/**
- * Pure state machine deciding whether the application must reload.
- *
- * Reload ONLY in two cases:
- * 1. Disconnect (previously had address, now disconnected/null).
- * 2. Address changed from A to B (different non-null addresses).
- *
- * NEVER reload for:
- * - undefined/null -> address (initial connect or auto-reconnect).
- * - status 'connecting' or 'reconnecting'.
- * - role change (e.g. guest -> student/admin) or role loading.
- * - chainId changes.
- */
+/** State machine thuần quyết định có reload app hay không: chỉ reload khi disconnect hoặc đổi địa chỉ A→B (cùng khác null); không reload khi undefined/null→address, status connecting/reconnecting, đổi role, hay đổi chainId. */
 export function shouldReload(
   prev: WalletState | null,
   next: WalletState
@@ -64,12 +51,12 @@ export function shouldReload(
   if (!prev) return false;
   if (next.status === "connecting" || next.status === "reconnecting") return false;
 
-  // Case 1: Disconnect (previously had an address, now disconnected)
+  // Trường hợp 1: Disconnect (trước có địa chỉ, nay đã ngắt)
   if (prev.address && (next.status === "disconnected" || !next.address)) {
     return true;
   }
 
-  // Case 2: Address change A -> B (both non-null, different addresses)
+  // Trường hợp 2: Đổi địa chỉ A → B (cả hai khác null)
   if (
     prev.address &&
     next.address &&
@@ -82,7 +69,7 @@ export function shouldReload(
 }
 
 export function saveSessionValue(key: string, value: string) {
-  try { window.sessionStorage.setItem(key, value); } catch { /* Storage may be disabled. */ }
+  try { window.sessionStorage.setItem(key, value); } catch { /* Storage có thể bị tắt. */ }
 }
 export function takeSessionValue(key: string) {
   try {
@@ -107,7 +94,7 @@ export function reloadWallet(snapshot: WalletSnapshot) {
   markVisitIntroSeen();
   window.location.reload();
 }
-/** Clear wallet identity in place so decorative canvases and scroll position survive. */
+/** Xóa danh tính ví tại chỗ để canvas trang trí và vị trí cuộn được giữ. */
 export async function logoutWallet(disconnect: () => Promise<unknown>, queryClient: QueryClient) {
   if (navigating) return;
   navigating = true;
@@ -118,18 +105,18 @@ export async function logoutWallet(disconnect: () => Promise<unknown>, queryClie
   try {
     await disconnect();
   } catch {
-    // Clear local identity even if the wallet provider cannot revoke permissions.
+    // Xóa danh tính cục bộ kể cả khi wallet provider không thu hồi được quyền.
   } finally {
     try {
       wagmiConfig.setState(state => ({ ...state, connections: new Map(), current: null, status: "disconnected" }));
       await queryClient.cancelQueries();
       queryClient.clear();
-      try { clearWalletStorage(window.localStorage); } catch { /* Storage may be disabled. */ }
-      try { clearWalletStorage(window.sessionStorage); } catch { /* Storage may be disabled. */ }
+      try { clearWalletStorage(window.localStorage); } catch { /* Storage có thể bị tắt. */ }
+      try { clearWalletStorage(window.sessionStorage); } catch { /* Storage có thể bị tắt. */ }
       saveSessionValue(WALLET_SNAPSHOT_KEY, JSON.stringify({ address: null, chainId: TARGET_CHAIN_ID, role: "guest" }));
       markVisitIntroSeen();
     } finally {
-      // Logout no longer leaves the page, so later connect/logout actions must work.
+      // Logout không còn rời trang nên các thao tác connect/logout sau đó phải hoạt động.
       navigating = false;
     }
   }

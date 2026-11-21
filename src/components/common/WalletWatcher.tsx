@@ -25,7 +25,7 @@ export function WalletWatcher() {
 
   useEffect(() => {
     console.log("[LOGOUT_DEBUG] WalletWatcher effect:", { address, status, chainId, role });
-    // Ignore transient intermediate states
+    // Bỏ qua trạng thái trung gian tạm thời
     if (status === "connecting" || status === "reconnecting") return;
     if (status === "connected" && isWalletLoggedOut()) {
       void disconnectAsync().catch(() => {});
@@ -40,7 +40,7 @@ export function WalletWatcher() {
       role,
     };
 
-    // First time establishing baseline after mount
+    // Lần đầu thiết lập baseline sau mount
     if (!prevRef.current) {
       prevRef.current = nextState;
       if (currentAddress) {
@@ -54,14 +54,14 @@ export function WalletWatcher() {
     if (shouldReload(prevState, nextState)) {
       prevRef.current = nextState;
       if (prevState.address && (status === "disconnected" || !currentAddress)) {
-        // Disconnect: clear wallet state in place without restarting the page background.
+        // Ngắt kết nối: xoá state ví tại chỗ, không khởi động lại nền trang.
         void logoutWallet(disconnectAsync, queryClient).catch(() => {});
       } else if (
         prevState.address &&
         currentAddress &&
         prevState.address.toLowerCase() !== currentAddress.toLowerCase()
       ) {
-        // Account changed A -> B: reload clean state
+        // Đổi account A → B: reload state sạch
         reloadWallet({
           address: currentAddress,
           chainId,
@@ -71,7 +71,7 @@ export function WalletWatcher() {
       return;
     }
 
-    // Normal non-reloading transitions (e.g. initial connect, role loaded, chainId set)
+    // Chuyển trạng thái thường, không reload (connect đầu, role loaded, chainId set)
     prevRef.current = nextState;
     if (currentAddress) {
       saveSessionValue(WALLET_SNAPSHOT_KEY, JSON.stringify(nextState));

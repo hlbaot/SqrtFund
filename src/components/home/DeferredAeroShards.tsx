@@ -15,7 +15,7 @@ export default function DeferredAeroShards(props: AeroShardsProps) {
   const small = useSyncExternalStore(subscribe, () => window.matchMedia("(max-width: 1023px)").matches, () => false);
   const [failed, setFailed] = useState(false);
   return <>
-    {/* Static shards remain visible during loading, reduced motion or GPU failure. */}
+    {/* Shard tĩnh vẫn hiển thị khi đang tải, reduced motion hoặc lỗi GPU. */}
     <svg aria-hidden="true" className="absolute inset-0 h-full w-full" viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid slice" fill="#f43f5e" fillOpacity="0.06" stroke="#fb7185" strokeOpacity="0.25">
       {Array.from({ length: 36 }, (_, i) => {
         const x = (i * 137) % 1100 - 50;

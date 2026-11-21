@@ -193,7 +193,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
     if (!selectedAddress || roundAddress?.toLowerCase() !== selectedAddress.toLowerCase()
       || selection.isLoading || isRoundLoading || isRoundError || !publicClient
       || isCancelled || roundStatus !== "open" || endTime === undefined
-      // Recheck the wall clock inside the submit event, never during render.
+      // Kiểm tra lại thời gian trong sự kiện submit, không trong render.
       // eslint-disable-next-line react-hooks/purity
       || BigInt(Math.floor(Date.now() / 1000)) >= endTime) {
       txToast.error(toastId, t.register.roundNotReady);
@@ -275,7 +275,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
     }
   };
 
-  // Live preview project object
+  // Project xem trước trực tiếp
   const previewProject: Project = {
     id: "0",
     roundId: roundAddress ?? selectedAddress ?? "1",
@@ -378,7 +378,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
       )}
       {selection.isError && <div role="alert" className="flex items-center gap-3 text-sm text-muted"><p>{t.register.roundsReadError}</p><Button type="button" variant="ghost" onClick={retryRounds}>{t.register.retryRounds}</Button></div>}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Form area */}
+        {/* Vùng form */}
         <div
           className="lg:col-span-7 border border-line bg-surface p-6"
           data-aos="fade-right"
@@ -566,7 +566,7 @@ export function ProjectForm({ initialRound }: { initialRound?: string }) {
           </form>
         </div>
 
-        {/* Live Voter Card Preview */}
+        {/* Xem trước thẻ voter */}
         <div
           className="lg:col-span-5 space-y-3"
           data-aos="fade-left"

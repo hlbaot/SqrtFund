@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-// Opt-in webpack stats, without source code or environment values.
+// Webpack stats tùy chọn, không chứa source code hay giá trị env.
 export class ClientBundleStatsPlugin {
   apply(compiler) {
     compiler.hooks.done.tap("SqrtFundClientBundleStats", stats => {

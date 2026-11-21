@@ -102,7 +102,7 @@ export function MyView() {
 
   const allProjects = projectsStore(useShallow(state => state.projectsByRound));
   const roundSnapshots = roundsStore(useShallow(state => state.entities));
-  // Filter projects owned by the user
+  // Lọc project thuộc user
   const myProjects = useMemo(() => {
     if (!address) return [];
     const addr = address.toLowerCase();
@@ -150,7 +150,7 @@ export function MyView() {
     <Container className="py-8 sm:py-10 space-y-8">
       <AOSInit />
       <StudentVerifyBox />
-      {/* User Profile Header with Change Avatar Feature */}
+      {/* Header profile với đổi Avatar */}
       <div
         className="border border-line bg-surface p-6"
         data-aos="fade-down"
@@ -158,11 +158,10 @@ export function MyView() {
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            {/* Avatar with edit button */}
+            {/* Avatar kèm nút sửa */}
             <div className="relative group shrink-0">
               <Avatar address={address} size={64} avatarId={avatar} />
 
-              {/* Avatar edit button */}
               <button
                 type="button"
                 onClick={handleOpenAvatarDialog}
@@ -174,7 +173,7 @@ export function MyView() {
               </button>
             </div>
 
-            {/* Profile Info */}
+            {/* Thông tin Profile */}
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
@@ -190,7 +189,7 @@ export function MyView() {
             </div>
           </div>
 
-          {/* Test Faucets & Action Buttons */}
+          {/* Test Faucets & nút hành động */}
           <div className="flex flex-wrap items-center gap-2.5">
             {canClaim || isClaimingUsdc ? (
               <Button
@@ -262,7 +261,7 @@ export function MyView() {
 
       {isCancelled && <RoundCancellationPanel projectNames={Object.fromEntries(projects.map(project => [project.id, project.name]))} roundAddress={roundAddress} />}
 
-      {/* Organizer: Vòng gọi vốn của tôi (Không có tab donate) / Student: Tabs Ủng hộ & Dự án */}
+      {/* Organizer: Vòng gọi vốn của tôi (không có tab donate) / Student: Tab Ủng hộ & Dự án */}
       <div data-aos="fade-up" data-aos-duration="600">
         {isOrgMode ? (
           managedRounds.isLoading ? (
@@ -476,9 +475,8 @@ export function MyView() {
                           </div>
 
                           <div className="min-w-0"><ClaimReminder project={proj} round={proj.roundId} finalized={projectFinalized} cancelled={projectCancelled} /><FundingBreakdown project={proj} compact finalized={projectFinalized} cancelled={projectCancelled} /><Link className="text-xs text-primary underline" href={`/round/${proj.roundId}/project/${proj.id}#claim`}>{locale === "vi" ? "Hồ sơ, lý do xét duyệt và nhận tiền" : "Proposal, review explanation and claim funds"}</Link></div>
-                          {/* Financial payout & claim button */}
+                          {/* Payout tài chính & nút claim */}
                           <div className="flex items-center gap-4">
-                            {/* Claim Button */}
                             <div>
                               {proj.claimed ? (
                                 <Badge variant="accent" className="px-3 py-1.5 text-xs font-bold">

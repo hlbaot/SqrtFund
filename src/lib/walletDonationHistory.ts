@@ -12,11 +12,11 @@ export type WalletDonation = {
   amount: bigint;
 };
 
-/** Read every project page, regardless of round lifecycle or project visibility. */
+/** Đọc mọi trang dự án, bất kể vòng đang ở giai đoạn nào hay dự án có hiển thị hay không. */
 export async function loadWalletRoundDonations(read: Read, round: Address, wallet: Address,
   loadOriginal?: () => Promise<Record<string, bigint>>): Promise<WalletDonation[]> {
   const snapshot = await loadRoundNotificationSnapshot(read, round);
-  // Refunds clear donationOf; retain the original contribution in personal history.
+  // Refund xóa donationOf; giữ khoản góp gốc trong lịch sử cá nhân.
   const original = snapshot.isCancelled && loadOriginal ? await loadOriginal() : {};
   const donations = await Promise.all(snapshot.projects.map(async project => {
     const amount = await read({ address: round, abi: qfRoundAbi, functionName: "donationOf", args: [wallet, BigInt(project.id)] });
@@ -27,11 +27,11 @@ export async function loadWalletRoundDonations(read: Read, round: Address, walle
   const supported = donations.filter(item => item.amount > 0n);
   if (!supported.length) return [];
 
-  // A matching read failure must not hide an otherwise confirmed donation.
+  // Lỗi đọc matching không được che khoản quyên góp đã xác nhận.
   let preview: [readonly bigint[], readonly bigint[]] | undefined;
   if (!snapshot.finalized && !snapshot.isCancelled) {
     try { preview = await read({ address: round, abi: qfRoundAbi, functionName: "previewMatching" }) as typeof preview; }
-    catch { /* Display unavailable matching separately from donation history. */ }
+    catch { /* Hiển thị riêng matching không khả dụng khỏi lịch sử quyên góp. */ }
   }
   return Promise.all(supported.map(async ({ project, amount }) => {
     let matching: bigint | undefined = snapshot.isCancelled ? 0n : undefined;
@@ -39,7 +39,7 @@ export async function loadWalletRoundDonations(read: Read, round: Address, walle
       try {
         const payout = await read({ address: round, abi: qfRoundAbi, functionName: "payoutOf", args: [BigInt(project.id)] });
         if (typeof payout === "bigint") matching = payout;
-      } catch { /* Keep the donation visible when settlement cannot be read. */ }
+      } catch { /* Giữ khoản quyên góp hiển thị khi chưa đọc được settlement. */ }
     } else if (preview) {
       const index = preview[0].findIndex(id => id === BigInt(project.id));
       if (index >= 0) matching = preview[1][index];

@@ -5,7 +5,7 @@ import {Script, console2} from "forge-std/Script.sol";
 import {MockUSDC} from "../src/MockUSDC.sol";
 
 /// @title DeployMockUSDC
-/// @notice Deploys ONLY a new MockUSDC on Avalanche Fuji, preserving existing entries in deployments/fuji.json and adding a separate key.
+/// @notice Chỉ triển khai MockUSDC mới trên Fuji, giữ các mục cũ trong deployments/fuji.json và thêm key riêng.
 contract DeployMockUSDC is Script {
     function run() external {
         string memory path = "deployments/fuji.json";

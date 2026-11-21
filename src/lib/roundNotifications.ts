@@ -54,7 +54,7 @@ export async function loadRoundNotificationSnapshot(read: Read, address: Address
     finalized: finalized === true, isCancelled, projects };
 }
 
-/** Distinct stable keys preserve acknowledgement across polling and reconnects. */
+/** Khóa ổn định riêng biệt giữ trạng thái đã xác nhận qua polling và reconnect. */
 export function roundLifecycleNotificationItems(snapshot: RoundNotificationSnapshot, wallet: string, now: number): NotificationItem[] {
   const isAdmin = snapshot.admin.toLowerCase() === wallet.toLowerCase();
   if ((!isAdmin && !snapshot.hasDonated) || snapshot.isCancelled) return [];

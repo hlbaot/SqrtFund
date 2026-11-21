@@ -61,7 +61,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
   const approveId = "deposit-approve";
   const depositId = "deposit-pool";
 
-  // Undefined/loading/error is not a zero balance. Only successful reads constrain the amount.
+  // Undefined/loading/error không phải số dư 0; chỉ đọc thành công mới giới hạn số tiền.
   const adminBalance = balance.balance;
   const validation = parseUsdc(amount, balance.isReady ? adminBalance : undefined);
   const isFuji = chainId === TARGET_CHAIN_ID;
@@ -75,7 +75,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
     : !tokenMatchesConfigured(token) ? t.tokenBalance.tokenMismatch
     : isCancelled ? t.tokenBalance.cancelled : null;
 
-  // Determine disabled reason and state
+  // Xác định lý do và trạng thái disabled
   let disabledExplanation: string | null = null;
   let isButtonDisabled = isPending;
 
@@ -143,7 +143,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
     let deposited = false;
 
     try {
-      // 1. Check current allowance
+      // Kiểm tra allowance hiện tại
       const allowance = await flow.wait(() =>
         publicClient.readContract({
           address: usdcAddress,
@@ -153,7 +153,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
         })
       );
 
-      // If allowance is lower than amount, approve exactly the amount
+      // Allowance thấp hơn amount thì approve đúng amount
       if (allowance < amountBigInt) {
         flow.toast.pending(
           approveId,
@@ -205,7 +205,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
         }
       }
 
-      // 2. Call depositPool(amount)
+      // Gọi depositPool(amount)
       flow.toast.pending(
         depositId,
         t.toasts.depositStep,
@@ -282,7 +282,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
     { label: "10,000", value: "10000" },
   ];
 
-  const isLargeAmount = validation.success && validation.amount >= 10_000_000_000n; // >= 10,000 USDC
+  const isLargeAmount = validation.success && validation.amount >= 10_000_000_000n; // ≥ 10,000 USDC
 
   const confirmationContent = (
         <div className="space-y-4 pt-3 text-xs">
@@ -301,7 +301,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
             </div>
           </div>
 
-          {/* Prominent warning for deposits >= 10,000 USDC */}
+          {/* Cảnh báo nổi bật khi nạp ≥ 10,000 USDC */}
           {isLargeAmount && (
             <div className="flex items-start gap-2 border border-amber-500/40 bg-amber-500/10 p-3 text-amber-300">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-400" />
@@ -363,7 +363,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
       {(selection.isError || isRoundError) && <Button type="button" variant="secondary" onClick={() => { selection.refetch(); refetch(); }}>{t.tokenBalance.retry}</Button>}
       {balance.isError && <Button type="button" variant="secondary" onClick={() => void balance.refetch()}>{t.tokenBalance.retry}</Button>}
 
-      {/* Current Matching Pool Indicator (Top-up deposits supported) */}
+      {/* Chỉ báo Matching Pool hiện tại (hỗ trợ nạp thêm) */}
       <div className="flex items-center justify-between border border-line/70 bg-surface-2 p-3 text-xs">
         <span className="text-muted flex items-center gap-1.5 role-label">
           <Coins className="h-4 w-4 text-money shrink-0" />
@@ -399,7 +399,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
       )}
 
       <form onSubmit={handleFormSubmit} className="space-y-4">
-        {/* Admin USDC balance & Max button */}
+        {/* Số dư USDC admin và nút Max */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted font-mono truncate" title={adminBalance !== undefined ? formatUsdc(adminBalance) : undefined}>
@@ -434,7 +434,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
             required
           />
 
-          {/* Quick chips (fill input only) */}
+          {/* Chip nhanh (chỉ điền input) */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <span className="text-xs text-muted">{t.admin.quickDepositAmounts}</span>
             {quickChips.map((chip) => (
@@ -467,7 +467,7 @@ export function DepositPoolForm({ embedded = false, initialRoundAddress, initial
               : t.admin.depositBtn}
           </Button>
 
-          {/* Explanation line for disabled states */}
+          {/* Dòng giải thích khi disabled */}
           {disabledExplanation && (
             <p className="text-xs text-muted text-center italic">
               {disabledExplanation}

@@ -5,7 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-/// @notice Shared student identity. A verification applies to every round using this registry.
+/// @notice Danh tính sinh viên dùng chung; xác minh áp dụng cho mọi vòng dùng registry này.
 contract StudentRegistry is Ownable, EIP712 {
     address public attester;
     mapping(address => bool) public isStudent;

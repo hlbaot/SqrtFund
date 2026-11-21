@@ -1,6 +1,6 @@
 import { explorerBaseUrl } from "@/lib/explorer";
 
-// Preserve existing imports while all explorer URLs use the shared implementation.
+// Giữ import cũ; mọi URL explorer dùng chung một cài đặt.
 export { explorerTxUrl as getExplorerTxUrl, explorerAddressUrl as getExplorerAddressUrl } from "@/lib/explorer";
 export const SNOWTRACE_BASE_URL = `${explorerBaseUrl}/tx`;
 
@@ -34,10 +34,7 @@ export interface ParseUsdcError {
 
 export type ParseUsdcResult = ParseUsdcSuccess | ParseUsdcError;
 
-/**
- * Validates and parses a USDC input string into a 6-decimal BigInt.
- * Never uses `Number` to prevent precision loss.
- */
+/** Kiểm tra và parse chuỗi USDC thành BigInt 6 chữ số thập phân; không dùng `Number` để tránh mất độ chính xác. */
 export function parseUsdc(value: string, balance?: bigint): ParseUsdcResult {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -48,7 +45,7 @@ export function parseUsdc(value: string, balance?: bigint): ParseUsdcResult {
     return { success: false, errorKey: "negative" };
   }
 
-  // Reject non-numeric input and multiple decimal points
+  // Từ chối input không phải số hoặc có nhiều dấu thập phân
   if (!/^\d+(\.\d+)?$/.test(trimmed)) {
     return { success: false, errorKey: "invalid_format" };
   }
@@ -120,7 +117,7 @@ export function formatUsdc(
     rawStr = isNegative ? trimmed.slice(1) : trimmed;
   }
 
-  // Split whole and fractional components
+  // Tách phần nguyên và phần thập phân
   const [wholePart = "0", fracPart = ""] = rawStr.split(".");
   let formattedWhole: string;
   try {
@@ -144,7 +141,7 @@ export function formatUsdc(
         return `${isNegative ? "-" : ""}${compactVal}K${includeSymbol ? " USDC" : ""}`;
       }
     } catch {
-      // fallback to regular format
+      // Quay về định dạng thường
     }
   }
 
@@ -161,19 +158,14 @@ export function formatUsdc(
   return includeSymbol ? `${result} USDC` : result;
 }
 
-/**
- * Format an integer count with thousand separators (e.g. 1,234)
- */
+/** Định dạng số nguyên với dấu phân cách hàng nghìn (vd 1,234). */
 export function formatCount(num: number | bigint | undefined | null): string {
   if (num === undefined || num === null) return "0";
   const n = typeof num === "bigint" ? num : BigInt(Math.floor(num || 0));
   return n.toLocaleString("en-US");
 }
 
-/**
- * Format USDC with fixed 2 decimal places and thousand separators.
- * Zero is always formatted as "0.00" (or "0.00 USDC").
- */
+/** Định dạng USDC với 2 chữ số thập phân cố định và dấu phân cách hàng nghìn; 0 luôn là "0.00". */
 export function formatUsdcFixed(
   amount: number | bigint | string | undefined | null,
   options: { includeSymbol?: boolean; compact?: boolean } = {}
@@ -184,10 +176,7 @@ export function formatUsdcFixed(
   return formatUsdc(amount, { decimals: 2, ...options });
 }
 
-/**
- * Format USDC with full precision (up to 6 decimals, trailing zeroes trimmed).
- * For tooltips, title attributes, and transaction confirmation details.
- */
+/** Định dạng USDC đầy đủ (tối đa 6 chữ số thập phân, bỏ số 0 cuối); dùng cho tooltip, title và chi tiết xác nhận giao dịch. */
 export function formatUsdcFull(
   amount: number | bigint | string | undefined | null,
   options: { includeSymbol?: boolean } = {}
@@ -198,10 +187,7 @@ export function formatUsdcFull(
   return formatUsdc(amount, { decimals: undefined, ...options });
 }
 
-/**
- * Formats a date strictly as "DD/MM/YYYY HH:mm GMT+7" in Asia/Ho_Chi_Minh timezone.
- * Consistent across all locales without month words like "thg 10" or "Oct".
- */
+/** Định dạng ngày dạng "DD/MM/YYYY HH:mm GMT+7" theo múi giờ Asia/Ho_Chi_Minh, đồng nhất mọi locale. */
 export function formatDateTimeGmt7(date: string | Date | number): string {
   if (!date && date !== 0) return "";
   let d: Date;

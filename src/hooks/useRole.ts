@@ -15,7 +15,7 @@ import { useAdminRounds } from "@/hooks/useAdminRounds";
 export type WalletRole = "platform_owner" | "organizer" | "admin" | "student" | "owner" | "guest";
 export type RoleReadStatus = "inactive" | "loading" | "error" | "confirmed" | "absent" | "unsupported";
 
-/** Helper: treat undefined and 0x000...0 as "not set" */
+/** Helper: coi undefined và 0x000...0 là "chưa đặt" */
 const isNonZero = (addr: string | undefined): addr is string =>
   Boolean(addr && addr.toLowerCase() !== ZERO_ADDRESS.toLowerCase());
 
@@ -45,7 +45,7 @@ export function useRole(customRound?: Address) {
   const hasManagedRounds = hasConnectedTargetAccount && managed.rounds.length > 0;
   const canParticipate = studentCanParticipate(hasConnectedTargetAccount, student.isStudent, String(roundRegistry ?? "").toLowerCase() === studentRegistryAddress.toLowerCase() && !isCancelled);
 
-  // Platform Owner is the owner of RoundFactory (owner() from Ownable)
+  // Platform Owner là owner của RoundFactory (owner() từ Ownable)
   const isPlatformOwner = useMemo(() => {
     if (!hasConnectedTargetAccount || !address || !factoryOwner) return false;
     return isNonZero(factoryOwner) && address.toLowerCase() === factoryOwner.toLowerCase();
@@ -57,18 +57,18 @@ export function useRole(customRound?: Address) {
     return mirroredAuthorization ?? Boolean(isOrganizerFromRound);
   }, [hasConnectedTargetAccount, address, isOrganizerFromRound, mirroredAuthorization]);
 
-  // Round Admin is the admin of the active or custom QFRound
+  // Round Admin là admin của QFRound đang chọn hoặc tuỳ chỉnh
   const isRoundAdmin = useMemo(() => {
     if (!hasConnectedTargetAccount || !address || !admin) return false;
     return isNonZero(admin) && address.toLowerCase() === admin.toLowerCase();
   }, [address, admin, hasConnectedTargetAccount]);
 
-  // Combined administrative and creation capabilities
+  // Gộp quyền quản trị và tạo round
   const canCreateRound = (isPlatformOwner || (isOrganizerFromRound && mirroredAuthorization !== false)) && !isLegacyFactory && !isFactoryAuthorizationError;
   const canManagePlatform = isPlatformOwner;
   const canManageSelectedRound = isRoundAdmin;
 
-  // isAdmin remains true for any administrative or organizer authority
+  // isAdmin true với mọi quyền quản trị/organizer
   const isAdmin = isPlatformOwner || isOrganizer || isRoundAdmin || hasManagedRounds;
 
   const isStudent = student.isStudent;
@@ -85,7 +85,7 @@ export function useRole(customRound?: Address) {
 
   const isProjectOwner = myProjects.length > 0;
 
-  // List of all active roles for the connected wallet
+  // Danh sách role đang hoạt động của ví
   const roles = useMemo<WalletRole[]>(() => {
     if (!hasConnectedTargetAccount || !address) return ["guest"];
     const list: WalletRole[] = [];
@@ -98,13 +98,13 @@ export function useRole(customRound?: Address) {
     return list;
   }, [hasConnectedTargetAccount, address, isPlatformOwner, isOrganizer, isRoundAdmin, hasManagedRounds, isStudent, isProjectOwner]);
 
-  // Primary single role: preserves "admin" if isAdmin for backward compatibility
+  // Role chính: giữ "admin" nếu isAdmin để tương thích ngược
   const role: WalletRole = isAdmin ? "admin"
     : isProjectOwner ? "owner"
     : isStudent ? "student"
     : "guest";
 
-  // Privileged users (Platform Owner / Organizer / Round Admin) don't get blocked by student registry failures
+  // User đặc quyền không bị chặn bởi lỗi student registry
   const isPrivileged = isAdmin;
   const isLoading = !isPrivileged && student.isLoading;
   const isError = !isPrivileged && student.isError;

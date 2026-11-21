@@ -20,7 +20,7 @@ export default function NotFound() {
     >
       <ChainLatticeBackground variant="broken" className="chain-lattice--not-found" />
       <div className="relative z-10 flex w-full max-w-2xl flex-col items-center justify-center">
-        {/* Large 404 display with the existing FuzzyText canvas */}
+        {/* Hiển thị 404 lớn bằng canvas FuzzyText hiện có */}
         <div className="relative flex items-center justify-center select-none min-h-[140px] sm:min-h-[200px]">
           <FuzzyText
             fontSize="clamp(108px, 18vw, 210px)"
@@ -43,19 +43,19 @@ export default function NotFound() {
           </FuzzyText>
         </div>
 
-        {/* Title: 8px below 404 */}
+        {/* Tiêu đề: cách 404 8px */}
         <h1 className="mt-2 text-[22px] font-bold tracking-tight text-white sm:text-[28px] md:text-[32px] lg:text-[36px]">
           {isVi ? "Xin lỗi, trang không tồn tại" : "I'm sorry, page not exist"}
         </h1>
 
-        {/* Description: 12px below title */}
+        {/* Mô tả: cách tiêu đề 12px */}
         <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted sm:text-base">
           {isVi
             ? "Trang có thể đã bị di chuyển, hoặc địa chỉ trong URL không còn khả dụng."
             : "The page may have moved, or the address in the URL is no longer available."}
         </p>
 
-        {/* Action button: 32px below description */}
+        {/* Nút hành động: cách mô tả 32px */}
         <div className="mt-8 flex w-full items-center justify-center">
           <GradientBorder className="w-full max-w-[280px] rounded-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_24px_rgba(232,65,66,0.35)] sm:w-auto">
             <Button

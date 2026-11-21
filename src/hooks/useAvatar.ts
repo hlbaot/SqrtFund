@@ -25,7 +25,7 @@ export function saveAvatar(address: string | undefined, id: string): boolean {
     window.localStorage.setItem(key, id);
     memoryFallback.delete(key);
   } catch {
-    // The current session still updates if browser storage is unavailable.
+    // Phiên hiện tại vẫn cập nhật khi storage của trình duyệt không khả dụng
     memoryFallback.set(key, id);
   }
   window.dispatchEvent(new CustomEvent(AVATAR_CHANGE_EVENT, { detail: { address: address.toLowerCase() } }));

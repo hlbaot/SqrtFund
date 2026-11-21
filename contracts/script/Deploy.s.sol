@@ -7,7 +7,7 @@ import {StudentRegistry} from "../src/StudentRegistry.sol";
 import {RoundFactory} from "../src/RoundFactory.sol";
 
 /// @title Deploy
-/// @notice Deploys MockUSDC and RoundFactory on Avalanche Fuji.
+/// @notice Triển khai MockUSDC và RoundFactory trên Avalanche Fuji.
 contract Deploy is Script {
     function run() external {
         vm.startBroadcast();

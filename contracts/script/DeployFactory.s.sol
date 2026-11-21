@@ -5,7 +5,7 @@ import {Script, console2} from "forge-std/Script.sol";
 import {RoundFactory} from "../src/RoundFactory.sol";
 
 /// @title DeployFactory
-/// @notice Deploys ONLY a new RoundFactory on Avalanche Fuji, reusing the existing MockUSDC from deployments/fuji.json.
+/// @notice Chỉ triển khai RoundFactory mới trên Fuji, dùng lại MockUSDC có sẵn trong deployments/fuji.json.
 contract DeployFactory is Script {
     function run() external {
         string memory path = "deployments/fuji.json";

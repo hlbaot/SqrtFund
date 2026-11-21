@@ -17,7 +17,7 @@ export function Avatar({ address, size = 40, avatarId = "auto", forceAuto = fals
   const label = t.avatar.forAddress.replace("{address}", address);
   if (item && failedSource !== item.src) {
     return (
-      // The catalog contains only our own SVG data URIs; arbitrary URLs are never accepted.
+      // Catalog chỉ chứa SVG data URI nội bộ; không nhận URL tuỳ ý.
       // eslint-disable-next-line @next/next/no-img-element
       <img src={item.src} alt={`${item.name} — ${label}`} width={size} height={size}
         className="shrink-0 rounded-full border border-line-strong object-cover"

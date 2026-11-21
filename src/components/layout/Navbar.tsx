@@ -137,6 +137,6 @@ export function Navbar() {
   );
 }
 
-// Re-export as Header for backward compatibility
+// Re-export thành Header để tương thích ngược
 export const Header = Navbar;
 

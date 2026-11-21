@@ -1,4 +1,4 @@
-/** Cache lifetimes apply to each exact chain/address/query key, never another wallet. */
+/** Thời gian cache áp cho từng khóa chain/address/query, không dùng chéo ví khác. */
 export const QUERY_STALE_MS = 15_000;
 export const QUERY_GC_MS = 30 * 60_000;
 export const IMMUTABLE_STALE_MS = 5 * 60_000;

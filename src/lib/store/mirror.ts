@@ -14,8 +14,7 @@ export type MirrorState<T extends { id: string }> = {
 };
 export const addressKey = (address: string) => address.toLowerCase();
 
-/** Memory only: no browser storage access during SSR or the first render.
- * Receipt patches fence off stale queries; rollback never clobbers a newer write. */
+/** Chỉ lưu trong bộ nhớ: không truy cập storage trình duyệt khi SSR hoặc render đầu; patch receipt chặn query cũ, rollback không đè lên ghi mới hơn. */
 export function createMirrorStore<T extends { id: string }, D extends object = Record<never, never>>(
   derive: (entities: Record<string, T>) => D = () => ({} as D),
 ) {

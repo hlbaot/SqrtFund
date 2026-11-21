@@ -52,7 +52,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
   const viewer = isConnected && chainId === TARGET_CHAIN_ID ? address : undefined;
   const roundAddress = customRoundAddress || defaultRoundAddress;
   const governance = useRoundGovernance(enabled ? roundAddress : undefined);
-  // Old rounds have shorter dynamic project tuples. Probe the getter before decoding.
+  // Round cũ có tuple project ngắn hơn; thăm dò getter trước khi decode
   const rejectionProbe = useReadContract({
     address: roundAddress, abi: qfRoundAbi, functionName: "rejected", args: [0n], chainId: TARGET_CHAIN_ID,
     query: { enabled: Boolean(enabled && roundAddress), staleTime: Infinity, gcTime: QUERY_GC_MS, retryOnMount: false, retry: (attempt, error) => !isVersionReadError(error) && attempt < 2 },
@@ -110,7 +110,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     | [readonly bigint[], readonly bigint[]]
     | undefined;
 
-  // Read the recorded settlement, rather than presenting a preview as a finalized payout.
+  // Đọc settlement đã ghi, không hiển thị preview như payout cuối
   const payoutProjects = useMemo(() => projectsData?.[0]?.filter(project => project.approved) ?? [], [projectsData]);
   const finalPayouts = useReadContracts({
     blockNumber: confirmedBlock,
@@ -175,7 +175,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
         finalMatchingRaw,
         status: p.rejected ? "rejected" : p.approved ? "approved" : "pending",
         rejected: p.rejected === true,
-        // Raw values for precision
+        // Giá trị thô để giữ độ chính xác
         contractId: p.id,
         sumSqrtRaw: p.sumSqrt,
         totalDonatedRaw: p.totalDonated,
@@ -212,7 +212,7 @@ export function useProjects(customRoundAddress?: Address, options: { enabled?: b
     readFailureKind: contractData?.some(result => result.status === "failure" && isVersionReadError(result.error)) ? "version" as const : "rpc" as const,
     isLoading: enabled && mirroredProjects === undefined && !knownEmptyRound && Boolean(roundAddress) && ((!probeResolved && !rejectionProbe.isError) || (probeResolved && isLoading)),
     isError: (!probeResolved && rejectionProbe.isError) || isError || contractData?.[0]?.status === "failure",
-    // A failed capability probe must be retried before choosing a tuple ABI.
+    // Probe lỗi phải thử lại trước khi chọn tuple ABI
     refetch: () => {
       if (finalized && payoutProjects.length) void finalPayouts.refetch();
       return probeResolved ? refetch() : rejectionProbe.refetch();

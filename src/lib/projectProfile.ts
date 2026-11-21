@@ -57,7 +57,7 @@ export function profileScope(round: unknown, projectId: unknown) {
     throw Error("INVALID_PROFILE");
   return { round: round.toLowerCase(), projectId };
 }
-/** Canonical content is used by both the editor and the signed server request. */
+/** Nội dung canonical dùng chung cho editor và request ký gửi server. */
 export function parseProfileChange(value: unknown): ProfileChange {
   if (!value || typeof value !== "object") throw Error("INVALID_PROFILE");
   const x = value as Record<string, unknown>,

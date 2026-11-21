@@ -1,4 +1,4 @@
-/** UI visibility only; all project records remain publicly readable on chain. */
+/** Chỉ là hiển thị UI; mọi project vẫn đọc công khai được trên chain. */
 export type ProjectModeration = { approved: boolean; rejected?: boolean; ownerAddress: string };
 export function isPublicProject(project: { approved?: boolean; rejected?: boolean; status?: string }) {
   return !project.rejected && project.status !== "rejected" && (project.approved ?? project.status === "approved");

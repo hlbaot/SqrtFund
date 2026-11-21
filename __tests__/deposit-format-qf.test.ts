@@ -29,7 +29,7 @@ describe("USDC parsing and formatting (bigint only)", () => {
       expect(res100k.amount).toBe(100_000n * USDC);
     }
 
-    // 0.000001 USDC (minimum precision: 1 wei)
+    // 0.000001 USDC (độ chính xác tối thiểu: 1 wei)
     const resMin = parseUsdc("0.000001");
     expect(resMin.success).toBe(true);
     if (resMin.success) {
@@ -120,7 +120,7 @@ describe("USDC parsing and formatting (bigint only)", () => {
     expect(formatUsdc(1_000_000n * USDC)).toBe("1,000,000 USDC");
     expect(formatUsdc(1_234_567_123_456n)).toBe("1,234,567.123456 USDC");
 
-    // Compact mode
+    // Chế độ compact
     expect(formatUsdc(100_000n * USDC, { compact: true })).toBe("100K USDC");
     expect(formatUsdc(1_000_000n * USDC, { compact: true })).toBe("1M USDC");
     expect(formatUsdc(1_500_000n * USDC, { compact: true })).toBe("1.5M USDC");
@@ -132,19 +132,19 @@ describe("qf calculations with pool = 100,000 USDC (pure BigInt)", () => {
   const pool = 100_000n * USDC; // 100,000 USDC matching pool = 100_000_000_000n
 
   it("allocates matching pool strictly under pool = 100,000 USDC using bigint only", () => {
-    // Project A: 50 donors giving 5 USDC each
+    // Project A: 50 donor, mỗi người 5 USDC
     // sumSqrt = 50 * sqrt(5 * 1e6 * 1e12) = 50 * 2236067977 = 111803398850
     const sqrt5 = sqrtBigInt(5n * USDC * SCALE);
     const sumSqrtA = 50n * sqrt5;
     const totalDonatedA = 50n * 5n * USDC; // 250 USDC
 
-    // Project B: 200 donors giving 1 USDC each
+    // Project B: 200 donor, mỗi người 1 USDC
     // sumSqrt = 200 * sqrt(1 * 1e6 * 1e12) = 200 * 1000000000 = 200000000000
     const sqrt1 = sqrtBigInt(1n * USDC * SCALE);
     const sumSqrtB = 200n * sqrt1;
     const totalDonatedB = 200n * 1n * USDC; // 200 USDC
 
-    // Project C: 10 donors giving 2 USDC each
+    // Project C: 10 donor, mỗi người 2 USDC
     const sqrt2 = sqrtBigInt(2n * USDC * SCALE);
     const sumSqrtC = 10n * sqrt2;
     const totalDonatedC = 10n * 2n * USDC; // 20 USDC
@@ -157,7 +157,7 @@ describe("qf calculations with pool = 100,000 USDC (pure BigInt)", () => {
     expect(typeof rawB).toBe("bigint");
     expect(typeof rawC).toBe("bigint");
 
-    // Project B (200 supporters) has higher raw matching than Project A (50 supporters) despite lower direct donations
+    // Project B (200 supporter) có raw matching cao hơn Project A (50 supporter) dù direct donation thấp hơn
     expect(rawB).toBeGreaterThan(rawA);
 
     const projects = [
@@ -166,7 +166,7 @@ describe("qf calculations with pool = 100,000 USDC (pure BigInt)", () => {
       { id: "projC", sumSqrt: sumSqrtC, totalDonated: totalDonatedC },
     ];
 
-    const maxMatchBps = 3000n; // 30% cap
+    const maxMatchBps = 3000n; // trần 30%
     const results = computeMatchingBigInt(projects, pool, maxMatchBps);
 
     expect(results.length).toBe(3);
@@ -188,7 +188,7 @@ describe("qf calculations with pool = 100,000 USDC (pure BigInt)", () => {
   });
 
   it("handles pool scaling pro-rata when unconstrained without exceeding pool", () => {
-    // 5 projects with massive raw matching
+    // 5 project có raw matching rất lớn
     const sqrt5 = sqrtBigInt(5n * USDC * SCALE);
     const projects = Array.from({ length: 5 }, (_, i) => ({
       id: `p${i + 1}`,
@@ -196,7 +196,7 @@ describe("qf calculations with pool = 100,000 USDC (pure BigInt)", () => {
       totalDonated: 500n * 5n * USDC,
     }));
 
-    // 100% maxMatchBps (no individual cap, purely pro-rata)
+    // maxMatchBps 100% (không trần riêng, chia pro-rata thuần)
     const results = computeMatchingBigInt(projects, pool, 10000n);
     let totalPayout = 0n;
     for (const res of results) {

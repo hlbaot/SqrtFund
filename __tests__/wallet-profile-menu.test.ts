@@ -13,7 +13,7 @@ const f = vi.hoisted(() => ({
   platformOwner: false,
   booleanStates: 0,
 }));
-// Open the real dropdown in server-rendered tests without invoking wallet or DOM effects.
+// Mở dropdown thật trong test server-render, không gọi wallet hay effect DOM.
 vi.mock("react", async importOriginal => {
   const actual = await importOriginal<typeof import("react")>();
   return { ...actual, useState: (initial: unknown) => actual.useState(

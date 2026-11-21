@@ -16,7 +16,7 @@ vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({}) }));
 vi.mock("@/hooks/useTxFlow", () => ({ useTxFlow: () => vi.fn() }));
 vi.mock("@/lib/organizerRegistry", () => ({ loadOrganizerRegistry: async () => [] }));
 vi.mock("@/hooks/useOrganizerApplications", () => ({ useOrganizerApplicationsAdmin: () => ({
-  // Deliberately oldest first: the dashboard must show the latest submissions first.
+  // Cố ý xếp cũ nhất trước: dashboard phải hiện bản mới nhất trước.
   applications: Array.from({ length: f.count }, (_, index) => ({
     id: `app-${index + 1}`, organizationName: `Organization ${index + 1}`,
     walletAddress: `0x${"1".repeat(40)}`, contactEmail: "fixture@example.test",

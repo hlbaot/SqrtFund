@@ -14,7 +14,7 @@ export const OPEN_DONATION_POLICY = {
 
 export const isUncappedDonation = (maximum?: bigint) => maximum === maxUint256;
 
-/** One shared budget across every project supported by a student in a round. */
+/** Một ngân sách chung cho mọi dự án mà sinh viên ủng hộ trong một vòng. */
 export function parseStudentRoundBudget(value: string): bigint | undefined {
   const parsed = parseUsdc(value);
   return parsed.success && parsed.amount < maxUint256 ? parsed.amount : undefined;

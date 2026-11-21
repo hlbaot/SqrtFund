@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-// An isolated test database adapter. Production code has no in-memory storage.
+// Adapter database test tách biệt; code production không có lưu trữ in-memory.
 const dbFixture = vi.hoisted(() => ({ rows: new Map<string, Record<string, unknown>>(), revision: 0 }));
 vi.mock("@/lib/verify/supabaseAdmin", () => ({ supabaseAdmin: () => ({
   from: () => {
@@ -144,7 +144,7 @@ describe("Organizer Applications API", () => {
     const res1 = await POST(postReq1);
     expect(res1.status).toBe(201);
 
-    // Try posting again with same wallet
+    // Gửi lại với cùng ví
     const postReq2 = new Request("http://localhost/api/organizer-applications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -227,7 +227,7 @@ describe("Organizer Applications API", () => {
     const dummyTx = `0x${"cd".repeat(32)}`;
     const reviewer = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
-    // Attempt revoke while still pending -> should fail 409 because only approved can be revoked
+    // Revoke khi còn pending -> phải lỗi 409 vì chỉ approved mới revoke được
     const unapprovedRevokeReq = new Request("http://localhost/api/organizer-applications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -243,7 +243,7 @@ describe("Organizer Applications API", () => {
     const unapprovedRes = await PATCH(unapprovedRevokeReq);
     expect(unapprovedRes.status).toBe(409);
 
-    // Approve application first
+    // Approve đơn trước
     const approveReq = new Request("http://localhost/api/organizer-applications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -259,7 +259,7 @@ describe("Organizer Applications API", () => {
     expect(approveRes.status).toBe(200);
     const approvedJson = await approveRes.json();
 
-    // Attempt revoke without reason -> should fail 400
+    // Revoke không có lý do -> phải lỗi 400
     const failReq = new Request("http://localhost/api/organizer-applications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -276,7 +276,7 @@ describe("Organizer Applications API", () => {
     const failJson = await failRes.json();
     expect(failJson.error).toBe("REVOCATION_REASON_REQUIRED");
 
-    // Revoke with valid reason -> should succeed
+    // Revoke với lý do hợp lệ -> thành công
     const patchReq = new Request("http://localhost/api/organizer-applications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

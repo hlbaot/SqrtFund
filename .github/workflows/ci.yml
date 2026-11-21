@@ -43,7 +43,7 @@ jobs:
         with:
           node-version: 24
       - uses: pnpm/action-setup@v4
-        # Reads the pinned pnpm version from package.json.
+        # Đọc phiên bản pnpm được ghim từ package.json.
       - name: Locate pnpm store
         id: pnpm-store
         run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"

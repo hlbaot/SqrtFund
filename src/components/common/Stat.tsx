@@ -15,12 +15,7 @@ export interface StatProps {
   className?: string;
 }
 
-/**
- * Standard Stat component enforcing typography tokens:
- * - Label: role-label (mono, uppercase, 12px, letter-spacing 0.12em, muted)
- * - Value: role-value-md (mono, tabular, 20px/28px, weight 600) or role-value-lg (32px hero)
- * - Unit: role-unit (mono, 12px, muted, aligned to the baseline of its value)
- */
+/** Stat chuẩn theo typography tokens: label, value (md/lg), unit. */
 export function Stat({
   label,
   value,
@@ -76,10 +71,7 @@ export interface StatGroupProps {
   className?: string;
 }
 
-/**
- * StatGroup component: CSS grid with equal columns and hairline dividers,
- * items aligned to the top, all labels on the same baseline, all values on the same baseline.
- */
+/** StatGroup: lưới CSS cột bằng nhau, đường kẻ mảnh, căn baseline đồng nhất. */
 export function StatGroup({
   children,
   columns = 3,

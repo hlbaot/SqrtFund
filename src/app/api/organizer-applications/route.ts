@@ -41,7 +41,7 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof VerificationError)
       return privateJson({ ok: false, error: error.code }, { status: error.status, headers });
-    // Do not log credentials, query strings or application data.
+    // Không log credential, query string hay dữ liệu đơn.
     console.error("[api/organizer-applications] GET unavailable");
     return privateJson({ ok: false, error: "INTERNAL_ERROR" }, { status: 500, headers });
   }
@@ -75,12 +75,12 @@ export async function POST(request: Request) {
     const existing = await listOrganizerApplications({ walletAddress: walletAddress.trim() });
     const previous = existing[0];
     const reverified = await verifyOrganizerReapplication(body, previous);
-    // Reuse stored verification only with a valid signature from the same wallet.
+    // Chỉ dùng lại xác minh đã lưu với chữ ký hợp lệ từ cùng ví.
     if (!reverified && !verifyOrganizerEmailProof(body.emailVerificationToken, contactEmail, walletAddress)) {
       return privateJson({ ok: false, error: "EMAIL_NOT_VERIFIED" }, { status: 403 });
     }
 
-    // Check if wallet already has a pending application
+    // Kiểm tra ví đã có đơn đang chờ chưa
     const activePending = existing.find(a => a.status === "pending");
     if (activePending) {
       return privateJson(
@@ -130,7 +130,7 @@ export async function PATCH(request: Request) {
       return privateJson({ ok: false, error: "INVALID_REVIEWER_ADDRESS" }, { status: 400 });
     }
 
-    // Require revocation reason when revoking
+    // Bắt buộc có lý do khi thu hồi
     if (status === "revoked" && (typeof revocationReason !== "string" || revocationReason.trim().length < 3)) {
       return privateJson({ ok: false, error: "REVOCATION_REASON_REQUIRED" }, { status: 400 });
     }

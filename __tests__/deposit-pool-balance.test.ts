@@ -5,7 +5,7 @@ import { DepositPoolForm } from "@/components/admin/DepositPoolForm";
 import { copy } from "@/lib/copy";
 const state = vi.hoisted(() => ({ amount: "100", locale: "en" as "en" | "vi", balance: undefined as bigint | undefined, loading: true, error: false, round: true, roundsLoading: false, roundsError: false, token: "0xFf56491e29085043DbB11cd01D54cC1449A3d686" }));
 const fundingState = vi.hoisted(() => ({ missing: false, finalized: false, pool: 0n, projectsError: false }));
-// Seed the user's typed amount while keeping React's real hook dispatcher for SSR rendering.
+// Gán sẵn số tiền người dùng nhập, giữ hook dispatcher thật của React cho SSR.
 vi.mock("react", async importOriginal => { const react = await importOriginal<typeof import("react")>(); return { ...react, useState: (initial: unknown) => react.useState(initial === "" ? state.amount : initial) }; });
 vi.mock("@/hooks/useAdminRounds", () => ({ useAdminRounds: () => ({ roundAddress: state.round ? "0x2222222222222222222222222222222222222222" : undefined, rounds: state.round ? [{ address: "0x2222222222222222222222222222222222222222", name: "Latest round" }] : [], totalRounds: state.round ? 1 : 0, selectRound: vi.fn(), isLoading: state.roundsLoading, isError: state.roundsError }) }));
 vi.mock("@/hooks/useRound", () => ({ useRound: () => ({

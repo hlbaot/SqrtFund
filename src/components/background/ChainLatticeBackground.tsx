@@ -36,8 +36,7 @@ function CircuitSignal({ path, duration, delay, gradient, className }: {
   );
 }
 
-// One visible lattice owns the motion budget: 3 signals + 2 confirmation rings.
-// Other instances remain static, including during section transitions.
+// Chỉ một lattice hiển thị được animate: 3 signal + 2 confirmation ring.
 const motionOwners = new Map<HTMLElement, { area: number; play: (active: boolean) => void }>();
 function selectMotionOwner() {
   let owner: HTMLElement | undefined;

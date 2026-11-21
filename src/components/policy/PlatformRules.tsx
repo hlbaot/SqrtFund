@@ -90,7 +90,7 @@ export function PlatformRules({ compact = false }: { compact?: boolean }) {
       }`}
       aria-label={vi ? "Quy định chung" : "Platform rules"}
     >
-      {/* Header section */}
+      {/* Phần đầu */}
       <div className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3.5">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm shadow-primary/10">
@@ -237,9 +237,9 @@ export function PlatformRules({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
 
-      {/* Do & Don't */}
+      {/* Nên và không nên */}
       <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
-        {/* Do's */}
+        {/* Nên */}
         <div className="space-y-3 rounded-xl border border-emerald-500/25 bg-emerald-950/10 p-4.5 sm:p-5">
           <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-emerald-400 sm:text-base">
@@ -261,7 +261,7 @@ export function PlatformRules({ compact = false }: { compact?: boolean }) {
           </ul>
         </div>
 
-        {/* Don'ts */}
+        {/* Không nên */}
         <div className="space-y-3 rounded-xl border border-rose-500/25 bg-rose-950/10 p-4.5 sm:p-5">
           <div className="flex items-center justify-between border-b border-rose-500/20 pb-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-rose-400 sm:text-base">
@@ -284,7 +284,7 @@ export function PlatformRules({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
 
-      {/* Quy trình và kết quả xét duyệt (Full Mode Only) */}
+      {/* Quy trình và kết quả xét duyệt (chỉ Full Mode) */}
       {!compact && (
         <div className="space-y-4 border-t border-line pt-6">
           <div className="flex items-center gap-2">
@@ -334,7 +334,7 @@ export function PlatformRules({ compact = false }: { compact?: boolean }) {
         </div>
       )}
 
-      {/* Footer link in Compact Mode */}
+      {/* Link chân trang ở Compact Mode */}
       {compact && (
         <div className="border-t border-line pt-3">
           <Link

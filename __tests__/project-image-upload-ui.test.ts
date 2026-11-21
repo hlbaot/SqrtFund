@@ -109,7 +109,7 @@ it("does not upload when the signature was rejected", async () => {
 
 it.each(["", "image/jpg"])("normalizes picker MIME %s before signing and sending the image", async mime => {
   const input = new File([Uint8Array.from([255, 216, 255, 0])], "photo.jpg", { type: mime });
-  // jsdom's Blob lacks arrayBuffer; model the native browser slice implementation.
+  // Blob của jsdom thiếu arrayBuffer; mô phỏng slice gốc của browser.
   Object.defineProperty(input, "slice", { value: () => ({ arrayBuffer: async () => Uint8Array.from([255, 216, 255, 0]).buffer }) });
   await act(async () => state.upload(input));
   const normalized = f.permit.mock.calls[0][0] as File;

@@ -1,4 +1,4 @@
-// Wallet cryptography and endpoint rejection are covered in email-wallet-authorization.test.ts.
+// Mật mã ví và việc endpoint từ chối được test trong email-wallet-authorization.test.ts.
 vi.mock("@/lib/server/emailWalletAuthorization", () => ({ authorizeEmailWallet: vi.fn().mockResolvedValue(undefined) }));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const f = vi.hoisted(() => ({

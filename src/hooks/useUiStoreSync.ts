@@ -4,8 +4,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { factoryAddress, TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { refreshUiStores } from "@/lib/store/chainSync";
 import { useVisiblePolling } from "./useVisiblePolling";
-/** One visible-tab fallback for both current-wallet permissions and all projects.
- * Socket events invalidate this same query; API applications have their own query. */
+/** Fallback khi tab hiển thị cho quyền ví hiện tại và mọi project; socket event invalidate query này. */
 export function useUiStoreSync() {
   const { address, chainId, isConnected } = useAccount();
   const client = usePublicClient({ chainId: TARGET_CHAIN_ID });

@@ -5,7 +5,7 @@ import { useLocale } from "@/lib/context/locale";
 export interface SupporterMarksProps {
   count: number;
   maxMarks?: number;
-  scale?: number; // 1 mark = scale supporters
+  scale?: number; // 1 ô = scale người ủng hộ
   className?: string;
   compact?: boolean;
   marksOnly?: boolean;
@@ -21,7 +21,7 @@ export function SupporterMarks({
 }: SupporterMarksProps) {
   const { t, locale } = useLocale();
 
-  // Testnet rule: <= 25 supporters -> 1 ô = 1 người ủng hộ; > 25 supporters -> 1 ô = 5 người ủng hộ
+  // Testnet: ≤ 25 người ủng hộ → 1 ô = 1 người; > 25 → 1 ô = 5 người
   const scale = propScale ?? (count <= 25 ? 1 : 5);
   const markCount = Math.max(0, Math.min(maxMarks, Math.ceil(count / scale)));
   const marks = Array.from({ length: markCount });
@@ -63,7 +63,7 @@ export function SupporterMarks({
     >
       <div className="flex items-baseline justify-between gap-2">
         <div className="flex items-center gap-1.5 text-muted">
-          {/* Synchronized color: green (bg-money) matching the supporter mark blocks below */}
+          {/* Màu xanh (bg-money) đồng bộ với các ô bên dưới */}
           <span className="h-2 w-2 bg-money" aria-hidden="true" />
           <span className="role-label text-muted">
             {t.common.supporters}
@@ -79,7 +79,7 @@ export function SupporterMarks({
         </div>
       </div>
 
-      {/* Memorable supporter marks: discrete green marks */}
+      {/* Các ô đánh dấu người ủng hộ */}
       <div
         className="mt-2.5 flex flex-wrap gap-1"
         aria-hidden="true"

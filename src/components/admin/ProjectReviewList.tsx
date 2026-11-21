@@ -16,7 +16,7 @@ type ReviewListProps = Omit<PendingProjectCardProps, "project" | "expanded" | "o
 
 const PROJECTS_PAGE_SIZE = 4;
 
-/** Keep the latest submissions first and limit each review page to four projects. */
+/** Bài nộp mới nhất trước; mỗi trang review tối đa 4 dự án. */
 export function ProjectReviewList({ projects, isLoading, isError, onRetry, ...actions }: ReviewListProps) {
   const { t, locale } = useLocale();
   const c = projectReviewCopy[locale];
@@ -28,7 +28,7 @@ export function ProjectReviewList({ projects, isLoading, isError, onRetry, ...ac
   const filterId = useId();
   const resultsId = useId();
   const filtered = filterReviewProjects(projects, query, filter, actions.round, actions.now);
-  // Project IDs increase with each registration in the selected round.
+  // Project ID tăng dần theo mỗi lần đăng ký trong round đã chọn.
   const sorted = [...filtered].sort((a, b) => BigInt(a.id) > BigInt(b.id) ? -1 : BigInt(a.id) < BigInt(b.id) ? 1 : 0);
   const totalPages = Math.max(1, Math.ceil(sorted.length / PROJECTS_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);

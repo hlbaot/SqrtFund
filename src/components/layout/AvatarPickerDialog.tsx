@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { GradientBorder } from "@/components/ui/GradientBorder";
 
-// Mount only while open so a new opening starts from the saved selection.
+// Chỉ mount khi đang mở để lần mở mới bắt đầu từ lựa chọn đã lưu.
 export function AvatarPickerDialog({ address, onClose }: { address: string; onClose: () => void }) {
   const { t } = useLocale();
   const { avatar, setAvatar } = useAvatar(address);
@@ -29,7 +29,7 @@ export function AvatarPickerDialog({ address, onClose }: { address: string; onCl
     else if (event.key === "ArrowUp") next = Math.max(index - columns, 0);
     else if (event.key === "Home") next = 0;
     else if (event.key === "End") next = options.length - 1;
-    else return; // Enter/Space use native button activation.
+    else return; // Enter/Space dùng kích hoạt button native.
     event.preventDefault();
     setSelected(options[next].id);
     buttons.current[next]?.focus();

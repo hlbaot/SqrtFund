@@ -4,7 +4,7 @@ import { useBalance, useAccount, useSwitchChain } from "wagmi";
 import { TARGET_CHAIN_ID } from "@/lib/contracts/addresses";
 import { useLocale } from "@/lib/context/locale";
 import { Button } from "@/components/ui/Button";
-/** Gas availability is a prerequisite, not a promise that a nonzero balance covers every fee. */
+/** Cần có gas; số dư khác 0 chưa chắc đủ mọi phí. */
 export function ContributionGuide({
   student,
   eligible,
@@ -173,7 +173,7 @@ export function ContributionGuide({
   );
 }
 
-/** Visible mobile entry point; it does not require a connected wallet. */
+/** Điểm vào trên mobile; không cần kết nối ví. */
 export function ContributionOverview({
   onOpen,
   expanded,

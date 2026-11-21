@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calculateRoundFundingStats } from "@/lib/roundStats";
 
-// Two donors contributing 1 USDC each generate exactly 2 USDC raw matching.
+// Hai donor góp 1 USDC mỗi người tạo đúng 2 USDC raw matching.
 const approved = { approved: true, totalDonatedRaw: 2_000_000n, sumSqrtRaw: 2_000_000_000n };
 
 describe("deposit pool financial summary", () => {

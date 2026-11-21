@@ -18,7 +18,7 @@ interface UploadContext {
   onUploaded: (url: string) => void;
 }
 
-/** Own the complete upload lifecycle, including work waiting for a wallet signature. */
+/** Quản lý toàn bộ vòng đời upload, kể cả khi chờ chữ ký ví. */
 export function useProjectImageUpload({
   scope,
   wallet,
@@ -71,7 +71,7 @@ export function useProjectImageUpload({
     setIsUploading(true);
     setError(null);
     try {
-      // Some OS/browser file pickers leave MIME empty or use the image/jpg alias.
+      // Một số file picker để MIME trống hoặc dùng alias image/jpg
       if (!file.type || file.type === "image/jpg") {
         const prefix = new Uint8Array(await file.slice(0, 12).arrayBuffer());
         if (!active()) return;
@@ -103,7 +103,7 @@ export function useProjectImageUpload({
         body: form,
         signal: abort.signal,
       });
-      // Infrastructure errors (e.g. a body-size rejection) may return plain text.
+      // Lỗi hạ tầng (vd vượt dung lượng body) có thể trả plain text
       const data = await response.json().catch(() => null);
       if (!active()) return;
       if (!response.ok) {

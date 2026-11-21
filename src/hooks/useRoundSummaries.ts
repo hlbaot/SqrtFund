@@ -15,7 +15,7 @@ import { QUERY_STALE_MS, QUERY_GC_MS } from "@/lib/queryPolicy";
 
 export type RoundSummary = {
   address: Address;
-  /** 1-based creation order */
+  /** Thứ tự tạo (bắt đầu từ 1) */
   index: number;
   poolUsdc: number;
   projectCount: number;
@@ -24,7 +24,7 @@ export type RoundSummary = {
   loaded: boolean;
 };
 
-/** Light-weight summary of every public round (shares the "round-fields" cache). */
+/** Tóm tắt nhẹ mọi round công khai (dùng chung cache "round-fields"). */
 export function useRoundSummaries() {
   const nowSec = useCurrentTimestamp();
   const polling = useVisiblePolling();
@@ -79,7 +79,7 @@ export function useRoundSummaries() {
   };
 }
 
-/** Featured rounds: not cancelled, open first, then by matching pool (desc). */
+/** Round nổi bật: chưa huỷ, đang mở trước, rồi theo matching pool giảm dần. */
 export function pickFeaturedRounds(summaries: readonly RoundSummary[], limit = 3): RoundSummary[] {
   return summaries
     .filter((s) => s.loaded && !s.cancelled)

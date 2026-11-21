@@ -2,7 +2,7 @@
 
 import { useLocale } from "@/lib/context/locale";
 
-/** Bounded page links: first/last, current neighbours, and non-interactive gaps. */
+/** Link trang giới hạn: đầu/cuối, lân cận, và khoảng trống không tương tác. */
 export function paginationItems(page: number, totalPages: number): (number | string)[] {
   const pages = Array.from(new Set([1, totalPages, page - 1, page, page + 1]))
     .filter(value => value >= 1 && value <= totalPages).sort((a, b) => a - b);

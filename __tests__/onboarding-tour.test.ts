@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { isTourCompleted, markTourCompleted, startOnboardingTour } from "@/lib/onboardingTour";
 import { AutoOnboardingTour } from "@/components/onboarding/AutoOnboardingTour";
 
-// Mock localStorage for node test environment
+// Mock localStorage cho môi trường test node
 const storage = new Map<string, string>();
 const localStorageMock = {
   getItem: vi.fn((key: string) => storage.get(key) ?? null),
@@ -67,11 +67,11 @@ describe("Automatic Onboarding Tour via driver.js", () => {
     expect(config.doneBtnText).toBe("Hoàn tất ✓");
     expect(config.showProgress).toBe(true);
 
-    // Welcome step title
+    // Tiêu đề bước welcome
     expect(config.steps[0].popover.title).toContain("N-Power");
     expect(config.steps[0].popover.description).toContain("Quadratic Funding");
 
-    // Element highlights without guide button
+    // Highlight element không có nút guide
     const elementSelectors = config.steps.map((s: { element?: string }) => s.element).filter(Boolean);
     expect(elementSelectors).toContain("#tour-brand");
     expect(elementSelectors).toContain("#tour-nav");

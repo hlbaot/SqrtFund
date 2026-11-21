@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-/** Decorative work starts after a paint, during idle time; it never gates content. */
+/** Việc trang trí chạy sau paint, lúc rảnh; không chặn nội dung. */
 export function useIdleVisual({ motionOnly = false, desktopOnly = false }: { motionOnly?: boolean; desktopOnly?: boolean } = {}) {
   const [ready, setReady] = useState(false);
   useEffect(() => {

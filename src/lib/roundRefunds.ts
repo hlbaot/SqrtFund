@@ -54,10 +54,7 @@ export interface ChunkingPlan {
   totalPossibleChunks: number;
 }
 
-/**
- * Creates block ranges of at most maxChunkSize (default 100n, matching Fuji RPC limit).
- * Enforces a strict maxRequests ceiling (default 300).
- */
+/** Tạo các khoảng block tối đa maxChunkSize (mặc định 100n, khớp giới hạn RPC Fuji), với trần maxRequests chặt (mặc định 300). */
 export function createBlockChunks(
   startBlock: bigint,
   endBlock: bigint,
@@ -101,10 +98,7 @@ export function createBlockChunks(
   };
 }
 
-/**
- * Binary search for a block by timestamp using getBlock.
- * Much faster than historical getBytecode since block headers are cached and lightweight.
- */
+/** Tìm block theo timestamp bằng binary search qua getBlock; nhanh hơn getBytecode lịch sử vì block header được cache và nhẹ. */
 export async function findBlockByTimestamp(
   client: PublicClient,
   targetTimestamp: bigint,
@@ -168,7 +162,7 @@ export async function loadDonationHistory(
   if (reusable) {
     firstBlock = reusable.firstBlock;
   } else if (typeof client.getBlock === "function") {
-    // Determine startTime from options or contract view
+    // Xác định startTime từ options hoặc view của contract
     let startTime = options.startTime;
     let endTime = options.endTime;
 
@@ -180,7 +174,7 @@ export async function loadDonationHistory(
           functionName: "startTime",
         })) as bigint;
       } catch {
-        // Ignore fallback
+        // Bỏ qua fallback
       }
     }
 
@@ -192,7 +186,7 @@ export async function loadDonationHistory(
           functionName: "endTime",
         })) as bigint;
       } catch {
-        // Ignore fallback
+        // Bỏ qua fallback
       }
     }
 
@@ -200,11 +194,11 @@ export async function loadDonationHistory(
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
     if (startTime && startTime > 0n) {
-      const buffer = 300n; // 5 min safety buffer
+      const buffer = 300n; // đệm an toàn 5 phút
       const targetStart = startTime > buffer ? startTime - buffer : 0n;
       firstBlock = await findBlockByTimestamp(client, targetStart, 0n, latestBlock.number, signal);
     } else {
-      // Conservative default if no startTime
+      // Mặc định thận trọng nếu không có startTime
       firstBlock = latestBlock.number > 1000n ? latestBlock.number - 1000n : 0n;
     }
 
@@ -214,7 +208,7 @@ export async function loadDonationHistory(
       endBlock = latestBlock.number;
     }
   } else if (typeof (client as unknown as { getBytecode?: unknown }).getBytecode === "function") {
-    // Compatibility fallback for unit tests mocking getBytecode
+    // Fallback tương thích cho unit test mock getBytecode
     let low = 0n;
     let high = latestBlockNumber;
     while (low < high) {
@@ -224,7 +218,7 @@ export async function loadDonationHistory(
     }
     firstBlock = low;
   } else {
-    // Fallback for mocked clients without getBlock or getBytecode
+    // Fallback cho client mock không có getBlock hoặc getBytecode
     firstBlock = latestBlockNumber > 10n ? latestBlockNumber - 10n : 0n;
   }
 

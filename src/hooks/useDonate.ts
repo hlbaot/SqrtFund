@@ -49,7 +49,7 @@ export function useDonate(customRound?: Address) {
     setErrorMessage(null);
 
     try {
-      // 1. Check user's USDC balance first to prevent gas estimation reverts
+      // 1. Kiểm tra số dư USDC trước để tránh revert khi ước tính gas
       const userBalance = await flow.wait(() => publicClient.readContract({
         address: usdcAddress,
         abi: mockUsdcAbi,
@@ -73,7 +73,7 @@ export function useDonate(customRound?: Address) {
         return false;
       }
 
-      // 2. Check existing allowance
+      // 2. Kiểm tra allowance hiện có
       const currentAllowance = await flow.wait(() => publicClient.readContract({
         address: usdcAddress,
         abi: mockUsdcAbi,
@@ -81,7 +81,7 @@ export function useDonate(customRound?: Address) {
         args: [address, roundAddress],
       }));
 
-      // 2. If allowance is less than amount, approve first
+      // 2. Allowance thiếu thì approve trước
       if (currentAllowance < amount) {
         setStep("approving");
         flow.toast.pending(
@@ -154,7 +154,7 @@ export function useDonate(customRound?: Address) {
         }
       }
 
-      // 3. Send donate transaction
+      // 3. Gửi giao dịch donate
       setStep("donating");
       flow.toast.pending(
         donateId,

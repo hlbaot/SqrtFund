@@ -2,10 +2,7 @@ import { type Address, type PublicClient } from "viem";
 import { qfRoundAbi } from "@/lib/contracts/abis";
 import { isVersionReadError } from "@/lib/contracts/roundReads";
 export type FinalizationTiming = { finalizedAt: number; blockNumber: string };
-/** Find the false→true transition using historical state; verify its event and block timestamp.
- * No guessed deadline based on endTime or the time this application first saw the round.
- * Historical/RPC failures must remain unknown rather than penalizing a project.
- */
+/** Tìm bước chuyển false→true theo state lịch sử, xác minh event và block timestamp; không đoán hạn từ endTime hay lúc app thấy vòng; lỗi lịch sử/RPC giữ trạng thái unknown, không phạt dự án. */
 export async function readFinalizationTiming(client: Pick<PublicClient, "readContract" | "getBlockNumber" | "getBlock" | "getBytecode" | "getContractEvents">, address: Address): Promise<FinalizationTiming | null> {
   const head = await client.getBlockNumber({ cacheTime: 0 });
   const read = async (blockNumber: bigint) => {

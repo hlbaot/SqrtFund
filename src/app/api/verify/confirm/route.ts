@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     // OTP đã bị vô hiệu ở bước consume. 3.600 giây dưới đây là hạn chữ ký
     // để người dùng ký giao dịch trong ví, KHÔNG phải hạn dùng OTP.
     const expiry = BigInt(Math.floor(Date.now() / 1000) + 3600);
-    // Persist uniqueness before releasing the signature, even for concurrent confirms.
+    // Lưu tính duy nhất trước khi trả chữ ký, kể cả khi confirm đồng thời.
     stage = "insert";
     const identity = await ensureEmailWallet(row.email, row.address, true, db);
     if (identity !== row.email_hash) throw new VerificationError("SERVICE_UNAVAILABLE", 503);
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       if (insertError.code === "23505") return failure("EMAIL_ALREADY_USED", 409);
       throw databaseError(insertError);
     }
-    // An ignored duplicate may be owned by another wallet; never release that signature.
+    // Bản trùng bị bỏ qua có thể thuộc ví khác; không bao giờ trả chữ ký đó.
     const { data: owner, error: ownerError } = await db.from("verifications").select("address")
       .eq("email_hash", row.email_hash).single();
     if (ownerError) throw databaseError(ownerError);

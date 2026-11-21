@@ -117,7 +117,7 @@ export function Podium({
                 {project.name.length > 40 && <InfoTooltip label={project.name}>{project.name}</InfoTooltip>}
               </div>
 
-              {/* Single hero metric on podium: value-lg (32px) */}
+              {/* Một metric chính trên podium: value-lg (32px) */}
               <div className="mt-5">
                 <p className="role-label text-muted">{t.competition.supporters}</p>
                 <div className={`mt-1 font-bold ${project.supporterCount ? "value-lg text-primary" : "value-lg text-muted"}`}>
