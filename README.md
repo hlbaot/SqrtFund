@@ -22,8 +22,8 @@ Với cùng tổng tiền đóng góp, dự án được nhiều người ủng 
 | Nhóm phát triển | **43xTSD** |
 | Chủ đề | Topic 6 — Avalanche Hackathon (Team1 Vietnam) |
 | Mạng | Avalanche Fuji C-Chain — chain ID `43113` |
-| Token thử nghiệm | MockUSDC — 6 chữ số thập phân |
-| Giao diện | Tiếng Việt và tiếng Anh |
+| Token thử nghiệm | MockUSDC |
+| Giao diện | Tiếng Việt và tiếng Anh (VIE / ENG)|
 
 > Đây là phiên bản thử nghiệm sử dụng Fuji và MockUSDC. Hợp đồng chưa được kiểm toán bảo mật độc lập. README mô tả chức năng trong mã nguồn; trạng thái triển khai website và database cần được xác nhận riêng.
 
